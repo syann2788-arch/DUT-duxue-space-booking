@@ -1,0 +1,51 @@
+<view>
+  <view style="background:#fff;padding:40rpx 28rpx;display:flex;align-items:center;gap:20rpx">
+    <view style="width:80rpx;height:80rpx;border-radius:50%;background:#f5eef9;display:flex;align-items:center;justify-content:center">
+      <text style="font-size:36rpx;color:#6b2d8e;font-weight:700">{{user.name&&user.name[0]||'?'}}</text>
+    </view>
+    <view style="flex:1">
+      <text style="font-size:32rpx;font-weight:700;display:block">{{user.name}}</text>
+      <text style="font-size:24rpx;color:#aaa">笃学{{user.class_name}} · {{user.student_id}}</text>
+      <text style="font-size:22rpx;color:#e67e22;margin-top:4rpx;display:block">信用分 {{user.credit||0}}</text>
+    </view>
+    <text wx:if="{{user.banned_until}}" style="background:#e0556a;color:#fff;font-size:22rpx;padding:6rpx 18rpx;border-radius:20rpx">禁约中</text>
+  </view>
+
+  <view style="display:flex;gap:12rpx;margin:0 20rpx">
+    <view wx:if="{{isAdmin}}" class="card" style="flex:1;background:#fef9e7;text-align:center" bindtap="goAdmin">
+      <text style="color:#b7791f;font-weight:700;font-size:26rpx">管理后台</text>
+    </view>
+    <view class="card" style="flex:1;background:#f5eef9;text-align:center" bindtap="scanCheckin">
+      <text style="color:#6b2d8e;font-weight:700;font-size:26rpx">扫码签到</text>
+    </view>
+  </view>
+
+  <view wx:if="{{isC}}" class="card" style="background:#fff5f5;text-align:center">
+    <text style="color:#c0392b;font-weight:700;font-size:22rpx">辅导员 · 汇心驿A106</text>
+    <text style="color:#e88;font-size:20rpx;display:block">{{counselorCount}}次预约记录</text>
+  </view>
+
+  <view style="display:flex;background:#fff;margin:20rpx 20rpx 0;border-radius:16rpx 16rpx 0 0">
+    <text class="tb {{filter==='all'?'active':''}}" bindtap="setFilter" data-f="all">全部</text>
+    <text class="tb {{filter==='active'?'active':''}}" bindtap="setFilter" data-f="active">待签到</text>
+    <text class="tb {{filter==='checked_in'?'active':''}}" bindtap="setFilter" data-f="checked_in">已签到</text>
+    <text class="tb {{filter==='missed'?'active':''}}" bindtap="setFilter" data-f="missed">违约</text>
+  </view>
+
+  <block wx:for="{{list}}" wx:key="id">
+    <view style="background:#fff;margin:0 20rpx;padding:24rpx 28rpx;border-top:1rpx solid #f6f5f8">
+      <view style="display:flex;justify-content:space-between;align-items:center">
+        <text style="font-size:28rpx;font-weight:700">{{item.room_code}} {{item.room_name}}</text>
+        <text style="font-size:20rpx;padding:4rpx 14rpx;border-radius:6rpx;{{item.statStyle}}">{{item.statLabel}}</text>
+      </view>
+      <text style="font-size:24rpx;color:#aaa;display:block;margin-top:6rpx">{{item.date}} {{item.timeLabel}}</text>
+      <text style="font-size:22rpx;color:#c0b8c8;display:block;margin-top:2rpx">{{item.people}}人{{item.reason?' · '+item.reason:''}}{{item.notes?' · '+item.notes:''}}</text>
+      <view style="display:flex;gap:12rpx;justify-content:flex-end;margin-top:16rpx">
+        <button wx:if="{{item.canCheckin}}" class="btn-primary" style="font-size:24rpx;padding:12rpx 24rpx" bindtap="doCheckin" data-id="{{item.id}}">签到</button>
+        <button wx:if="{{item.canCancel}}" class="btn-outline" style="font-size:24rpx;padding:12rpx 24rpx;color:#e0556a;border-color:#e0556a" bindtap="doCancel" data-id="{{item.id}}">取消</button>
+        <button wx:if="{{item.status==='checked_in'||item.status==='cancelled'}}" style="font-size:22rpx;padding:10rpx 20rpx;background:#f5eef9;color:#6b2d8e;border:none;border-radius:8rpx" bindtap="rebook" data-item="{{item}}">再次预约</button>
+      </view>
+    </view>
+  </block>
+  <view style="text-align:center;padding:100rpx 0;color:#ddd;font-size:28rpx" wx:if="{{!list.length}}">暂无记录</view>
+</view>

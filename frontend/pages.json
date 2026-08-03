@@ -1,0 +1,118 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {}
+  },
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "笃学书院",
+        "navigationBarBackgroundColor": "#1a5c3a",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationBarBackgroundColor": "#1a5c3a",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/register/register",
+      "style": {
+        "navigationBarTitleText": "注册",
+        "navigationBarBackgroundColor": "#1a5c3a",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/room/room",
+      "style": {
+        "navigationBarTitleText": "房间详情",
+        "navigationBarBackgroundColor": "#1a5c3a",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/reserve/reserve",
+      "style": {
+        "navigationBarTitleText": "预约空间",
+        "navigationBarBackgroundColor": "#1a5c3a",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/my/my",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationBarBackgroundColor": "#1a5c3a",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/admin/dashboard",
+      "style": {
+        "navigationBarTitleText": "管理后台",
+        "navigationBarBackgroundColor": "#8b0000",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/admin/counselors",
+      "style": {
+        "navigationBarTitleText": "辅导员管理",
+        "navigationBarBackgroundColor": "#8b0000",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/admin/users",
+      "style": {
+        "navigationBarTitleText": "用户管理",
+        "navigationBarBackgroundColor": "#8b0000",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/admin/reservations",
+      "style": { "navigationBarTitleText": "预约审核", "navigationBarBackgroundColor": "#263b32", "navigationBarTextStyle": "white" }
+    },
+    {
+      "path": "pages/admin/cleanup",
+      "style": { "navigationBarTitleText": "清扫复核", "navigationBarBackgroundColor": "#263b32", "navigationBarTextStyle": "white" }
+    },
+    {
+      "path": "pages/admin/settings",
+      "style": { "navigationBarTitleText": "系统配置", "navigationBarBackgroundColor": "#263b32", "navigationBarTextStyle": "white" }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarBackgroundColor": "#1a5c3a",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "笃学书院",
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#1a5c3a",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "书院空间",
+        "iconPath": "static/tab-home.png",
+        "selectedIconPath": "static/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/my/my",
+        "text": "我的",
+        "iconPath": "static/tab-my.png",
+        "selectedIconPath": "static/tab-my-active.png"
+      }
+    ]
+  }
+}

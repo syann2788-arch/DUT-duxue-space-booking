@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: shuyuan
+      POSTGRES_USER: shuyuan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shuyuan"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://shuyuan:${POSTGRES_PASSWORD}@db:5432/shuyuan
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://space.example.edu.cn}
+      WECHAT_APP_ID: ${WECHAT_APP_ID:-}
+      WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:-}
+      WECHAT_TEMPLATE_SUBMITTED: ${WECHAT_TEMPLATE_SUBMITTED:-}
+      WECHAT_TEMPLATE_REVIEW: ${WECHAT_TEMPLATE_REVIEW:-}
+      WECHAT_TEMPLATE_REMINDER: ${WECHAT_TEMPLATE_REMINDER:-}
+      WECHAT_TEMPLATE_RESTRICTION: ${WECHAT_TEMPLATE_RESTRICTION:-}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
+  uploads:

@@ -1,0 +1,23 @@
+{
+  "name": "duxue-space-reservation",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev:h5": "node scripts/uni.cjs -p h5",
+    "dev:mp-weixin": "node scripts/uni.cjs -p mp-weixin",
+    "build:h5": "node scripts/uni.cjs build -p h5",
+    "build:mp-weixin": "node scripts/uni.cjs build -p mp-weixin"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-alpha-5020320260731001",
+    "@dcloudio/uni-components": "3.0.0-alpha-5020320260731001",
+    "@dcloudio/uni-h5": "3.0.0-alpha-5020320260731001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-alpha-5020320260731001",
+    "pinia": "2.1.7",
+    "vue": "3.4.21"
+  },
+  "devDependencies": {
+    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-5020320260731001",
+    "vite": "5.2.8"
+  }
+}

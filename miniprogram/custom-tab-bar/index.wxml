@@ -1,0 +1,15 @@
+<view class="bar">
+  <view wx:for="{{list}}" wx:key="text" class="tab {{selected===index?'on':''}}" data-path="{{item.pagePath}}" data-index="{{index}}" bindtap="switch">
+    <view class="ico">
+      <block wx:if="{{item.icon==='grid'}}">
+        <view class="sq"></view><view class="sq"></view>
+        <view class="sq"></view><view class="sq"></view>
+      </block>
+      <block wx:else>
+        <view class="p-head"></view>
+        <view class="p-body"></view>
+      </block>
+    </view>
+    <text class="label">{{item.text}}</text>
+  </view>
+</view>

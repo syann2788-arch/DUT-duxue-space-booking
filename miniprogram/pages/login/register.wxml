@@ -1,0 +1,14 @@
+<view style="min-height:100vh;background:#f6f5f8;padding:30rpx 0">
+  <view class="card" style="margin-top:0">
+    <view style="font-size:32rpx;font-weight:700;color:#6b2d8e;text-align:center;margin-bottom:40rpx">注册</view>
+
+    <input class="inp" placeholder="学号" bindinput="onF" data-key="student_id"/>
+    <input class="inp" placeholder="姓名" bindinput="onF" data-key="name"/>
+    <input class="inp" placeholder="手机号" type="number" maxlength="11" bindinput="onF" data-key="phone"/>
+    <input class="inp" placeholder="班级（如：2502）" bindinput="onF" data-key="class_name"/>
+    <input class="inp" type="password" placeholder="密码（字母+数字，至少6位）" bindinput="onF" data-key="password"/>
+
+    <button class="btn-primary btn-full" bindtap="doRegister" loading="{{l}}">注册</button>
+    <button class="btn-outline btn-full" style="margin-top:16rpx" bindtap="goBack">返回</button>
+  </view>
+</view>

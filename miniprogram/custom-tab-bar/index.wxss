@@ -1,0 +1,70 @@
+.bar {
+  display: flex;
+  height: 100rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #fff;
+  border-top: 1rpx solid #eee;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rpx;
+}
+
+/* ── 空间导览: 田字格 ── */
+.ico {
+  width: 44rpx;
+  height: 44rpx;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 4rpx;
+  align-content: center;
+  justify-content: center;
+}
+
+.sq {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 4rpx;
+  background: #bfbfbf;
+  transition: background .2s;
+}
+.tab.on .sq { background: #6b2d8e; }
+
+/* ── 我的: 人形 ── */
+.ico .p-head {
+  grid-column: 1 / 3;
+  justify-self: center;
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #bfbfbf;
+  transition: background .2s;
+}
+.ico .p-body {
+  grid-column: 1 / 3;
+  justify-self: center;
+  width: 32rpx;
+  height: 14rpx;
+  border-radius: 12rpx 12rpx 0 0;
+  background: #bfbfbf;
+  transition: background .2s;
+}
+.tab.on .p-head,
+.tab.on .p-body { background: #6b2d8e; }
+
+/* ── 文字 ── */
+.label {
+  font-size: 20rpx;
+  color: #bfbfbf;
+  transition: color .2s;
+}
+.tab.on .label {
+  color: #6b2d8e;
+  font-weight: 600;
+}

@@ -1,0 +1,2 @@
+.tb { flex:1; text-align:center; padding:24rpx 0; font-size:26rpx; color:#bbb; }
+.tb.active { color:#6b2d8e; font-weight:700; border-bottom:4rpx solid #6b2d8e; }

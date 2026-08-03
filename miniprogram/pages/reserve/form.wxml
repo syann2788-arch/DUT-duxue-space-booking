@@ -1,0 +1,25 @@
+<view style="min-height:100vh;background:#f6f5f8;padding:20rpx 0">
+  <view class="card">
+    <text class="title">{{roomCode}} {{roomName}}</text>
+    <text class="sub">{{date}} {{timeLabel}}</text>
+  </view>
+
+  <view class="card">
+    <view class="row">
+      <text class="label">使用人数</text>
+      <input class="inp" type="number" placeholder="请输入人数" value="{{people}}" bindinput="onPeople"/>
+    </view>
+    <view class="row">
+      <text class="label">申请理由</text>
+      <input class="inp" placeholder="请输入申请理由" value="{{reason}}" bindinput="onReason"/>
+    </view>
+    <view class="row" style="border:none">
+      <text class="label">备注</text>
+      <input class="inp" placeholder="选填" value="{{notes}}" bindinput="onNotes"/>
+    </view>
+  </view>
+
+  <view style="padding:0 20rpx;margin-top:32rpx">
+    <button class="btn-primary btn-full" bindtap="submit" loading="{{submitting}}">确认预约</button>
+  </view>
+</view>

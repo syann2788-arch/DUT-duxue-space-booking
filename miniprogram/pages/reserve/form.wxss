@@ -1,0 +1,6 @@
+.title { font-size: 36rpx; font-weight: 700; color: #6b2d8e; display: block; }
+.sub { font-size: 26rpx; color: #888; display: block; margin-top: 8rpx; }
+
+.row { display: flex; align-items: center; gap: 20rpx; padding: 28rpx 0; border-bottom: 2rpx solid #f3f3f3; }
+.label { font-size: 28rpx; font-weight: 600; color: #444; white-space: nowrap; min-width: 140rpx; }
+.inp { flex: 1; font-size: 28rpx; color: #2c2c2c; height: 80rpx; line-height: 80rpx; padding: 0 16rpx; }

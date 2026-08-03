@@ -1,0 +1,1 @@
+.inp { width: 100%; height: 84rpx; line-height: 84rpx; padding: 0 16rpx; border-bottom: 2rpx solid #eee; font-size: 28rpx; color: #2c2c2c; margin-bottom: 14rpx; box-sizing: border-box; }

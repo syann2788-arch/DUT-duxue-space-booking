@@ -1,0 +1,37 @@
+{
+  "lazyCodeLoading": "requiredComponents",
+  "pages": [
+    "pages/login/login",
+    "pages/login/register",
+    "pages/login/forgot",
+    "pages/index/index",
+    "pages/room/room",
+    "pages/reserve/reserve",
+    "pages/reserve/form",
+    "pages/my/my",
+    "pages/admin/admin"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#6b2d8e",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "笃学书院",
+    "backgroundColor": "#f3f4f6"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#999",
+    "selectedColor": "#6b2d8e",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "空间导览"
+      },
+      {
+        "pagePath": "pages/my/my",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

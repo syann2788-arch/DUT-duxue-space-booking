@@ -1,0 +1,7 @@
+.title { font-size: 28rpx; font-weight: 700; color: #444; }
+.u-row { display: flex; justify-content: space-between; align-items: center; }
+.u-info { display: flex; flex-direction: column; gap: 4rpx; flex: 1; }
+.u-name { font-size: 28rpx; font-weight: 600; }
+.u-role { font-size: 20rpx; background: #f0ecf5; color: #6b2d8e; padding: 2rpx 10rpx; border-radius: 4rpx; margin-left: 8rpx; }
+.u-detail { font-size: 22rpx; color: #b0a8b8; }
+.ban-info { font-size: 20rpx; color: #e0556a; margin-top: 4rpx; display: block; }

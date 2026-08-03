@@ -1,0 +1,46 @@
+<view>
+  <view class="top">
+    <view class="top-row">
+      <view>
+        <text class="top-name" wx:if="{{user.name}}">{{user.name}}</text>
+        <text class="top-sub">西山7舍 · 书院空间</text>
+      </view>
+      <text class="logout-btn" bindtap="doLogout">退出</text>
+    </view>
+  </view>
+
+  <view class="legend">
+    <view class="leg"><view class="dot" style="background:#6b2d8e"></view>可预约</view>
+    <view class="leg"><view class="dot" style="background:#5b8def"></view>公开空间</view>
+    <view class="leg"><view class="dot" style="background:#e0556a"></view>需辅导员</view>
+    <view class="leg"><view class="dot" style="background:#aaa"></view>不可互动</view>
+  </view>
+
+  <view class="floor">
+    <view class="rr">
+      <block wx:for="{{topRow}}" wx:key="code">
+        <view class="cell {{item.cls}}" data-id="{{item.id}}" data-res="{{item.canReserve}}" data-pub="{{item.isPublic}}" bindtap="onCell"><text class="ccode">{{item.code}}</text><text class="cname">{{item.name}}</text><text class="ctag {{item.tagCls}}" wx:if="{{item.tag}}">{{item.tag}}</text></view>
+      </block>
+    </view>
+    <view class="channel"><text class="gate">正门 →</text>主通道</view>
+    <view class="rr">
+      <block wx:for="{{bottomRow}}" wx:key="code">
+        <view class="cell {{item.cls}}" data-id="{{item.id}}" data-res="{{item.canReserve}}" data-pub="{{item.isPublic}}" bindtap="onCell"><text class="ccode">{{item.code}}</text><text class="cname">{{item.name}}</text><text class="ctag {{item.tagCls}}" wx:if="{{item.tag}}">{{item.tag}}</text></view>
+      </block>
+    </view>
+  </view>
+
+  <view class="sec">空间列表</view>
+  <view wx:for="{{reservable}}" wx:key="id" class="litem" data-id="{{item.id}}" bindtap="onRoom">
+    <view><text class="lcode">{{item.code}} {{item.name}}</text><text class="ldesc" style="display:block">{{item.desc}}</text></view>
+    <text class="larr">›</text>
+  </view>
+
+  <view class="sec">公开空间</view>
+  <view wx:for="{{publics}}" wx:key="id" class="litem" data-id="{{item.id}}" bindtap="onRoom">
+    <view><text class="lcode">{{item.code}} {{item.name}}</text><text class="ldesc" style="display:block">{{item.desc}}</text></view>
+    <text class="larr">›</text>
+  </view>
+
+  <view style="padding-bottom:100rpx"></view>
+</view>

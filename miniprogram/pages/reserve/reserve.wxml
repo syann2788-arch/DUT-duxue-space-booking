@@ -1,0 +1,39 @@
+<view style="padding-bottom:40rpx">
+  <view class="card hdr">
+    <text class="hname">{{roomCode}} {{roomName}}</text>
+    <text class="hinfo">8:00-22:00 · 30分钟/时段 · 单次最多4小时</text>
+  </view>
+
+  <view class="card">
+    <view class="date-nav">
+      <view class="arr-btn" bindtap="changeDate" data-d="-1">‹ 前一天</view>
+      <text class="date-text">{{dateStr}} {{dateLabel}}</text>
+      <view class="arr-btn" bindtap="changeDate" data-d="1">下一天 ›</view>
+    </view>
+
+    <view class="slots">
+      <view wx:for="{{slots}}" wx:key="slot" class="sitem {{item.selected?'sel':item.available?'open':'busy'}}" data-slot="{{item.slot}}" data-avail="{{item.available}}" data-name="{{item.user_name}}" data-class="{{item.user_class}}" data-people="{{item.people}}" data-reason="{{item.reason}}" bindtap="toggle">
+        <text class="stime">{{item.label}}</text>
+        <text class="stag">{{item.available?'可约':item.user_name}}</text>
+        <text wx:if="{{!item.available}}" class="sreason">{{item.people}}人 · 详情 ›</text>
+      </view>
+    </view>
+
+    <view class="summ" wx:if="{{selected.length}}">已选 {{selected.length}} 个时段（{{selected.length*0.5}}小时）</view>
+    <view class="rules">每人每天仅可预约一个连续时段\n单次最多4小时 · 开始后15分钟内需签到\n开始前30分钟可取消 · 累计3次违约禁约7天</view>
+
+    <button class="btn-primary btn-full" disabled="{{!selected.length}}" bindtap="nextStep">{{selected.length?'下一步 · 填写信息':'点击选择时间段'}}</button>
+  </view>
+
+  <!-- Reservation info popup -->
+  <view class="mask" wx:if="{{showInfo}}" bindtap="closeInfo">
+    <view class="popup" catchtap>
+      <text class="pop-title">预约信息</text>
+      <view class="pop-row"><text class="pop-lbl">预约人</text><text class="pop-val">{{infoData.name}}</text></view>
+      <view class="pop-row"><text class="pop-lbl">班级</text><text class="pop-val">{{infoData.class_name}}</text></view>
+      <view class="pop-row"><text class="pop-lbl">使用人数</text><text class="pop-val">{{infoData.people}}人</text></view>
+      <view class="pop-row" style="border:none"><text class="pop-lbl">申请理由</text><text class="pop-val">{{infoData.reason||'未填写'}}</text></view>
+      <button class="btn-primary" style="margin-top:28rpx" bindtap="closeInfo">关闭</button>
+    </view>
+  </view>
+</view>
