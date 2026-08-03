@@ -464,7 +464,7 @@ function renderReservation() {
     html += `<div class="summary">已选：${String(minH).padStart(2,'0')}:00 - ${String(maxH+1).padStart(2,'0')}:00（${selectedSlots.length}小时）</div>`;
   }
 
-  html += `<div class="rules">· 每人每天仅可预约一个连续时段<br>· 单次最多4小时 · 开始后15分钟内需签到<br>· 开始前30分钟可取消 · 累计3次违约禁约7天</div>`;
+  html += `<div class="rules">· 每人每天累计最多4小时<br>· 开始后15分钟内需签到<br>· 开始前30分钟可取消 · 每累计3次违约禁约30天</div>`;
   html += `<button class="full-btn btn-purple" onclick="submitReservation()" ${selectedSlots.length===0?'disabled':''}>${selectedSlots.length===0?'请选择时间段（点击格子）':'确认预约'}</button>`;
   html += `<button class="btn btn-outline full-btn" style="margin-top:8px" onclick="closeRoomModal()">返回</button>`;
 

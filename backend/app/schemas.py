@@ -15,6 +15,7 @@ from app.models import (
     SceneType,
     UsageMode,
     UserRole,
+    ViolationType,
 )
 
 
@@ -112,12 +113,21 @@ class ReservationCreate(BaseModel):
     start_slot: int = Field(ge=0)
     end_slot: int = Field(gt=0)
     people_count: int = Field(ge=1, le=500)
-    purpose: str = Field(min_length=2, max_length=300)
+    purpose: str = Field(default="", max_length=300)
+    campus_card_photo_url: str = Field(min_length=1, max_length=500)
 
     @model_validator(mode="after")
     def validate_range(self):
         if self.end_slot <= self.start_slot:
             raise ValueError("结束时间必须晚于开始时间")
+        if not self.campus_card_photo_url.startswith(("/uploads/campus_card_", "https://")):
+            raise ValueError("玉兰卡照片地址无效")
+        if self.scene == SceneType.study:
+            if self.people_count != 1:
+                raise ValueError("自习实行一人一约，预约人数必须为1")
+            self.purpose = self.purpose.strip() or "个人自习"
+        elif len(self.purpose.strip()) < 10:
+            raise ValueError("申请理由至少填写10个字")
         return self
 
 
@@ -146,6 +156,7 @@ class ReservationOut(BaseModel):
     usage_mode: UsageMode | None
     people_count: int
     purpose: str
+    campus_card_photo_url: str | None
     status: ReservationStatus
     review_note: str | None
     auto_approved: bool
@@ -204,6 +215,16 @@ class RestrictionCreate(BaseModel):
         if self.level in {RestrictionLevel.temporary, RestrictionLevel.timed} and not self.days:
             raise ValueError("临时/限时封禁必须填写天数")
         return self
+
+
+class ViolationOut(BaseModel):
+    id: int
+    user_id: int
+    reservation_id: int | None
+    type: ViolationType
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class RestrictionOut(BaseModel):

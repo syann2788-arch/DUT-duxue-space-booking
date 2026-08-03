@@ -38,4 +38,8 @@ DEFAULT_RUNTIME_CONFIG = {
     "auto_approval_time": "23:00",
     "reminder_minutes": 30,
     "temporary_ban_days": 1,
+    "violation_threshold": 3,
+    "violation_ban_days": 30,
+    "music_a103_start_hour": 15,
+    "music_a103_end_hour": 21,
 }

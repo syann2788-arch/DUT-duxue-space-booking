@@ -47,6 +47,7 @@ async def _upgrade_legacy_sqlite(conn) -> None:
         "usage_mode": "VARCHAR(20)",
         "people_count": "INTEGER NOT NULL DEFAULT 1",
         "purpose": "VARCHAR(300) NOT NULL DEFAULT ''",
+        "campus_card_photo_url": "VARCHAR(500)",
         "review_note": "VARCHAR(500)",
         "reviewed_by": "INTEGER",
         "reviewed_at": "DATETIME",
@@ -74,3 +75,9 @@ async def _upgrade_legacy_sqlite(conn) -> None:
     user_columns = {row[1] for row in result.fetchall()}
     if user_columns and "wechat_openid" not in user_columns:
         await conn.execute(text("ALTER TABLE users ADD COLUMN wechat_openid VARCHAR(64)"))
+
+    # Existing SQLite databases predate the ORM uniqueness rule.
+    await conn.execute(text(
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_violation_reservation_type "
+        "ON violations (reservation_id, type)"
+    ))

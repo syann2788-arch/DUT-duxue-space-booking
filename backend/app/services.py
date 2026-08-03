@@ -32,6 +32,8 @@ from app.models import (
     UsageMode,
     User,
     UserRole,
+    Violation,
+    ViolationType,
     local_now,
 )
 from app.schemas import CleanupReviewRequest, ReservationCreate, ReservationReviewRequest, RestrictionCreate
@@ -83,6 +85,10 @@ def _validate_runtime_config(config: dict) -> None:
         raise HTTPException(400, "预约粒度必须整除60分钟")
     if config["max_minutes_per_day"] < config["slot_minutes"]:
         raise HTTPException(400, "单日时长上限不能小于一个时段")
+    if config["violation_threshold"] < 1 or config["violation_ban_days"] < 1:
+        raise HTTPException(400, "违约阈值和自动禁约天数必须大于0")
+    if not 0 <= config["music_a103_start_hour"] < config["music_a103_end_hour"] <= 24:
+        raise HTTPException(400, "A103钢琴开放时段配置无效")
     try:
         time.fromisoformat(config["auto_approval_time"])
     except (TypeError, ValueError):
@@ -164,11 +170,23 @@ async def refresh_reservation_states(db: AsyncSession, now: datetime | None = No
             continue
         start = reservation_start(reservation, config)
         end = reservation_end(reservation, config)
-        if reservation.status in (ReservationStatus.approved, ReservationStatus.active) and now > start + timedelta(minutes=config["checkin_grace_minutes"]):
+        if reservation.status == ReservationStatus.pending and now >= start:
+            reservation.status = ReservationStatus.rejected
+            reservation.review_note = "审批超时：预约开始前未完成审核"
+            reservation.reviewed_at = now
+            _queue_notification(db, reservation.user_id, reservation.id, NotificationType.review_result, {
+                "result": "rejected", "reason": reservation.review_note,
+            })
+            changed = True
+        elif reservation.status in (ReservationStatus.approved, ReservationStatus.active) and now > start + timedelta(minutes=config["checkin_grace_minutes"]):
             reservation.status = ReservationStatus.missed
+            await _record_violation(db, reservation.user_id, reservation.id, ViolationType.no_show, now, config)
             changed = True
         elif reservation.status in (ReservationStatus.in_use, ReservationStatus.checked_in) and now >= end:
             reservation.status = ReservationStatus.cleanup_pending
+            _queue_notification(db, reservation.user_id, reservation.id, NotificationType.restriction, {
+                "change": "cleanup_required", "reason": "预约已结束，请及时上传现场清扫照片后解锁下一次预约",
+            })
             changed = True
     if changed:
         await db.commit()
@@ -193,6 +211,21 @@ async def _active_restriction(db: AsyncSession, user: User, now: datetime) -> Bo
     return None
 
 
+async def expire_restrictions(db: AsyncSession, now: datetime | None = None) -> int:
+    now = now or local_now()
+    result = await db.execute(select(BookingRestriction).where(
+        BookingRestriction.is_active.is_(True),
+        BookingRestriction.ends_at.is_not(None),
+        BookingRestriction.ends_at <= now,
+    ).with_for_update())
+    restrictions = list(result.scalars())
+    for restriction in restrictions:
+        restriction.is_active = False
+    if restrictions:
+        await db.commit()
+    return len(restrictions)
+
+
 async def _ensure_user_can_book(db: AsyncSession, user: User, now: datetime) -> None:
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "账号已停用")
@@ -202,10 +235,45 @@ async def _ensure_user_can_book(db: AsyncSession, user: User, now: datetime) -> 
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"预约资格受限（{until}）：{restriction.reason}")
     unresolved = await db.scalar(select(func.count(Reservation.id)).where(
         Reservation.user_id == user.id,
-        Reservation.status.in_((ReservationStatus.cleanup_pending, ReservationStatus.cleanup_rejected)),
+        or_(
+            and_(Reservation.status == ReservationStatus.cleanup_pending, ~Reservation.cleanup.has()),
+            Reservation.status == ReservationStatus.cleanup_rejected,
+        ),
     ))
     if unresolved:
-        raise HTTPException(status.HTTP_409_CONFLICT, "请先上传并通过上一笔预约的现场清扫照片")
+        raise HTTPException(status.HTTP_409_CONFLICT, "请先上传上一笔预约的现场清扫照片")
+
+
+async def _record_violation(
+    db: AsyncSession,
+    user_id: int,
+    reservation_id: int,
+    violation_type: ViolationType,
+    now: datetime,
+    config: dict | None = None,
+) -> bool:
+    """Record one auditable violation and apply each 3-strike ban exactly once."""
+    existing = await db.scalar(select(Violation.id).where(
+        Violation.reservation_id == reservation_id,
+        Violation.type == violation_type,
+    ))
+    if existing:
+        return False
+    db.add(Violation(user_id=user_id, reservation_id=reservation_id, type=violation_type, created_at=now))
+    await db.flush()
+    count = int(await db.scalar(select(func.count(Violation.id)).where(Violation.user_id == user_id)) or 0)
+    config = config or await get_runtime_config(db)
+    threshold = int(config["violation_threshold"])
+    if count % threshold == 0:
+        days = int(config["violation_ban_days"])
+        await add_restriction(
+            db,
+            user_id,
+            RestrictionCreate(level=RestrictionLevel.timed, days=days, reason=f"累计{count}次违约，自动禁约{days}天"),
+            admin_id=None,
+            commit=False,
+        )
+    return True
 
 
 async def _daily_minutes(db: AsyncSession, user_id: int, day: date, config: dict) -> int:
@@ -243,18 +311,6 @@ async def _candidate_available(db: AsyncSession, rule: RoomSceneRule, data: Rese
     return sum(item.people_count for item in existing) + data.people_count <= rule.capacity
 
 
-async def _event_music_conflicts(db: AsyncSession, scene: SceneType, data: ReservationCreate, start_minute: int, end_minute: int) -> list[Reservation]:
-    other_code = "B102" if scene == SceneType.event else "A103"
-    result = await db.execute(select(Reservation).join(Room).where(
-        Room.room_code == other_code,
-        Reservation.date == data.date,
-        Reservation.status.in_(OCCUPYING_STATUSES),
-        Reservation.start_minute < end_minute,
-        Reservation.end_minute > start_minute,
-    ).with_for_update())
-    return list(result.scalars())
-
-
 async def create_reservation(db: AsyncSession, user_id: int, data: ReservationCreate) -> Reservation:
     now = local_now()
     await refresh_reservation_states(db, now)
@@ -274,18 +330,29 @@ async def create_reservation(db: AsyncSession, user_id: int, data: ReservationCr
     requested_minutes = (data.end_slot - data.start_slot) * config["slot_minutes"]
     start_minute = config["open_hour"] * 60 + data.start_slot * config["slot_minutes"]
     end_minute = config["open_hour"] * 60 + data.end_slot * config["slot_minutes"]
+    user_overlap = await db.scalar(select(func.count(Reservation.id)).where(
+        Reservation.user_id == user_id,
+        Reservation.date == data.date,
+        Reservation.status.in_(OCCUPYING_STATUSES),
+        Reservation.start_minute < end_minute,
+        Reservation.end_minute > start_minute,
+    ))
+    if user_overlap:
+        raise HTTPException(409, "同一用户不能预约重叠时段")
     used_minutes = await _daily_minutes(db, user_id, data.date, config)
     if used_minutes + requested_minutes > config["max_minutes_per_day"]:
         raise HTTPException(400, f"单日累计预约不得超过{config['max_minutes_per_day'] // 60}小时")
 
+    rule_filters = [
+        RoomSceneRule.scene == data.scene,
+        RoomSceneRule.is_enabled.is_(True),
+        Room.is_active.is_(True),
+        Room.can_reserve.is_(True),
+    ]
+    if data.scene != SceneType.meeting:
+        rule_filters.append(RoomSceneRule.capacity >= data.people_count)
     result = await db.execute(
-        select(RoomSceneRule).join(Room).options(selectinload(RoomSceneRule.room)).where(
-            RoomSceneRule.scene == data.scene,
-            RoomSceneRule.is_enabled.is_(True),
-            Room.is_active.is_(True),
-            Room.can_reserve.is_(True),
-            RoomSceneRule.capacity >= data.people_count,
-        ).order_by(RoomSceneRule.priority)
+        select(RoomSceneRule).join(Room).options(selectinload(RoomSceneRule.room)).where(*rule_filters).order_by(RoomSceneRule.priority)
     )
     rules = list(result.scalars().unique())
     if not rules:
@@ -294,30 +361,20 @@ async def create_reservation(db: AsyncSession, user_id: int, data: ReservationCr
     # Lock physical rooms (not only scene-rule rows) in one stable order. Study
     # and meeting therefore serialize even though they use different rule rows.
     room_ids = {rule.room_id for rule in rules}
-    if data.scene in (SceneType.event, SceneType.music):
-        room_ids.update((await db.scalars(select(Room.id).where(Room.room_code.in_(("A103", "B102"))))).all())
     await db.execute(select(Room.id).where(Room.id.in_(room_ids)).order_by(Room.id).with_for_update())
-
-    if data.scene == SceneType.music and await _event_music_conflicts(db, data.scene, data, start_minute, end_minute):
-        raise HTTPException(409, "A103大型活动与B102音乐练习互斥，该时段不可预约")
 
     selected_rule = None
     for rule in rules:
+        if data.scene == SceneType.music and rule.room.room_code == "A103":
+            piano_start = int(config["music_a103_start_hour"]) * 60
+            piano_end = int(config["music_a103_end_hour"]) * 60
+            if start_minute < piano_start or end_minute > piano_end:
+                continue
         if await _candidate_available(db, rule, data, start_minute, end_minute):
             selected_rule = rule
             break
     if not selected_rule:
         raise HTTPException(409, "候选房间在该时段均已占用或共享容量不足")
-
-    # Large events have explicit priority over not-yet-started music bookings.
-    if data.scene == SceneType.event:
-        for conflict in await _event_music_conflicts(db, data.scene, data, start_minute, end_minute):
-            conflict.status = ReservationStatus.rejected
-            conflict.review_note = "因A103大型活动最高优先级规则自动释放B102"
-            conflict.reviewed_at = now
-            _queue_notification(db, conflict.user_id, conflict.id, NotificationType.review_result, {
-                "result": "rejected", "reason": conflict.review_note,
-            })
 
     reservation = Reservation(
         user_id=user_id,
@@ -333,6 +390,7 @@ async def create_reservation(db: AsyncSession, user_id: int, data: ReservationCr
         usage_mode=selected_rule.usage_mode,
         people_count=data.people_count,
         purpose=data.purpose.strip(),
+        campus_card_photo_url=data.campus_card_photo_url,
         status=ReservationStatus.pending,
     )
     db.add(reservation)
@@ -427,6 +485,7 @@ async def submit_cleanup(db: AsyncSession, reservation_id: int, user_id: int, ph
 
 
 async def review_reservations(db: AsyncSession, request: ReservationReviewRequest, admin_id: int, auto: bool = False) -> dict:
+    await refresh_reservation_states(db)
     result = await db.execute(select(Reservation).where(
         Reservation.id.in_(request.reservation_ids),
         Reservation.status == ReservationStatus.pending,
@@ -464,7 +523,7 @@ async def auto_approve_pending(db: AsyncSession) -> int:
     return result["processed"]
 
 
-async def add_restriction(db: AsyncSession, user_id: int, data: RestrictionCreate, admin_id: int, commit: bool = True) -> BookingRestriction:
+async def add_restriction(db: AsyncSession, user_id: int, data: RestrictionCreate, admin_id: int | None, commit: bool = True) -> BookingRestriction:
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(404, "用户不存在")
@@ -472,9 +531,16 @@ async def add_restriction(db: AsyncSession, user_id: int, data: RestrictionCreat
     ends_at = None if data.level == RestrictionLevel.permanent else now + timedelta(days=data.days or 1)
     restriction = BookingRestriction(user_id=user_id, level=data.level, reason=data.reason, ends_at=ends_at, created_by=admin_id)
     db.add(restriction)
+    await db.flush()
     _queue_notification(db, user_id, None, NotificationType.restriction, {
-        "level": data.level.value, "reason": data.reason, "ends_at": ends_at.isoformat() if ends_at else "永久",
+        "change": "restricted", "restriction_id": restriction.id, "level": data.level.value,
+        "reason": data.reason, "ends_at": ends_at.isoformat() if ends_at else "永久",
     })
+    if ends_at:
+        _queue_notification(db, user_id, None, NotificationType.restriction, {
+            "change": "expired", "restriction_id": restriction.id, "level": data.level.value,
+            "reason": "预约限制已到期，预约权限已自动恢复", "ends_at": ends_at.isoformat(),
+        }, scheduled_at=ends_at)
     if commit:
         await db.commit()
         await db.refresh(restriction)
@@ -489,6 +555,17 @@ async def revoke_restriction(db: AsyncSession, restriction_id: int) -> bool:
         return False
     restriction.is_active = False
     restriction.revoked_at = local_now()
+    pending_expiry = list((await db.scalars(select(Notification).where(
+        Notification.user_id == restriction.user_id,
+        Notification.type == NotificationType.restriction,
+        Notification.status == NotificationStatus.pending,
+    ))).all())
+    for notification in pending_expiry:
+        if notification.payload.get("change") == "expired" and notification.payload.get("restriction_id") == restriction.id:
+            await db.delete(notification)
+    _queue_notification(db, restriction.user_id, None, NotificationType.restriction, {
+        "change": "revoked", "level": "revoked", "reason": "管理员已解除预约限制", "ends_at": local_now().isoformat(),
+    })
     await db.commit()
     return True
 
@@ -504,6 +581,17 @@ async def review_cleanup(db: AsyncSession, cleanup_id: int, request: CleanupRevi
     cleanup.reviewed_at = local_now()
     cleanup.review_note = request.note
     reservation.status = ReservationStatus.completed if approved else ReservationStatus.cleanup_rejected
+    if not approved:
+        _queue_notification(db, reservation.user_id, reservation.id, NotificationType.restriction, {
+            "change": "cleanup_rejected", "reason": request.note or "清扫照片核验不合格，请重新上传",
+        })
+        await _record_violation(
+            db,
+            reservation.user_id,
+            reservation.id,
+            ViolationType.cleanup_failed,
+            local_now(),
+        )
     if not approved and request.restrict_user:
         await add_restriction(db, reservation.user_id, RestrictionCreate(
             level=request.restriction_level,
@@ -515,8 +603,17 @@ async def review_cleanup(db: AsyncSession, cleanup_id: int, request: CleanupRevi
     return cleanup
 
 
-async def list_admin_reservations(db: AsyncSession, day: date | None = None, reservation_status: ReservationStatus | None = None) -> list[Reservation]:
+async def list_admin_reservations(
+    db: AsyncSession,
+    day: date | None = None,
+    reservation_status: ReservationStatus | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    scene: SceneType | None = None,
+) -> list[Reservation]:
     await refresh_reservation_states(db)
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(400, "开始日期不能晚于结束日期")
     query = select(Reservation).options(
         joinedload(Reservation.room).selectinload(Room.scene_rules),
         joinedload(Reservation.user),
@@ -526,12 +623,27 @@ async def list_admin_reservations(db: AsyncSession, day: date | None = None, res
         query = query.where(Reservation.date == day)
     if reservation_status:
         query = query.where(Reservation.status == reservation_status)
+    if date_from:
+        query = query.where(Reservation.date >= date_from)
+    if date_to:
+        query = query.where(Reservation.date <= date_to)
+    if scene:
+        query = query.where(Reservation.scene == scene)
     result = await db.execute(query.order_by(Reservation.created_at.desc()))
     return list(result.scalars().unique())
 
 
-async def get_all_users(db: AsyncSession) -> list[User]:
-    return list((await db.scalars(select(User).order_by(User.student_id))).all())
+async def get_all_users(db: AsyncSession, search: str | None = None) -> list[User]:
+    query = select(User)
+    if search and search.strip():
+        keyword = f"%{search.strip()}%"
+        query = query.where(or_(
+            User.student_id.ilike(keyword),
+            User.name.ilike(keyword),
+            User.phone.ilike(keyword),
+            User.class_name.ilike(keyword),
+        ))
+    return list((await db.scalars(query.order_by(User.student_id))).all())
 
 
 async def set_counselor(db: AsyncSession, student_ids: list[str]) -> int:

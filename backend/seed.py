@@ -13,11 +13,11 @@ from app.models import Room, RoomSceneRule, SceneType, UsageMode, User, UserRole
 
 ROOMS = [
     # code, name, description, category, capacity, reservable, public, permission, fridge, instruments, x, y
-    ("A101", "日新阁", "创新与共享自习空间", "综合空间", 12, True, False, "all", False, False, .88, .65),
-    ("A102", "格物居", "共享自习空间，也可用于会议", "图书自习", 20, True, True, "all", False, False, .95, .25),
+    ("A101", "日新阁", "创新与共享自习空间", "综合空间", 10, True, False, "all", False, False, .88, .65),
+    ("A102", "格物居", "共享自习空间，也可用于会议", "图书自习", 6, True, True, "all", False, False, .95, .25),
     ("A103", "致知堂", "适合讲座、演出和大型活动", "大型活动", 100, True, False, "all", False, False, .15, .80),
     ("A104", "悠然亭", "公开生活空间，可就餐休息", "生活空间", 20, False, True, "none", True, False, .78, .25),
-    ("A105", "聚思轩", "小组讨论与共享自习空间", "会议室", 8, True, False, "all", False, False, .58, .25),
+    ("A105", "聚思轩", "小组讨论与共享自习空间", "会议室", 10, True, False, "all", False, False, .58, .25),
     ("A106", "汇心驿", "师生谈心空间，仅辅导员预约", "谈心室", 6, True, False, "counselor", False, False, .45, .25),
     ("B101", "文治堂", "院长办公室", "办公空间", 4, False, False, "none", False, False, .35, .25),
     ("B102", "韵音阁", "器乐练习空间", "音乐练习", 4, True, False, "all", False, True, .22, .25),
@@ -28,14 +28,15 @@ ROOMS = [
 ]
 
 RULES = [
-    ("A102", SceneType.study, 1, 20, UsageMode.shared),
-    ("A101", SceneType.study, 2, 12, UsageMode.shared),
-    ("A105", SceneType.study, 3, 8, UsageMode.shared),
-    ("A105", SceneType.meeting, 1, 8, UsageMode.exclusive),
-    ("A101", SceneType.meeting, 2, 12, UsageMode.exclusive),
-    ("A102", SceneType.meeting, 3, 20, UsageMode.exclusive),
+    ("A102", SceneType.study, 1, 6, UsageMode.shared),
+    ("A101", SceneType.study, 2, 10, UsageMode.shared),
+    ("A105", SceneType.study, 3, 10, UsageMode.shared),
+    ("A105", SceneType.meeting, 1, 500, UsageMode.exclusive),
+    ("A101", SceneType.meeting, 2, 500, UsageMode.exclusive),
+    ("A102", SceneType.meeting, 3, 500, UsageMode.exclusive),
     ("A103", SceneType.event, 1, 100, UsageMode.exclusive),
     ("B102", SceneType.music, 1, 4, UsageMode.exclusive),
+    ("A103", SceneType.music, 2, 4, UsageMode.exclusive),
 ]
 
 
@@ -64,7 +65,7 @@ async def seed():
         if not admin:
             db.add(User(student_id="admin001", name="系统管理员", phone="13800000000", class_name="笃学书院", password_hash=hash_password("admin123"), role=UserRole.admin))
         await db.commit()
-        print("Seed complete: 12 rooms, 8 allocation rules, admin001/admin123 (change immediately).")
+        print("Seed complete: 12 rooms, 9 allocation rules, admin001/admin123 (change immediately).")
 
 
 if __name__ == "__main__":

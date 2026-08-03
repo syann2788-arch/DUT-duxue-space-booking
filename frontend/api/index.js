@@ -66,17 +66,38 @@ export function uploadCleanupPhoto(filePath) {
   })
 }
 
+export function uploadCampusCardPhoto(filePath) {
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: `${BASE_URL}/reservations/campus-card-photo`,
+      filePath,
+      name: 'file',
+      header: { Authorization: `Bearer ${uni.getStorageSync('token')}` },
+      success(res) {
+        const data = JSON.parse(res.data || '{}')
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve(data)
+        else reject(new Error(errorMessage(data)))
+      },
+      fail: reject,
+    })
+  })
+}
+
 export const getAdminStats = () => request('/admin/stats')
-export const getAllReservations = (date, status) => {
+export const getAllReservations = (date, status, filters = {}) => {
   const query = []
   if (date) query.push(`date=${encodeURIComponent(date)}`)
   if (status) query.push(`status_filter=${encodeURIComponent(status)}`)
+  if (filters.date_from) query.push(`date_from=${encodeURIComponent(filters.date_from)}`)
+  if (filters.date_to) query.push(`date_to=${encodeURIComponent(filters.date_to)}`)
+  if (filters.scene) query.push(`scene=${encodeURIComponent(filters.scene)}`)
   return request(`/admin/reservations${query.length ? `?${query.join('&')}` : ''}`)
 }
 export const reviewReservations = data => request('/admin/reservations/review', { method: 'POST', data })
 export const getCleanupQueue = () => request('/admin/cleanup')
 export const reviewCleanup = (id, data) => request(`/admin/cleanup/${id}/review`, { method: 'POST', data })
-export const getUsers = () => request('/admin/users')
+export const getUsers = search => request(`/admin/users${search ? `?search=${encodeURIComponent(search)}` : ''}`)
+export const getViolations = userId => request(`/admin/users/${userId}/violations`)
 export const addRestriction = (userId, data) => request(`/admin/users/${userId}/restrictions`, { method: 'POST', data })
 export const getRestrictions = userId => request(`/admin/users/${userId}/restrictions`)
 export const revokeRestriction = id => request(`/admin/restrictions/${id}`, { method: 'DELETE' })
@@ -95,9 +116,10 @@ export function importCounselors(filePath) {
   }))
 }
 
-export function downloadExport() {
+export function downloadExport(filters = {}) {
+  const query = Object.entries(filters).filter(([, value]) => value).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&')
   return uni.downloadFile({
-    url: `${BASE_URL}/admin/export.xlsx`,
+    url: `${BASE_URL}/admin/export.xlsx${query ? `?${query}` : ''}`,
     header: { Authorization: `Bearer ${uni.getStorageSync('token')}` },
     success: res => res.statusCode === 200 && uni.openDocument({ filePath: res.tempFilePath, showMenu: true }),
   })

@@ -49,7 +49,7 @@ backend/app/
 
 **关键设计决策**:
 - 所有时间校验(取消截止、签到宽限)在 `services.py` 内完成，与DB操作在同一事务中，不在router层
-- 违约检测 `check_missed_checkins()` 在每次预约相关请求时触发（MVP阶段简化做法，后续应改为后台定时任务）
+- 违约检测由 `refresh_reservation_states()` 与后台分钟任务共同触发，并以预约号+违约类型保证幂等
 - JWT payload: `{"sub": user_id_str, "student_id": str, "role": str}`; router层通过 `int(user["sub"])` 获取user_id
 - 前端Pinia store (`store/user.js`) 管理登录态，token存uni.storage，API层自动附加Authorization头
 
@@ -63,7 +63,7 @@ backend/app/
 | CHECKIN_GRACE_MINUTES | 15 | 开始后15分钟签到 |
 | CANCEL_DEADLINE_MINUTES | 30 | 开始前30分钟可取消 |
 | VIOLATION_THRESHOLD | 3 | 累计3次违约 |
-| BAN_DAYS | 7 | 禁约7天；禁约后违约清零 |
+| VIOLATION_BAN_DAYS | 30 | 每累计3次有效违约自动禁约30天 |
 
 ## 房间配置
 

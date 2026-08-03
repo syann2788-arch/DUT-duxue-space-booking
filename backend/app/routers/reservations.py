@@ -65,6 +65,15 @@ async def checkin(data: CheckinRequest, db: AsyncSession = Depends(get_db), toke
 
 @router.post("/photos", status_code=201)
 async def upload_cleanup_photo(file: UploadFile = File(...), token: dict = Depends(get_current_user)):
+    return await _store_photo(file, token, "cleanup")
+
+
+@router.post("/campus-card-photo", status_code=201)
+async def upload_campus_card_photo(file: UploadFile = File(...), token: dict = Depends(get_current_user)):
+    return await _store_photo(file, token, "campus_card")
+
+
+async def _store_photo(file: UploadFile, token: dict, prefix: str) -> dict:
     if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(400, "仅支持 JPG、PNG、WebP 图片")
     content = await file.read(settings.MAX_UPLOAD_MB * 1024 * 1024 + 1)
@@ -80,7 +89,7 @@ async def upload_cleanup_photo(file: UploadFile = File(...), token: dict = Depen
         raise HTTPException(400, "文件内容与图片格式不匹配")
     upload_dir = Path(settings.UPLOAD_DIR)
     upload_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"cleanup_{token['sub']}_{uuid4().hex}{suffix}"
+    filename = f"{prefix}_{token['sub']}_{uuid4().hex}{suffix}"
     (upload_dir / filename).write_bytes(content)
     return {"url": f"/uploads/{filename}"}
 

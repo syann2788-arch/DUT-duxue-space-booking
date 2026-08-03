@@ -15,7 +15,7 @@ from sqlalchemy.orm import joinedload
 
 from app.auth import hash_password, require_admin
 from app.database import get_db
-from app.models import BookingRestriction, CleanupStatus, CleanupVerification, Reservation, ReservationStatus, RoomSceneRule, User, local_now
+from app.models import BookingRestriction, CleanupStatus, CleanupVerification, Reservation, ReservationStatus, RoomSceneRule, SceneType, User, Violation, local_now
 from app.schemas import (
     BanUserRequest,
     CleanupOut,
@@ -28,6 +28,7 @@ from app.schemas import (
     RoomRuleUpdate,
     SettingsUpdate,
     UserOut,
+    ViolationOut,
 )
 from app.services import (
     add_restriction,
@@ -61,10 +62,13 @@ async def stats(db: AsyncSession = Depends(get_db), _: dict = Depends(require_ad
 async def reservations(
     date_value: date | None = Query(default=None, alias="date"),
     status_filter: ReservationStatus | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    scene: SceneType | None = None,
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_admin),
 ):
-    return await list_admin_reservations(db, date_value, status_filter)
+    return await list_admin_reservations(db, date_value, status_filter, date_from, date_to, scene)
 
 
 @router.post("/reservations/review")
@@ -96,8 +100,14 @@ async def cleanup_review(
 
 
 @router.get("/users", response_model=list[UserOut])
-async def users(db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
-    return await get_all_users(db)
+async def users(search: str | None = None, db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
+    return await get_all_users(db, search)
+
+
+@router.get("/users/{user_id}/violations", response_model=list[ViolationOut])
+async def violations(user_id: int, db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
+    result = await db.execute(select(Violation).where(Violation.user_id == user_id).order_by(Violation.created_at.desc()))
+    return list(result.scalars())
 
 
 @router.get("/users/{user_id}/restrictions", response_model=list[RestrictionOut])
@@ -173,23 +183,47 @@ async def update_settings(
 
 
 @router.get("/export.xlsx")
-async def export_xlsx(db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
-    records = await list_admin_reservations(db)
+async def export_xlsx(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    scene: SceneType | None = None,
+    status_filter: ReservationStatus | None = None,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    records = await list_admin_reservations(db, reservation_status=status_filter, date_from=date_from, date_to=date_to, scene=scene)
+    reservation_ids = [item.id for item in records]
+    violations = list((await db.scalars(select(Violation).where(Violation.reservation_id.in_(reservation_ids)))).all()) if reservation_ids else []
+    violation_map: dict[int, list[str]] = {}
+    for item in violations:
+        violation_map.setdefault(item.reservation_id, []).append(item.type.value)
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "预约记录"
-    sheet.append(["预约号", "日期", "开始时间", "结束时间", "场景", "房间", "姓名", "学号", "人数", "用途", "状态", "审核备注", "创建时间"])
+    sheet.append(["预约号", "日期", "开始时间", "结束时间", "场景", "房间", "姓名", "学号", "联系方式", "人数", "申请理由", "玉兰卡照片", "状态", "审核时间", "审核/驳回原因", "清扫结果", "清扫照片", "违规标记", "创建时间"])
     for item in records:
         sheet.append([
             item.id, item.date.isoformat(), _minute_label(item.start_minute), _minute_label(item.end_minute),
             item.scene.value if item.scene else "", f"{item.room.room_code} {item.room.name}",
-            item.user.name, item.user.student_id, item.people_count, item.purpose,
-            item.status.value, item.review_note or "", item.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            item.user.name, item.user.student_id, item.user.phone, item.people_count, item.purpose,
+            item.campus_card_photo_url or "", item.status.value,
+            item.reviewed_at.strftime("%Y-%m-%d %H:%M:%S") if item.reviewed_at else "", item.review_note or "",
+            item.cleanup.status.value if item.cleanup else "未提交", ", ".join(item.cleanup.photo_urls) if item.cleanup else "",
+            ", ".join(violation_map.get(item.id, [])), item.created_at.strftime("%Y-%m-%d %H:%M:%S"),
         ])
-    sheet.freeze_panes = "A2"
-    sheet.auto_filter.ref = sheet.dimensions
-    for column in sheet.columns:
-        sheet.column_dimensions[column[0].column_letter].width = min(max(len(str(cell.value or "")) for cell in column) + 2, 40)
+    _format_sheet(sheet)
+
+    restriction_sheet = workbook.create_sheet("预约限制记录")
+    restriction_sheet.append(["记录号", "姓名", "学号", "联系方式", "限制级别", "开始时间", "结束时间", "限制原因", "当前有效", "创建时间", "解除时间"])
+    restriction_records = list((await db.scalars(select(BookingRestriction).options(joinedload(BookingRestriction.user)).order_by(BookingRestriction.created_at.desc()))).all())
+    for item in restriction_records:
+        restriction_sheet.append([
+            item.id, item.user.name, item.user.student_id, item.user.phone, item.level.value,
+            item.starts_at.strftime("%Y-%m-%d %H:%M:%S"), item.ends_at.strftime("%Y-%m-%d %H:%M:%S") if item.ends_at else "永久",
+            item.reason, "是" if item.is_active else "否", item.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            item.revoked_at.strftime("%Y-%m-%d %H:%M:%S") if item.revoked_at else "",
+        ])
+    _format_sheet(restriction_sheet)
     output = io.BytesIO()
     workbook.save(output)
     output.seek(0)
@@ -201,6 +235,13 @@ def _minute_label(value: int | None) -> str:
     if value is None:
         return ""
     return f"{value // 60:02d}:{value % 60:02d}"
+
+
+def _format_sheet(sheet) -> None:
+    sheet.freeze_panes = "A2"
+    sheet.auto_filter.ref = sheet.dimensions
+    for column in sheet.columns:
+        sheet.column_dimensions[column[0].column_letter].width = min(max(len(str(cell.value or "")) for cell in column) + 2, 50)
 
 
 @router.get("/counselors", response_model=list[UserOut])

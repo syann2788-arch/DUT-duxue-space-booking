@@ -2,35 +2,28 @@
 
 ## 项目背景
 
-大连理工大学笃学书院（西山7舍）空间预约系统 —— 微信小程序。支持师生预约书院空间，包含签到、留言板、信用分等功能。
+大连理工大学笃学书院（西山7舍）空间预约系统。当前主线为 uni-app 微信小程序/H5 + FastAPI；不设信用分，采用可审计违约记录与预约限制。
 
 ## 技术栈
 
-这是**微信云开发**项目，不是传统后端。目录结构：
+历史原生小程序/微信云函数仅保留参考，当前运行目录结构：
 
 ```
-project.config.json        ← 小程序项目配置 (miniprogramRoot + cloudfunctionRoot)
-miniprogram/               ← 微信小程序前端（原生，不是 uni-app）
-cloudfunctions/            ← 微信云函数（后端）
-  ├── auth/                ← 登录/注册/微信自动登录/找回密码
-  ├── rooms/               ← 房间列表/详情/时段查询/热力图
-  ├── reservations/        ← 预约/取消/签到/违约检测/订阅消息
-  ├── admin/               ← 用户管理/禁约/公开状态/仪表盘/CSV导出
-  ├── messages/            ← 空间留言板（支持照片）
-  └── seed/                ← 初始化房间和管理员
+frontend/                  ← uni-app Vue 3，一套代码编译 H5/微信小程序
+backend/                   ← FastAPI + SQLAlchemy async 业务后端
+deploy/                    ← nginx 部署模板
+miniprogram/ cloudfunctions/ ← 历史原型，不作为 v2 数据源
 ```
 
-- **前端**: 微信小程序原生 (WXML + WXSS + JS)，不是 uni-app
-- **后端**: 微信云函数 (Node.js)，不是 FastAPI
-- **数据库**: 微信云数据库 (NoSQL，集合: users/rooms/reservations/violations/messages)
-- **存储**: 微信云存储（留言板照片）
-- **云环境**: cloud1 (ID: cloud1-d8ge57zw246b73480)
+- **前端**: uni-app（Vue 3 + Pinia）
+- **后端**: FastAPI（Python 3.12+）
+- **数据库**: SQLite 本地演示 / PostgreSQL 生产
 
 ## 启动方式
 
-1. 微信开发者工具打开项目根目录
-2. 编译运行 miniprogram/
-3. 云函数右键上传部署后，seed 运行一次
+1. 运行 `backend/seed.py` 并启动 FastAPI
+2. 在 `frontend/` 执行 `npm run build:mp-weixin`
+3. 微信开发者工具导入 `frontend/dist/build/mp-weixin/`
 
 管理员: admin001 / admin123
 
@@ -40,16 +33,15 @@ cloudfunctions/            ← 微信云函数（后端）
 |------|-----|------|
 | 开放时间 | 8:00-22:00 | 30分钟/时段，共28个时段 |
 | 单次最大 | 8时段(4小时) | start_slot / end_slot 为时段索引 |
-| 提前预约 | 1天 | 今天+明天 |
+| 提前预约 | 7天 | 后台可改 |
 | 签到宽限 | 开始后15分钟 | |
 | 取消截止 | 开始前30分钟 | |
 | 违约阈值 | 3次 | |
-| 禁约天数 | 7天 | |
-| 信用分 | +1签到 +1留言 -1违约 | |
+| 自动禁约 | 每累计3次违约禁约30天 | 后台可改 |
 
 ## 房间配置
 
-可预约: A101日新阁, A103致知堂, A105聚思轩, B102韵音阁
+可预约: A101日新阁, A102格物居, A103致知堂, A105聚思轩, B102韵音阁
 辅导员专属: A106汇心驿 (who_can_reserve=counselor)
 公开空间(管理员标状态): A102格物居, A104悠然亭
 不可互动(仅展示): B101, C101-C104

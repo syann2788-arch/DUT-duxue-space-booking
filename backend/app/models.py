@@ -176,6 +176,7 @@ class Reservation(Base):
     usage_mode: Mapped[UsageMode | None] = mapped_column(SAEnum(UsageMode), nullable=True)
     people_count: Mapped[int] = mapped_column(Integer, default=1)
     purpose: Mapped[str] = mapped_column(String(300), default="")
+    campus_card_photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[ReservationStatus] = mapped_column(SAEnum(ReservationStatus), default=ReservationStatus.pending, index=True)
     review_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
@@ -250,6 +251,7 @@ class Notification(Base):
 
 class Violation(Base):
     __tablename__ = "violations"
+    __table_args__ = (UniqueConstraint("reservation_id", "type", name="uq_violation_reservation_type"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
