@@ -1,4 +1,4 @@
-<view>
+<view class="page-shell">
   <view class="top">
     <view class="top-row">
       <view>
@@ -63,6 +63,4 @@
     </view>
     <text class="larr">›</text>
   </view>
-
-  <view class="page-bottom"></view>
 </view>

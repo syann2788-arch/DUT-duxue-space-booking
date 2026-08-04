@@ -1,4 +1,11 @@
-.page-my { min-height: 100vh; background: #f6f5f8; padding-bottom: 40rpx; }
+.page-my {
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: #f6f5f8;
+  padding-bottom: 120rpx;
+  padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+}
 .profile { display: flex; align-items: center; padding: 40rpx 28rpx 30rpx; background: #fff; }
 .avatar { width: 80rpx; height: 80rpx; flex: none; border-radius: 50%; background: #f5eef9; display: flex; align-items: center; justify-content: center; color: #6b2d8e; font-size: 36rpx; font-weight: 700; }
 .profile-main { flex: 1; min-width: 0; margin-left: 20rpx; }
