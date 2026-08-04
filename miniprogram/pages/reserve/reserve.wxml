@@ -1,39 +1,83 @@
-<view style="padding-bottom:40rpx">
-  <view class="card hdr">
-    <text class="hname">{{roomCode}} {{roomName}}</text>
-    <text class="hinfo">8:00-22:00 · 30分钟/时段 · 单次最多4小时</text>
+<view class="reserve-page">
+  <view class="card hero-card">
+    <text class="hero-title">预约书院空间</text>
+    <text class="hero-sub">选择使用场景和连续时段，系统将自动分配合适房间</text>
   </view>
 
   <view class="card">
-    <view class="date-nav">
-      <view class="arr-btn" bindtap="changeDate" data-d="-1">‹ 前一天</view>
-      <text class="date-text">{{dateStr}} {{dateLabel}}</text>
-      <view class="arr-btn" bindtap="changeDate" data-d="1">下一天 ›</view>
+    <view class="section-head">
+      <text class="step">1</text>
+      <text class="section-title">选择使用场景</text>
     </view>
-
-    <view class="slots">
-      <view wx:for="{{slots}}" wx:key="slot" class="sitem {{item.selected?'sel':item.available?'open':'busy'}}" data-slot="{{item.slot}}" data-avail="{{item.available}}" data-name="{{item.user_name}}" data-class="{{item.user_class}}" data-people="{{item.people}}" data-reason="{{item.reason}}" bindtap="toggle">
-        <text class="stime">{{item.label}}</text>
-        <text class="stag">{{item.available?'可约':item.user_name}}</text>
-        <text wx:if="{{!item.available}}" class="sreason">{{item.people}}人 · 详情 ›</text>
+    <view class="scene-grid">
+      <view wx:for="{{scenes}}" wx:key="value" class="scene-card {{scene===item.value?'selected':''}}" data-scene="{{item.value}}" bindtap="selectScene">
+        <view class="scene-icon">{{item.icon}}</view>
+        <text class="scene-name">{{item.label}}</text>
+        <text class="scene-mode">{{item.mode}}</text>
       </view>
     </view>
+    <view class="allocation">
+      <text class="allocation-title">分配规则</text>
+      <text class="allocation-text">{{currentScene.allocation}}</text>
+    </view>
 
-    <view class="summ" wx:if="{{selected.length}}">已选 {{selected.length}} 个时段（{{selected.length*0.5}}小时）</view>
-    <view class="rules">每人每天仅可预约一个连续时段\n单次最多4小时 · 开始后15分钟内需签到\n开始前30分钟可取消 · 累计3次违约禁约7天</view>
-
-    <button class="btn-primary btn-full" disabled="{{!selected.length}}" bindtap="nextStep">{{selected.length?'下一步 · 填写信息':'点击选择时间段'}}</button>
+    <view class="people-row" wx:if="{{scene!=='study'}}">
+      <view>
+        <text class="people-label">使用人数</text>
+        <text class="people-hint">人数会影响可分配的房间</text>
+      </view>
+      <view class="people-input-wrap">
+        <input class="people-input" type="number" maxlength="3" value="{{peopleInput}}" bindinput="onPeopleInput" bindblur="onPeopleBlur"/>
+        <text class="people-unit">人</text>
+      </view>
+    </view>
+    <view class="study-tip" wx:else>自习实行一人一约，使用人数固定为 1 人</view>
   </view>
 
-  <!-- Reservation info popup -->
-  <view class="mask" wx:if="{{showInfo}}" bindtap="closeInfo">
-    <view class="popup" catchtap>
-      <text class="pop-title">预约信息</text>
-      <view class="pop-row"><text class="pop-lbl">预约人</text><text class="pop-val">{{infoData.name}}</text></view>
-      <view class="pop-row"><text class="pop-lbl">班级</text><text class="pop-val">{{infoData.class_name}}</text></view>
-      <view class="pop-row"><text class="pop-lbl">使用人数</text><text class="pop-val">{{infoData.people}}人</text></view>
-      <view class="pop-row" style="border:none"><text class="pop-lbl">申请理由</text><text class="pop-val">{{infoData.reason||'未填写'}}</text></view>
-      <button class="btn-primary" style="margin-top:28rpx" bindtap="closeInfo">关闭</button>
+  <view class="card">
+    <view class="section-head">
+      <text class="step">2</text>
+      <text class="section-title">选择日期与时段</text>
     </view>
+
+    <view class="date-nav">
+      <view class="arr-btn {{dateOffset===0?'disabled':''}}" data-delta="-1" bindtap="changeDate">‹ 前一天</view>
+      <view class="date-center">
+        <text class="date-text">{{dateStr}}</text>
+        <text class="date-label">{{dateLabel}}</text>
+      </view>
+      <view class="arr-btn {{dateOffset===config.advance_days?'disabled':''}}" data-delta="1" bindtap="changeDate">下一天 ›</view>
+    </view>
+
+    <view class="slot-legend">
+      <view><text class="legend-dot open-dot"></text><text>可选</text></view>
+      <view><text class="legend-dot selected-dot"></text><text>已选</text></view>
+      <view><text class="legend-dot busy-dot"></text><text>暂无空间</text></view>
+    </view>
+
+    <view class="loading" wx:if="{{loading}}">正在查询可分配空间...</view>
+    <view class="load-error" wx:elif="{{loadFailed}}" bindtap="retryAvailability">加载失败，点击重试</view>
+    <view class="slots" wx:else>
+      <view wx:for="{{slots}}" wx:key="slot" class="slot {{item.selected?'selected':item.available?'open':'busy'}}" data-slot="{{item.slot}}" bindtap="toggleSlot">
+        <text class="slot-time">{{item.label}}</text>
+        <text class="slot-state">{{item.selected?'已选':item.available?'可约':'暂无'}}</text>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{!loading&&!loadFailed&&!slots.length}}">该日期暂无可预约时段</view>
+
+    <view class="summary" wx:if="{{selected.length}}">
+      <text>已连续选择 {{selected.length}} 个时段</text>
+      <text class="summary-duration">{{durationLabel}}</text>
+    </view>
+
+    <view class="rules">
+      <text>每日累计预约上限 {{maxDurationLabel}}</text>
+      <text>提交后进入待审核队列，房间由系统按优先级自动分配</text>
+      <text>下一步需上传本人玉兰卡照片用于身份核验</text>
+    </view>
+
+    <button class="btn-primary btn-full next-btn" disabled="{{loading||!selected.length}}" bindtap="nextStep">
+      {{selected.length?'下一步 · 填写申请':'点击选择连续时段'}}
+    </button>
   </view>
 </view>

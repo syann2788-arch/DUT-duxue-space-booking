@@ -1,138 +1,321 @@
 const app = getApp()
-const T={free:'空闲',busy:'较满',crowded:'已满'}, C={free:'#27ae60',busy:'#e67e22',crowded:'#e0556a'}
+const { toServerUrl } = require('../../config')
+
+const STATUS_TEXT = { free: '空闲', busy: '较满', crowded: '已满' }
+const STATUS_COLOR = { free: '#27ae60', busy: '#e67e22', crowded: '#e0556a' }
+
+function todayString() {
+  const value = new Date()
+  return value.getFullYear() + '-' +
+    String(value.getMonth() + 1).padStart(2, '0') + '-' +
+    String(value.getDate()).padStart(2, '0')
+}
+
+function messageTime(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return String(date.getMonth() + 1) + '月' + String(date.getDate()) + '日 ' +
+    String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0')
+}
+
+function showError(error, fallback) {
+  wx.showToast({ title: (error && error.message) || fallback, icon: 'none' })
+}
+
+function labelParts(slot) {
+  const parts = String(slot.label || '').split('-')
+  return {
+    start: parts[0] || '',
+    end: parts[1] || parts[0] || ''
+  }
+}
+
+function buildOccupiedBlocks(slots) {
+  const blocks = []
+  let current = null
+
+  slots.forEach(slot => {
+    if (slot.available) {
+      if (current) blocks.push(current)
+      current = null
+      return
+    }
+
+    const labels = labelParts(slot)
+    if (current && current.end === slot.slot) {
+      current.end = slot.slot + 1
+      current.endLabel = labels.end
+    } else {
+      if (current) blocks.push(current)
+      current = {
+        start: slot.slot,
+        end: slot.slot + 1,
+        startLabel: labels.start,
+        endLabel: labels.end
+      }
+    }
+  })
+  if (current) blocks.push(current)
+
+  return blocks.map(block => ({
+    ...block,
+    timeLabel: block.startLabel + '-' + block.endLabel
+  }))
+}
+
+function buildTimelineSegments(slots) {
+  const segments = []
+  let current = null
+
+  slots.forEach(slot => {
+    if (current && current.available === slot.available && current.end === slot.slot) {
+      current.end = slot.slot + 1
+      return
+    }
+    if (current) segments.push(current)
+    current = { start: slot.slot, end: slot.slot + 1, available: slot.available }
+  })
+  if (current) segments.push(current)
+
+  return segments.map((segment, index) => {
+    const first = index === 0
+    const last = index === segments.length - 1
+    let borderRadius = '0'
+    if (first && last) borderRadius = '8rpx'
+    else if (first) borderRadius = '8rpx 0 0 8rpx'
+    else if (last) borderRadius = '0 8rpx 8rpx 0'
+    return { ...segment, borderRadius }
+  })
+}
+
+function buildAxisLabels(slots) {
+  if (!slots.length) return []
+  const labels = []
+  const step = Math.max(1, Math.ceil(slots.length / 7))
+  for (let index = 0; index < slots.length; index += step) {
+    labels.push(labelParts(slots[index]).start)
+  }
+  const end = labelParts(slots[slots.length - 1]).end
+  if (labels[labels.length - 1] !== end) labels.push(end)
+  return labels
+}
 
 Page({
   data: {
-    room:null, statusText:'', statusColor:'', isAdmin:false, isC:false,
-    todaySlots:[], allSlots:[], todayBlocks:[], timelineSegments:[], todayDate:'', totalSlots:0,
-    messages:[], showPost:false, postContent:'', postPhoto:'', posting:false
+    room: null,
+    statusText: '',
+    statusColor: '#999999',
+    isAdmin: false,
+    isCounselor: false,
+    canStartReservation: false,
+    todayDate: '',
+    todayBlocks: [],
+    timelineSegments: [],
+    axisLabels: [],
+    totalSlots: 0,
+    slotsLoading: false,
+    slotsError: '',
+    messages: [],
+    messagesLoading: false,
+    messagesError: '',
+    showPost: false,
+    postContent: '',
+    postPhoto: '',
+    postPhotoDisplay: '',
+    photoUploading: false,
+    posting: false
   },
 
-  onLoad(opt) {
-    const d = new Date()
-    const today = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
-    const rid = opt.id
-    this.setData({ todayDate: today })
-    this.rid = rid
+  onLoad(options) {
+    const roomId = options.id
+    this.roomId = roomId
+    this.setData({ todayDate: todayString() })
 
-    app.call('rooms', { action:'detail', room_id:rid }).then(r => {
-      if (!r) { wx.showToast({ title:'房间不存在', icon:'none' }); return setTimeout(()=>wx.navigateBack(),500) }
-      this.setData({ room:r, statusText:T[r.public_status]||'空闲', statusColor:C[r.public_status]||'#27ae60',
-        isAdmin: app.globalData.user?.role==='admin',
-        isC: app.globalData.user?.role==='counselor'||app.globalData.user?.role==='admin' })
-      if (r.can_reserve) {
-        app.call('rooms', { action:'slots', room_id:rid, date:today }).then(res => {
-          const all = res.slots || []
-          // Merge consecutive reserved slots into blocks for timeline
-          const blocks = []
-          let cur = null
-          all.forEach(s => {
-            if (!s.available) {
-              if (cur && cur.user_name === s.user_name && cur.end === s.slot) {
-                cur.end = s.slot + 1
-              } else {
-                if (cur) blocks.push(cur)
-                cur = { start: s.slot, end: s.slot + 1, user_name: s.user_name, user_class: s.user_class, people: s.people, reason: s.reason }
-              }
-            } else {
-              if (cur) { blocks.push(cur); cur = null }
-            }
-          })
-          if (cur) blocks.push(cur)
-          // Build timeline segments: merge consecutive slots of same type+person
-          const segments = []
-          let seg = null
-          all.forEach(s => {
-            const key = s.available ? 'free' : ('r_' + s.user_name)
-            if (seg && seg.key === key) {
-              seg.end = s.slot + 1
-            } else {
-              if (seg) segments.push(seg)
-              seg = { key, start: s.slot, end: s.slot + 1, available: s.available,
-                user_name: s.user_name, people: s.people, reason: s.reason, user_class: s.user_class }
-            }
-          })
-          if (seg) segments.push(seg)
-          // Precompute display labels and border-radius for each block/segment
-          function fmtTime(slot) { return Math.floor(8+slot/2)+':'+(slot%2===0?'00':'30') }
-          const blocksOut = blocks.map(b => ({ ...b, timeLabel: fmtTime(b.start)+'-'+fmtTime(b.end) }))
-          const segsOut = segments.map((s, i) => {
-            let br = '0'
-            const last = i === segments.length - 1
-            if (i === 0 && last) br = '8rpx'
-            else if (i === 0) br = '8rpx 0 0 8rpx'
-            else if (last) br = '0 8rpx 8rpx 0'
-            return { ...s, borderRadius: br }
-          })
-          this.setData({ todaySlots: all.filter(s => !s.available), allSlots: all, todayBlocks: blocksOut, timelineSegments: segsOut, totalSlots: all.length })
-        }).catch(() => {})
-      }
-    }).catch(err => console.error(err))
+    if (!roomId) {
+      wx.showToast({ title: '房间信息异常', icon: 'none' })
+      return
+    }
 
-    this.loadMessages()
-  },
+    Promise.resolve(app.authReady).catch(() => null).then(() => {
+      this.loadMessages()
+      return app.request('/rooms/' + roomId)
+    }).then(room => {
+      const role = app.globalData.user && app.globalData.user.role
+      const isAdmin = role === 'admin'
+      const isCounselor = role === 'counselor' || isAdmin
+      const canStartReservation = Boolean(
+        room.can_reserve &&
+        (room.who_can_reserve !== 'counselor' || isCounselor)
+      )
 
-  loadMessages() {
-    app.call('messages', { action:'list', room_id: this.rid }).then(data => {
-      this.setData({ messages: (data||[]).map(m => ({
-        ...m,
-        created_at: m.created_at ? new Date(m.created_at).toLocaleDateString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''
-      })) })
-    }).catch(() => {})
-  },
+      this.setData({
+        room,
+        statusText: STATUS_TEXT[room.public_status] || '状态未知',
+        statusColor: STATUS_COLOR[room.public_status] || '#999999',
+        isAdmin,
+        isCounselor,
+        canStartReservation
+      })
 
-  setStatus(e) {
-    const s = e.currentTarget.dataset.s
-    app.call('admin', { action:'publicStatus', room_id:this.data.room._id||this.data.room.id, public_status:s }).then(()=>{
-      wx.showToast({title:'已更新',icon:'success'})
-      this.setData({room:{...this.data.room,public_status:s},statusText:T[s],statusColor:C[s]})
-    }).catch(err => console.error(err))
-  },
-
-  goReserve() { const r=this.data.room; wx.navigateTo({url:'/pages/reserve/reserve?roomId='+(r._id||r.id)+'&roomName='+encodeURIComponent(r.name)+'&roomCode='+encodeURIComponent(r.room_code)}) },
-
-  showSlotInfo(e) {
-    const d = e.currentTarget.dataset
-    wx.showModal({
-      title: '预约信息',
-      content: '预约人：'+d.name+'\n班级：'+(d.class||'未填写')+'\n使用人数：'+(d.people||'?')+'人\n申请理由：'+(d.reason||'未填写'),
-      showCancel: false
+      if (room.can_reserve) this.loadSlots()
+    }).catch(error => {
+      console.error('load room failed', error)
+      wx.showToast({ title: '房间信息加载失败', icon: 'none' })
+      setTimeout(() => wx.navigateBack(), 700)
     })
   },
 
-  // ── 留言板 ──
-  openPost() { this.setData({ showPost:true, postContent:'', postPhoto:'' }) },
-  closePost() { this.setData({ showPost:false }) },
-  onPostContent(e) { this.setData({ postContent: e.detail.value }) },
+  loadSlots() {
+    this.setData({ slotsLoading: true, slotsError: '' })
+    const path = '/rooms/' + this.roomId + '/slots?date=' + encodeURIComponent(this.data.todayDate)
+    app.request(path).then(result => {
+      const slots = Array.isArray(result.slots) ? result.slots : []
+      this.setData({
+        todayBlocks: buildOccupiedBlocks(slots),
+        timelineSegments: buildTimelineSegments(slots),
+        axisLabels: buildAxisLabels(slots),
+        totalSlots: slots.length,
+        slotsLoading: false
+      })
+    }).catch(error => {
+      console.error('load room slots failed', error)
+      this.setData({ slotsLoading: false, slotsError: '今日占用情况加载失败' })
+    })
+  },
+
+  loadMessages() {
+    this.setData({ messagesLoading: true, messagesError: '' })
+    app.request('/rooms/' + this.roomId + '/messages').then(result => {
+      const messages = (Array.isArray(result) ? result : []).map(message => ({
+        ...message,
+        createdAtLabel: messageTime(message.created_at),
+        photo_urls: (message.photo_urls || []).map(toServerUrl)
+      }))
+      this.setData({ messages, messagesLoading: false })
+    }).catch(error => {
+      this.setData({
+        messagesLoading: false,
+        messagesError: (error && error.message) || '留言加载失败，请点击重试'
+      })
+    })
+  },
+
+  setStatus(event) {
+    const status = event.currentTarget.dataset.s
+    app.request('/admin/rooms/' + this.data.room.id + '/public-status', {
+      method: 'PUT',
+      data: { public_status: status }
+    }).then(() => {
+      this.setData({
+        'room.public_status': status,
+        statusText: STATUS_TEXT[status],
+        statusColor: STATUS_COLOR[status]
+      })
+      wx.showToast({ title: '已更新', icon: 'success' })
+    }).catch(error => {
+      console.error('update public status failed', error)
+      wx.showToast({ title: '状态更新失败', icon: 'none' })
+    })
+  },
+
+  goReserve() {
+    const roomCode = this.data.room && this.data.room.room_code
+    const preferredScene = {
+      A103: 'event',
+      A105: 'meeting',
+      A106: 'meeting',
+      B102: 'music'
+    }[roomCode] || 'study'
+    wx.navigateTo({ url: '/pages/reserve/reserve?scene=' + preferredScene })
+  },
+
+  openPost() {
+    this.setData({
+      showPost: true,
+      postContent: '',
+      postPhoto: '',
+      postPhotoDisplay: ''
+    })
+  },
+
+  closePost() {
+    if (this.data.posting || this.data.photoUploading) return
+    this.setData({ showPost: false })
+  },
+
+  stopPopup() {},
+
+  onPostContent(event) {
+    this.setData({ postContent: event.detail.value })
+  },
 
   choosePhoto() {
-    wx.chooseImage({ count:1, sizeType:['compressed'], sourceType:['album','camera'], success: res => {
-      wx.showLoading({ title:'上传中...' })
-      wx.cloud.uploadFile({ cloudPath:'messages/'+Date.now()+'.jpg', filePath:res.tempFilePaths[0] }).then(upload => {
-        wx.hideLoading()
-        this.setData({ postPhoto: upload.fileID })
-      }).catch(() => { wx.hideLoading(); wx.showToast({ title:'上传失败', icon:'none' }) })
-    }})
+    if (this.data.photoUploading || this.data.posting) return
+    wx.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: result => {
+        const filePath = result.tempFilePaths[0]
+        this.setData({ photoUploading: true })
+        wx.showLoading({ title: '上传中...', mask: true })
+        app.upload('/rooms/' + this.roomId + '/messages/photo', filePath, { name: 'file' }).then(response => {
+          this.setData({
+            postPhoto: response.url,
+            postPhotoDisplay: toServerUrl(response.url)
+          })
+        }).catch(error => {
+          showError(error, '照片上传失败')
+        }).finally(() => {
+          wx.hideLoading()
+          this.setData({ photoUploading: false })
+        })
+      },
+      fail: error => {
+        if (!String(error.errMsg || '').includes('cancel')) showError(error, '选择照片失败')
+      }
+    })
   },
 
-  removePhoto() { this.setData({ postPhoto:'' }) },
+  removePhoto() {
+    if (this.data.posting || this.data.photoUploading) return
+    this.setData({ postPhoto: '', postPhotoDisplay: '' })
+  },
 
   submitPost() {
-    const { postContent, postPhoto } = this.data
-    if (!postContent.trim() && !postPhoto) return wx.showToast({ title:'请输入留言或添加照片', icon:'none' })
-    this.setData({ posting:true })
-    app.call('messages', {
-      action:'post', room_id:this.rid,
-      content: postContent.trim(),
-      photo_url: postPhoto
+    if (this.data.posting || this.data.photoUploading) return
+    const content = this.data.postContent.trim()
+    const photoUrls = this.data.postPhoto ? [this.data.postPhoto] : []
+    if (!content && !photoUrls.length) {
+      wx.showToast({ title: '请输入留言或添加照片', icon: 'none' })
+      return
+    }
+    if (content.length > 500) {
+      wx.showToast({ title: '留言不能超过500字', icon: 'none' })
+      return
+    }
+
+    this.setData({ posting: true })
+    app.request('/rooms/' + this.roomId + '/messages', {
+      method: 'POST',
+      data: { content, photo_urls: photoUrls }
     }).then(() => {
-      wx.showToast({ title:'发布成功', icon:'success' })
-      this.setData({ showPost:false, posting:false })
-      this.loadMessages()
-    }).catch(() => this.setData({ posting:false }))
+      wx.showToast({ title: '发布成功', icon: 'success' })
+      this.setData({
+        showPost: false,
+        postContent: '',
+        postPhoto: '',
+        postPhotoDisplay: ''
+      })
+      return this.loadMessages()
+    }).catch(error => {
+      showError(error, '留言发布失败')
+    }).finally(() => this.setData({ posting: false }))
   },
 
-  previewPhoto(e) {
-    wx.previewImage({ urls: [e.currentTarget.dataset.url], current: e.currentTarget.dataset.url })
+  previewPhoto(event) {
+    const current = event.currentTarget.dataset.url
+    const urls = event.currentTarget.dataset.urls || [current]
+    wx.previewImage({ current, urls })
   }
 })

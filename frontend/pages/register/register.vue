@@ -6,8 +6,8 @@
       <input class="input" v-model="form.student_id" placeholder="学号（数字）" />
       <input class="input" v-model="form.name" placeholder="姓名" />
       <input class="input" v-model="form.phone" placeholder="手机号" type="number" maxlength="11" />
-      <input class="input" v-model="form.class_name" placeholder="班级（如：计科2201）" />
-      <input class="input" v-model="form.password" type="password" placeholder="密码（至少6位）" />
+      <input class="input" v-model="form.class_name" placeholder="笃学班级（4位数字，如：2601）" type="number" maxlength="4" />
+      <input class="input" v-model="form.password" type="password" placeholder="密码（至少6位，须含字母和数字）" />
       <input class="input" v-model="form.password2" type="password" placeholder="确认密码" />
 
       <button class="btn-primary login-btn" @click="handleRegister" :loading="loading">注 册</button>
@@ -38,8 +38,16 @@ async function handleRegister() {
     uni.showToast({ title: '两次密码不一致', icon: 'none' })
     return
   }
+  if (!/^\d{4}$/.test(form.class_name)) {
+    uni.showToast({ title: '班级须为4位数字，如2601', icon: 'none' })
+    return
+  }
   if (form.password.length < 6) {
     uni.showToast({ title: '密码至少6位', icon: 'none' })
+    return
+  }
+  if (!/[A-Za-z]/.test(form.password) || !/\d/.test(form.password)) {
+    uni.showToast({ title: '密码须同时包含字母和数字', icon: 'none' })
     return
   }
   loading.value = true

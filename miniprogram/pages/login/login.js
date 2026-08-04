@@ -4,29 +4,55 @@ Page({
   data: { id: '', pw: '', loading: false },
 
   onLoad() {
-    // Already logged in via token? Skip to index
-    const token = wx.getStorageSync('token')
-    if (token) {
-      app.call('auth', { action: 'me', token }).then(u => {
-        if (!u.err) {
-          app.setLogin(token, u)
-          wx.switchTab({ url: '/pages/index/index' })
-        }
-      }).catch(err => console.error('autoLogin check failed', err))
-    }
+    this._manualLogin = false
+    this._navigated = false
+    this._unloaded = false
+    this._visible = true
+    Promise.resolve(app.authReady).then(user => {
+      if (user && !this._manualLogin && !this._unloaded && this._visible) this.enterHome()
+    })
+  },
+
+  onShow() {
+    this._visible = true
+    if (app.globalData.user && !this._manualLogin) this.enterHome()
+  },
+
+  onHide() {
+    this._visible = false
+  },
+
+  onUnload() {
+    this._unloaded = true
+    this._visible = false
   },
 
   onId(e) { this.setData({ id: e.detail.value }) },
   onPass(e) { this.setData({ pw: e.detail.value }) },
 
   doLogin() {
-    const { id, pw } = this.data
+    if (this.data.loading) return
+    const id = this.data.id.trim()
+    const pw = this.data.pw
     if (!id || !pw) return wx.showToast({ title: '请填写学号和密码', icon: 'none' })
+    this._manualLogin = true
     this.setData({ loading: true })
-    app.call('auth', { action:'login', student_id:id, password:pw }).then(res => {
-      app.setLogin(res.token, res.user)
-      wx.switchTab({ url: '/pages/index/index' })
-    }).catch(err => console.error('login failed', err)).finally(() => this.setData({ loading: false }))
+    app.prepareInteractiveLogin().then(() => app.request('/auth/login', {
+      method: 'POST',
+      data: { student_id: id, password: pw }
+    })).then(res => {
+      app.setLogin(res.access_token, res.user)
+      app.bindWechatInBackground()
+      this.enterHome()
+    }).catch(err => {
+      wx.showToast({ title: err.message || '登录失败', icon: 'none' })
+    }).finally(() => this.setData({ loading: false }))
+  },
+
+  enterHome() {
+    if (this._navigated || this._unloaded || !this._visible) return
+    this._navigated = true
+    wx.switchTab({ url: '/pages/index/index' })
   },
 
   goRegister() { wx.navigateTo({ url: '/pages/login/register' }) },

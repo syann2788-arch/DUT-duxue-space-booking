@@ -77,6 +77,10 @@ async def update_runtime_config(db: AsyncSession, values: dict, admin_id: int) -
 
 
 def _validate_runtime_config(config: dict) -> None:
+    integer_keys = set(DEFAULT_RUNTIME_CONFIG) - {"auto_approval_time"}
+    invalid_integer = next((key for key in sorted(integer_keys) if isinstance(config.get(key), bool) or not isinstance(config.get(key), int)), None)
+    if invalid_integer:
+        raise HTTPException(400, f"配置项 {invalid_integer} 必须为整数")
     if config["open_hour"] < 0 or config["close_hour"] > 24 or config["open_hour"] >= config["close_hour"]:
         raise HTTPException(400, "开放时段配置无效")
     if config["slot_minutes"] not in (15, 30, 60):
@@ -85,8 +89,12 @@ def _validate_runtime_config(config: dict) -> None:
         raise HTTPException(400, "预约粒度必须整除60分钟")
     if config["max_minutes_per_day"] < config["slot_minutes"]:
         raise HTTPException(400, "单日时长上限不能小于一个时段")
-    if config["violation_threshold"] < 1 or config["violation_ban_days"] < 1:
-        raise HTTPException(400, "违约阈值和自动禁约天数必须大于0")
+    if config["max_minutes_per_day"] % config["slot_minutes"]:
+        raise HTTPException(400, "单日时长上限必须是预约粒度的整数倍")
+    if config["advance_days"] < 0 or config["cancel_deadline_minutes"] < 0 or config["checkin_grace_minutes"] < 0 or config["reminder_minutes"] < 0:
+        raise HTTPException(400, "预约天数及时间窗口不能为负数")
+    if config["temporary_ban_days"] < 1 or config["violation_threshold"] < 1 or config["violation_ban_days"] < 1:
+        raise HTTPException(400, "限制天数和违约阈值必须大于0")
     if not 0 <= config["music_a103_start_hour"] < config["music_a103_end_hour"] <= 24:
         raise HTTPException(400, "A103钢琴开放时段配置无效")
     try:
@@ -211,6 +219,11 @@ async def _active_restriction(db: AsyncSession, user: User, now: datetime) -> Bo
     return None
 
 
+async def get_active_restriction(db: AsyncSession, user: User, now: datetime | None = None) -> BookingRestriction | None:
+    """Public read helper for profile/status endpoints."""
+    return await _active_restriction(db, user, now or local_now())
+
+
 async def expire_restrictions(db: AsyncSession, now: datetime | None = None) -> int:
     now = now or local_now()
     result = await db.execute(select(BookingRestriction).where(
@@ -306,9 +319,119 @@ async def _candidate_available(db: AsyncSession, rule: RoomSceneRule, data: Rese
     existing = await _overlaps(db, rule.room_id, data, start_minute, end_minute)
     if rule.usage_mode == UsageMode.exclusive:
         return not existing
-    if any(item.usage_mode == UsageMode.exclusive for item in existing):
+    # A NULL mode denotes an imported V1 reservation. V1 bookings occupied the
+    # whole room, so treat unknown legacy rows conservatively as exclusive.
+    if any(item.usage_mode != UsageMode.shared for item in existing):
         return False
-    return sum(item.people_count for item in existing) + data.people_count <= rule.capacity
+    # Capacity is a peak-at-one-time constraint. Summing every reservation that
+    # touches a multi-slot request overcounts disjoint bookings in that range.
+    boundaries = {start_minute, end_minute}
+    for item in existing:
+        boundaries.add(max(start_minute, int(item.start_minute)))
+        boundaries.add(min(end_minute, int(item.end_minute)))
+    ordered = sorted(boundaries)
+    for segment_start, segment_end in zip(ordered, ordered[1:]):
+        if segment_start >= segment_end:
+            continue
+        occupied = sum(
+            item.people_count
+            for item in existing
+            if int(item.start_minute) < segment_end and int(item.end_minute) > segment_start
+        )
+        if occupied + data.people_count > rule.capacity:
+            return False
+    return True
+
+
+def _room_permission_clause(role: UserRole):
+    """Translate an authenticated user's role into reservable room scope."""
+    if role in (UserRole.counselor, UserRole.admin):
+        return Room.who_can_reserve.in_(("all", "counselor"))
+    return Room.who_can_reserve == "all"
+
+
+async def get_scene_availability(
+    db: AsyncSession,
+    scene: SceneType,
+    day: date,
+    people_count: int,
+    role: UserRole,
+) -> dict:
+    """Return single-slot availability across all candidate rooms for a scene.
+
+    This powers the native mini-program's visual slot grid.  It is deliberately
+    advisory: the create transaction repeats every conflict and capacity check
+    across the complete requested range before assigning a room.
+    """
+    config = await get_runtime_config(db)
+    now = local_now()
+    if day < now.date() or day > now.date() + timedelta(days=int(config["advance_days"])):
+        raise HTTPException(400, f"仅可查询今天起{config['advance_days']}天内的日期")
+
+    result = await db.execute(
+        select(RoomSceneRule)
+        .join(Room)
+        .options(selectinload(RoomSceneRule.room))
+        .where(
+            RoomSceneRule.scene == scene,
+            RoomSceneRule.is_enabled.is_(True),
+            RoomSceneRule.capacity >= people_count,
+            Room.is_active.is_(True),
+            Room.can_reserve.is_(True),
+            _room_permission_clause(role),
+        )
+        .order_by(RoomSceneRule.priority)
+    )
+    rules = list(result.scalars().unique())
+    room_ids = {rule.room_id for rule in rules}
+    reservations: list[Reservation] = []
+    if room_ids:
+        reservations = list((await db.execute(select(Reservation).where(
+            Reservation.room_id.in_(room_ids),
+            Reservation.date == day,
+            Reservation.status.in_(OCCUPYING_STATUSES),
+        ))).scalars())
+
+    total_slots = (config["close_hour"] - config["open_hour"]) * 60 // config["slot_minutes"]
+    slots = []
+    for index in range(total_slots):
+        start_minute = config["open_hour"] * 60 + index * config["slot_minutes"]
+        end_minute = start_minute + config["slot_minutes"]
+        available_room_ids: list[int] = []
+        for rule in rules:
+            if scene == SceneType.music and rule.room.room_code == "A103":
+                piano_start = int(config["music_a103_start_hour"]) * 60
+                piano_end = int(config["music_a103_end_hour"]) * 60
+                if start_minute < piano_start or end_minute > piano_end:
+                    continue
+            existing = [
+                item for item in reservations
+                if item.room_id == rule.room_id
+                and item.start_minute is not None
+                and item.start_minute < end_minute
+                and item.end_minute > start_minute
+            ]
+            if rule.usage_mode == UsageMode.exclusive:
+                available = not existing
+            else:
+                available = (
+                    not any(item.usage_mode != UsageMode.shared for item in existing)
+                    and sum(item.people_count for item in existing) + people_count <= rule.capacity
+                )
+            if available:
+                available_room_ids.append(rule.room_id)
+        if day == now.date() and slot_datetime(day, index, config) <= now:
+            available_room_ids = []
+        slots.append({
+            "slot": index,
+            "label": f"{slot_label(index, config)}-{slot_label(index + 1, config)}",
+            "available": bool(available_room_ids),
+            # The client intersects these ids across a selected range. This
+            # prevents adjacent slots in different rooms from looking like one
+            # bookable continuous interval.
+            "available_room_ids": available_room_ids,
+        })
+    return {"date": day.isoformat(), "scene": scene.value, "people_count": people_count, "slots": slots}
 
 
 async def create_reservation(db: AsyncSession, user_id: int, data: ReservationCreate) -> Reservation:
@@ -348,9 +471,9 @@ async def create_reservation(db: AsyncSession, user_id: int, data: ReservationCr
         RoomSceneRule.is_enabled.is_(True),
         Room.is_active.is_(True),
         Room.can_reserve.is_(True),
+        _room_permission_clause(user.role),
     ]
-    if data.scene != SceneType.meeting:
-        rule_filters.append(RoomSceneRule.capacity >= data.people_count)
+    rule_filters.append(RoomSceneRule.capacity >= data.people_count)
     result = await db.execute(
         select(RoomSceneRule).join(Room).options(selectinload(RoomSceneRule.room)).where(*rule_filters).order_by(RoomSceneRule.priority)
     )

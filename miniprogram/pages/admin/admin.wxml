@@ -1,60 +1,222 @@
-<view style="padding-bottom:40rpx">
-  <!-- 仪表盘 -->
-  <view class="card">
-    <text style="font-size:28rpx;font-weight:700;color:#444;margin-bottom:20rpx;display:block">仪表盘</text>
-    <view style="display:flex;gap:12rpx;flex-wrap:wrap">
-      <view style="flex:1;min-width:calc(50% - 6rpx);background:#f8f3fb;border-radius:12rpx;padding:24rpx;text-align:center">
-        <text style="font-size:44rpx;font-weight:700;color:#6b2d8e;display:block">{{stats.todayActive||0}}</text>
-        <text style="font-size:22rpx;color:#b0a0c0">今日活跃</text>
-      </view>
-      <view style="flex:1;min-width:calc(50% - 6rpx);background:#fef6e7;border-radius:12rpx;padding:24rpx;text-align:center">
-        <text style="font-size:44rpx;font-weight:700;color:#e67e22;display:block">{{stats.todayMissed||0}}</text>
-        <text style="font-size:22rpx;color:#d0a868">今日违约</text>
-      </view>
-      <view style="flex:1;min-width:calc(50% - 6rpx);background:#f0f4fd;border-radius:12rpx;padding:24rpx;text-align:center">
-        <text style="font-size:44rpx;font-weight:700;color:#3b7ad9;display:block">{{stats.totalUsers||0}}</text>
-        <text style="font-size:22rpx;color:#8aacd8">总用户</text>
-      </view>
-      <view style="flex:1;min-width:calc(50% - 6rpx);background:#fdedec;border-radius:12rpx;padding:24rpx;text-align:center">
-        <text style="font-size:44rpx;font-weight:700;color:#c0392b;display:block">{{stats.banned||0}}</text>
-        <text style="font-size:22rpx;color:#d08888">禁约中</text>
-      </view>
-    </view>
-
-    <view wx:if="{{stats.popular && stats.popular.length}}" style="margin-top:24rpx">
-      <text style="font-size:24rpx;color:#999;display:block;margin-bottom:12rpx">热门房间（本月）</text>
-      <view wx:for="{{stats.popular}}" wx:key="name" style="display:flex;justify-content:space-between;padding:12rpx 0;border-bottom:1rpx solid #f5f5f5;font-size:26rpx">
-        <text style="color:#444">{{item.name}}</text>
-        <text style="color:#6b2d8e;font-weight:600">{{item.count}}次</text>
-      </view>
-    </view>
+<view class="admin-page">
+  <view wx:if="{{!authorized}}" class="auth-state">
+    <text>正在校验管理员身份...</text>
   </view>
 
-  <!-- 房间签到码 -->
-  <view class="card">
-    <text style="font-size:28rpx;font-weight:700;color:#555;margin-bottom:16rpx;display:block">房间签到码</text>
-    <text style="font-size:22rpx;color:#aaa;display:block;margin-bottom:16rpx">复制下方JSON，用任意二维码生成工具生成房间签到码，贴在房间门口</text>
-    <view wx:for="{{rooms}}" wx:key="id" style="display:flex;justify-content:space-between;align-items:center;padding:16rpx 0;border-bottom:1rpx solid #f5f5f5">
-      <text style="font-size:26rpx;color:#444">{{item.code}} {{item.name}}</text>
-      <text style="font-size:20rpx;color:#fff;background:#6b2d8e;padding:8rpx 16rpx;border-radius:6rpx" bindtap="copyRoomCode" data-id="{{item.id}}">复制签到码</text>
+  <block wx:else>
+    <view class="admin-hero">
+      <text class="admin-hero-title">管理员工作台</text>
+      <text class="admin-hero-sub">预约、清扫、用户与空间规则统一管理</text>
     </view>
-  </view>
 
-  <!-- 用户管理 -->
-  <view class="card" style="display:flex;justify-content:space-between;align-items:center">
-    <text style="font-size:28rpx;font-weight:700;color:#555">用户管理（{{users.length}}人）</text>
-    <text style="font-size:22rpx;color:#6b2d8e;padding:8rpx 20rpx;background:#f5eef9;border-radius:8rpx" bindtap="exportCSV">导出CSV</text>
-  </view>
-  <view wx:for="{{users}}" wx:key="id" class="card" style="margin-top:0">
-    <view style="display:flex;justify-content:space-between;align-items:center">
-      <view>
-        <text style="font-size:28rpx;font-weight:600">{{item.name}}</text>
-        <text style="font-size:20rpx;background:#f5eef9;color:#6b2d8e;padding:2rpx 10rpx;border-radius:4rpx;margin-left:10rpx">{{item.rl}}</text>
-        <text style="font-size:22rpx;color:#aaa;display:block;margin-top:4rpx">{{item.student_id}} · {{item.class_name}}</text>
+    <scroll-view scroll-x class="tabs" enhanced show-scrollbar="{{false}}">
+      <view class="tabs-inner">
+        <text wx:for="{{tabs}}" wx:key="key" class="tab {{activeTab===item.key?'active':''}}" data-key="{{item.key}}" bindtap="switchTab">{{item.label}}</text>
       </view>
-      <button wx:if="{{!item.banned_until}}" style="background:#e0556a;color:#fff;font-size:22rpx;padding:12rpx 22rpx;border-radius:10rpx;border:none" bindtap="doBan" data-id="{{item.id}}" data-name="{{item.name}}">禁约</button>
-      <button wx:else style="background:#27ae60;color:#fff;font-size:22rpx;padding:12rpx 22rpx;border-radius:10rpx;border:none" bindtap="doUnban" data-id="{{item.id}}">解禁</button>
-    </view>
-    <text wx:if="{{item.banned_until}}" style="font-size:20rpx;color:#e0556a;display:block;margin-top:6rpx">禁约至 {{item.bl}}</text>
-  </view>
+    </scroll-view>
+
+    <view wx:if="{{loading}}" class="loading-bar">正在加载...</view>
+
+    <!-- 概览 -->
+    <block wx:if="{{activeTab==='overview'}}">
+      <view class="stat-grid">
+        <view class="stat-card purple"><text class="stat-number">{{stats.pending}}</text><text class="stat-label">待审核预约</text></view>
+        <view class="stat-card orange"><text class="stat-number">{{stats.cleanup_pending}}</text><text class="stat-label">待复核清扫</text></view>
+        <view class="stat-card blue"><text class="stat-number">{{stats.total_users}}</text><text class="stat-label">总用户</text></view>
+        <view class="stat-card green"><text class="stat-number">{{stats.today}}</text><text class="stat-label">今日预约</text></view>
+      </view>
+
+      <view class="admin-card action-card">
+        <view>
+          <text class="card-title">预约记录 Excel</text>
+          <text class="card-desc">导出预约、清扫、违规与限制记录</text>
+        </view>
+        <button class="compact-btn primary" bindtap="exportExcel">导出</button>
+      </view>
+
+      <view class="admin-card">
+        <text class="card-title">房间签到码</text>
+        <text class="card-desc block">复制房间 JSON 后生成二维码，张贴于对应空间。</text>
+        <view wx:for="{{qrRooms}}" wx:key="id" class="simple-row">
+          <text class="simple-main">{{item.code}} {{item.name}}</text>
+          <text class="text-action" data-id="{{item.id}}" bindtap="copyRoomCode">复制签到码</text>
+        </view>
+        <text wx:if="{{!qrRooms.length}}" class="empty-small">暂无可预约房间</text>
+      </view>
+
+      <view class="admin-card placeholder-card" bindtap="importCounselors">
+        <view>
+          <text class="card-title">辅导员 CSV 导入</text>
+          <text class="card-desc block">从微信文件中选择 UTF-8 CSV，导入后妥善保存新账号凭据。</text>
+        </view>
+        <text class="placeholder-arrow">›</text>
+      </view>
+    </block>
+
+    <!-- 预约审核 -->
+    <block wx:if="{{activeTab==='review'}}">
+      <view class="section-toolbar">
+        <text>待审核 {{pendingReservations.length}} 条</text>
+        <view class="toolbar-actions">
+          <text class="text-action" bindtap="toggleAllPending">{{selectedPendingIds.length===pendingReservations.length&&pendingReservations.length?'取消全选':'全选'}}</text>
+          <text class="text-action" bindtap="loadPendingReservations">刷新</text>
+        </view>
+      </view>
+
+      <view wx:for="{{pendingReservations}}" wx:key="id" wx:for-index="pendingIndex" class="admin-card reservation-card">
+        <view class="reservation-head">
+          <view>
+            <text class="reservation-room">{{item.room.room_code}} {{item.room.name}}</text>
+            <text class="reservation-scene">{{item.sceneLabel}} · {{item.modeLabel}}</text>
+          </view>
+          <text class="select-pill {{item.selected?'selected':''}}" data-id="{{item.id}}" bindtap="togglePending">{{item.selected?'已选':'选择'}}</text>
+        </view>
+        <text class="detail-line">{{item.user.name}} · {{item.user.student_id}} · 笃学{{item.user.class_name}}</text>
+        <text class="detail-line">{{item.user.phone}} · {{item.people_count}}人</text>
+        <text class="detail-line strong">{{item.date}}　{{item.timeLabel}}</text>
+        <text class="purpose-box">{{item.purpose}}</text>
+        <view wx:if="{{item.cardUrl}}" class="photo-line">
+          <image class="campus-card-photo" src="{{item.cardUrl}}" mode="aspectFill" data-index="{{pendingIndex}}" bindtap="previewCampusCard" />
+          <text class="photo-note">玉兰卡照片仅用于本次身份核验，点击查看大图</text>
+        </view>
+        <view class="inline-actions">
+          <button class="compact-btn reject" data-id="{{item.id}}" data-decision="rejected" catchtap="reviewOne">驳回</button>
+          <button class="compact-btn approve" data-id="{{item.id}}" data-decision="approved" catchtap="reviewOne">通过</button>
+        </view>
+      </view>
+      <view wx:if="{{!pendingReservations.length&&!loading}}" class="empty-state">暂无待审核预约</view>
+
+      <view wx:if="{{selectedPendingIds.length}}" class="batch-bar">
+        <text class="batch-count">已选 {{selectedPendingIds.length}} 条</text>
+        <button class="batch-btn reject" data-decision="rejected" bindtap="reviewSelected">批量驳回</button>
+        <button class="batch-btn approve" data-decision="approved" bindtap="reviewSelected">批量通过</button>
+      </view>
+    </block>
+
+    <!-- 清扫复核 -->
+    <block wx:if="{{activeTab==='cleanup'}}">
+      <view class="section-toolbar">
+        <text>待复核 {{cleanupItems.length}} 条</text>
+        <text class="text-action" bindtap="loadCleanupQueue">刷新</text>
+      </view>
+      <view wx:for="{{cleanupItems}}" wx:key="id" wx:for-index="cleanupIndex" class="admin-card cleanup-card">
+        <text class="reservation-room">{{item.room.room_code}} {{item.room.name}}</text>
+        <text class="detail-line">{{item.user.name}} · {{item.user.student_id}} · {{item.sceneLabel}}</text>
+        <text class="detail-line strong">{{item.date}}　{{item.timeLabel}}</text>
+        <view class="photo-grid">
+          <image wx:for="{{item.photoUrls}}" wx:key="*this" wx:for-item="photo" wx:for-index="photoIndex" class="cleanup-photo" src="{{photo}}" mode="aspectFill" data-item-index="{{cleanupIndex}}" data-photo-index="{{photoIndex}}" bindtap="previewCleanupPhoto" />
+        </view>
+        <text wx:if="{{!item.photoUrls.length}}" class="empty-small">该记录没有可查看的照片</text>
+        <view class="inline-actions">
+          <button class="compact-btn reject" data-id="{{item.cleanup.id}}" data-decision="rejected" bindtap="reviewCleanup">不通过/限制</button>
+          <button class="compact-btn approve" data-id="{{item.cleanup.id}}" data-decision="approved" bindtap="reviewCleanup">通过</button>
+        </view>
+      </view>
+      <view wx:if="{{!cleanupItems.length&&!loading}}" class="empty-state">暂无待复核清扫照片</view>
+    </block>
+
+    <!-- 用户管理 -->
+    <block wx:if="{{activeTab==='users'}}">
+      <view class="search-card">
+        <input class="search-input" value="{{userSearch}}" placeholder="姓名、学号、手机号或班级" confirm-type="search" bindinput="onUserSearchInput" bindconfirm="searchUsers" />
+        <button class="search-button" bindtap="searchUsers">搜索</button>
+      </view>
+
+      <view wx:if="{{selectedUser}}" class="admin-card selected-user-card">
+        <view class="selected-user-head">
+          <view>
+            <text class="user-name">{{selectedUser.name}}</text>
+            <text class="role-tag">{{selectedUser.roleLabel}}</text>
+            <text class="user-meta">{{selectedUser.student_id}} · 笃学{{selectedUser.class_name}} · {{selectedUser.phone}}</text>
+          </view>
+          <text class="text-action" bindtap="refreshSelectedUser">刷新记录</text>
+        </view>
+
+        <view class="record-section">
+          <text class="sub-title">违约记录（{{violations.length}}）</text>
+          <view wx:for="{{violations}}" wx:key="id" class="record-row">
+            <view><text class="record-main">{{item.typeLabel}}</text><text class="record-sub">预约号 {{item.reservation_id||'—'}}</text></view>
+            <text class="record-time">{{item.createdLabel}}</text>
+          </view>
+          <text wx:if="{{!violations.length}}" class="empty-small">暂无违约记录</text>
+        </view>
+
+        <view class="record-section">
+          <text class="sub-title">预约限制（{{restrictions.length}}）</text>
+          <view wx:for="{{restrictions}}" wx:key="id" class="restriction-row">
+            <view class="restriction-copy">
+              <text class="record-main">{{item.levelLabel}} · {{item.is_active?'有效':'已解除'}}</text>
+              <text class="record-sub">{{item.reason}}</text>
+              <text class="record-sub">{{item.startsLabel}} 至 {{item.endsLabel}}</text>
+            </view>
+            <text wx:if="{{item.is_active}}" class="danger-action" data-id="{{item.id}}" bindtap="revokeRestriction">解除</text>
+          </view>
+          <text wx:if="{{!restrictions.length}}" class="empty-small">暂无预约限制</text>
+        </view>
+
+        <view class="restriction-form">
+          <text class="sub-title">新增预约限制</text>
+          <picker range="{{restrictionOptions}}" range-key="label" value="{{restrictionLevelIndex}}" bindchange="onRestrictionLevelChange">
+            <view class="form-row"><text>限制级别</text><text class="form-value">{{restrictionLevelLabel}} ›</text></view>
+          </picker>
+          <view wx:if="{{restrictionForm.level!=='permanent'}}" class="form-row">
+            <text>限制天数</text>
+            <input class="short-input" type="number" value="{{restrictionForm.days}}" bindinput="onRestrictionDaysInput" />
+          </view>
+          <textarea class="reason-input" value="{{restrictionForm.reason}}" placeholder="填写限制原因（至少2个字）" maxlength="500" bindinput="onRestrictionReasonInput" />
+          <button class="full-purple-button" bindtap="addRestriction">新增限制</button>
+        </view>
+      </view>
+
+      <view class="section-toolbar"><text>用户列表（{{users.length}}）</text></view>
+      <view wx:for="{{users}}" wx:key="id" wx:for-index="userIndex" class="user-list-row" data-index="{{userIndex}}" bindtap="selectUser">
+        <view class="user-avatar">{{item.initial}}</view>
+        <view class="user-list-copy">
+          <view><text class="user-name small">{{item.name}}</text><text class="role-tag">{{item.roleLabel}}</text></view>
+          <text class="user-meta">{{item.student_id}} · 笃学{{item.class_name}} · {{item.phone}}</text>
+          <text wx:if="{{item.bannedLabel}}" class="legacy-ban">旧版禁约至 {{item.bannedLabel}}</text>
+        </view>
+        <text class="row-arrow">›</text>
+      </view>
+      <view wx:if="{{!users.length&&!loading}}" class="empty-state">没有匹配的用户</view>
+    </block>
+
+    <!-- 分房规则 -->
+    <block wx:if="{{activeTab==='rules'}}">
+      <view class="section-toolbar">
+        <view><text>场景分房规则</text><text class="toolbar-note">优先级数字越小越优先</text></view>
+        <text class="text-action" bindtap="loadRoomRules">刷新</text>
+      </view>
+      <view wx:for="{{roomRules}}" wx:key="id" class="admin-card rule-card">
+        <view class="rule-head">
+          <view><text class="reservation-room">{{item.roomCode}} {{item.roomName}}</text><text class="scene-badge">{{item.sceneLabel}}</text></view>
+          <view class="switch-line"><text>启用</text><switch color="#6b2d8e" checked="{{item.is_enabled}}" data-id="{{item.id}}" bindchange="onRuleEnabledChange" /></view>
+        </view>
+        <view class="rule-fields">
+          <view class="rule-field"><text>优先级</text><input type="number" value="{{item.priority}}" data-id="{{item.id}}" data-field="priority" bindinput="onRuleInput" /></view>
+          <view class="rule-field"><text>容量</text><input type="number" value="{{item.capacity}}" data-id="{{item.id}}" data-field="capacity" bindinput="onRuleInput" /></view>
+          <picker class="rule-field" range="{{usageModeLabels}}" value="{{item.modeIndex}}" data-id="{{item.id}}" bindchange="onRuleModeChange"><view><text>使用模式</text><text class="form-value">{{item.modeLabel}} ›</text></view></picker>
+        </view>
+        <button class="full-purple-button compact" data-id="{{item.id}}" bindtap="saveRoomRule">保存此规则</button>
+      </view>
+      <view wx:if="{{!roomRules.length&&!loading}}" class="empty-state">暂无分房规则</view>
+    </block>
+
+    <!-- 系统配置 -->
+    <block wx:if="{{activeTab==='settings'}}">
+      <view class="section-toolbar">
+        <view><text>系统运行参数</text><text class="toolbar-note">保存时由服务器再次校验参数组合</text></view>
+        <text class="text-action" bindtap="loadSettings">重载</text>
+      </view>
+      <view class="admin-card settings-card">
+        <view wx:for="{{settingFields}}" wx:key="key" class="setting-row">
+          <view class="setting-copy"><text class="setting-label">{{item.label}}</text><text class="setting-key">{{item.key}}</text></view>
+          <input class="setting-input" type="{{item.inputType}}" value="{{item.value}}" placeholder="{{item.placeholder}}" data-key="{{item.key}}" bindinput="onSettingInput" />
+        </view>
+        <button class="full-purple-button" bindtap="saveSettings">保存全部配置</button>
+      </view>
+    </block>
+
+    <view class="page-spacer"></view>
+  </block>
 </view>

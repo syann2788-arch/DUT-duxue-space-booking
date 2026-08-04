@@ -1,80 +1,405 @@
 const app = getApp()
-const L={active:'待签到',checked_in:'已签到',missed:'违约',cancelled:'已取消'}
-const S={active:'background:#f5eef9;color:#6b2d8e',checked_in:'background:#e6f5e9;color:#2e7d32',missed:'background:#fdecea;color:#c0392b',cancelled:'background:#f5f5f5;color:#bbb'}
+
+const STATUS_LABELS = {
+  pending: '待审核',
+  approved: '待使用',
+  rejected: '未通过',
+  cancelled: '已取消',
+  in_use: '使用中',
+  cleanup_pending: '待清扫复核',
+  cleanup_rejected: '清扫未通过',
+  completed: '已完成',
+  missed: '未签到',
+  active: '待使用',
+  checked_in: '使用中'
+}
+
+const SCENE_LABELS = {
+  study: '自习',
+  meeting: '开会',
+  event: '大型活动',
+  music: '音乐练习'
+}
+
+const DEFAULT_CONFIG = {
+  open_hour: 8,
+  slot_minutes: 30,
+  cancel_deadline_minutes: 30,
+  checkin_grace_minutes: 15
+}
+
+function pad(value) {
+  return String(value).padStart(2, '0')
+}
+
+function minuteLabel(value) {
+  const minutes = Number(value) || 0
+  return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`
+}
+
+function reservationTime(dateValue, minutes) {
+  const parts = String(dateValue || '').split('-').map(Number)
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(NaN)
+  return new Date(parts[0], parts[1] - 1, parts[2], 0, Number(minutes) || 0, 0, 0)
+}
+
+function displayClass(className) {
+  const match = String(className || '').match(/\d{4}/)
+  return `笃学${match ? match[0] : '----'}`
+}
+
+function displayDateTime(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '禁约中'
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function showError(error, fallback) {
+  wx.showToast({ title: (error && error.message) || fallback, icon: 'none' })
+}
+
+function loginWithWechat() {
+  return new Promise((resolve, reject) => {
+    wx.login({ success: resolve, fail: reject })
+  })
+}
+
+function subscribeMessages(templateIds) {
+  return new Promise((resolve, reject) => {
+    wx.requestSubscribeMessage({ tmplIds: templateIds, success: resolve, fail: reject })
+  })
+}
 
 Page({
-  data: { user:{}, isAdmin:false, isC:false, filter:'all', list:[], raw:[], counselorCount:0 },
+  data: {
+    user: {},
+    classLabel: '笃学----',
+    isBanned: false,
+    banLabel: '预约正常',
+    isAdmin: false,
+    isC: false,
+    filter: 'all',
+    tabs: [
+      { value: 'all', label: '全部' },
+      { value: 'pending', label: '待审核' },
+      { value: 'approved', label: '待使用' },
+      { value: 'cleanup', label: '待清扫' },
+      { value: 'completed', label: '已完成' }
+    ],
+    list: [],
+    raw: [],
+    counselorCount: 0,
+    loading: false,
+    actionId: null,
+    cleanupSubmittingId: null,
+    notificationLoading: false,
+    bookingConfig: DEFAULT_CONFIG
+  },
 
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 1 })
     }
-    const role = app.globalData.user?.role
-    this.setData({ user: app.globalData.user||{}, isAdmin: role==='admin', isC: role==='counselor'||role==='admin' })
-    // Check missed first, then load
-    app.call('reservations', { action:'checkMissed' }).then(() => {
-      return app.call('reservations', { action:'my' })
-    }).then(data => {
-      const now = new Date()
-      const O = 8 // openHour
-      const raw = (data||[]).map(r => {
-        const base = new Date(r.date + 'T00:00:00+08:00').getTime()
-        const start = new Date(base + O * 3600000 + (r.start_slot || 0) * 30 * 60000)
-        const end = new Date(base + O * 3600000 + (r.end_slot || 0) * 30 * 60000)
-        const ss = r.start_slot || 0, es = r.end_slot || 0
-        const st = O * 60 + ss * 30, et = O * 60 + es * 30
-        const timeLabel = String(Math.floor(st/60)).padStart(2,'0')+':'+String(st%60).padStart(2,'0')+'-'+String(Math.floor(et/60)).padStart(2,'0')+':'+String(et%60).padStart(2,'0')
-        return { ...r, id: r._id, room_code:r.room?.room_code||'?', room_name:r.room?.name||'',
-          timeLabel,
-          people: r.people_count||1, reason: r.reason||'', notes: r.notes||'',
-          statLabel:L[r.status]||r.status, statStyle:S[r.status]||'',
-          canCheckin: r.status==='active'&&now>=start&&now<=new Date(start.getTime()+15*60000),
-          canCancel: r.status==='active'&&now<new Date(start.getTime()-30*60000) }
-      })
-      const cCount = raw.filter(r => r.room_code === 'A106').length
-      this.setData({raw, counselorCount: cCount},()=>this.applyFilter())
-    }).catch(err => console.error(err))
+    const showAttempt = (this._showAttempt || 0) + 1
+    this._showAttempt = showAttempt
+    Promise.resolve(app.authReady).catch(() => null).then(() => {
+      if (showAttempt === this._showAttempt) this.loadData(showAttempt)
+    })
+    this.startActionTimer()
   },
 
-  setFilter(e) { this.setData({filter:e.currentTarget.dataset.f},()=>this.applyFilter()) },
-  applyFilter() { const f=this.data.filter; this.setData({list:f==='all'?this.data.raw:this.data.raw.filter(r=>r.status===f)}) },
+  onHide() {
+    this._showAttempt = (this._showAttempt || 0) + 1
+    this.stopActionTimer()
+  },
+
+  onUnload() {
+    this._showAttempt = (this._showAttempt || 0) + 1
+    this.stopActionTimer()
+  },
+
+  startActionTimer() {
+    this.stopActionTimer()
+    this._actionTimer = setInterval(() => this.refreshActionWindows(), 30000)
+  },
+
+  stopActionTimer() {
+    if (!this._actionTimer) return
+    clearInterval(this._actionTimer)
+    this._actionTimer = null
+  },
+
+  refreshActionWindows() {
+    if (!this.data.raw.length) return
+    const raw = this.data.raw.map(item => this.formatReservation(item, this.data.bookingConfig))
+    this.setData({ raw }, () => this.applyFilter())
+  },
+
+  loadData(showAttempt = this._showAttempt) {
+    const tokenAtStart = wx.getStorageSync('token')
+    if (!tokenAtStart) {
+      app.logout()
+      return Promise.resolve()
+    }
+
+    this.setData({ loading: true })
+    const configRequest = app.request('/reservations/config').catch(() => this.data.bookingConfig)
+    return Promise.all([
+      app.request('/auth/me'),
+      app.request('/reservations/my'),
+      configRequest
+    ]).then(([user, reservations, config]) => {
+      if (showAttempt !== this._showAttempt || wx.getStorageSync('token') !== tokenAtStart) return
+      app.setLogin(tokenAtStart, user)
+      const bookingConfig = Object.assign({}, DEFAULT_CONFIG, config || {})
+      const raw = (reservations || []).map(item => this.formatReservation(item, bookingConfig))
+      const restrictionEnd = user.restriction_ends_at || user.banned_until
+      const bannedUntil = restrictionEnd ? new Date(restrictionEnd) : null
+      const legacyBan = Boolean(bannedUntil && !Number.isNaN(bannedUntil.getTime()) && bannedUntil.getTime() > Date.now())
+      const isBanned = Boolean(user.booking_restricted || legacyBan)
+      const restrictionLabel = user.restriction_ends_at
+        ? `禁约至 ${displayDateTime(user.restriction_ends_at)}`
+        : (user.booking_restricted ? '永久禁约' : (legacyBan ? `禁约至 ${displayDateTime(user.banned_until)}` : '预约正常'))
+      const role = user.role
+
+      this.setData({
+        user,
+        classLabel: displayClass(user.class_name),
+        isBanned,
+        banLabel: restrictionLabel,
+        isAdmin: role === 'admin',
+        isC: role === 'counselor' || role === 'admin',
+        raw,
+        counselorCount: raw.filter(item => item.room_code === 'A106').length,
+        bookingConfig
+      }, () => this.applyFilter())
+    }).catch(error => {
+      if (showAttempt !== this._showAttempt) return
+      const currentToken = wx.getStorageSync('token')
+      if (error && error.statusCode === 401) {
+        // api.js clears only the token used by this request. If another login
+        // already installed a new token, this stale response must do nothing.
+        if (!currentToken) app.logout()
+        return
+      }
+      if (currentToken !== tokenAtStart) return
+      showError(error, '加载预约记录失败')
+    }).finally(() => {
+      if (showAttempt === this._showAttempt) this.setData({ loading: false })
+    })
+  },
+
+  formatReservation(item, config) {
+    // Preserve operability for reservations created by the v1 status model.
+    const status = item.status === 'active'
+      ? 'approved'
+      : (item.status === 'checked_in' ? 'in_use' : item.status)
+    const startMinute = item.start_minute != null
+      ? Number(item.start_minute)
+      : Number(config.open_hour) * 60 + Number(item.start_slot || 0) * Number(config.slot_minutes)
+    const endMinute = item.end_minute != null
+      ? Number(item.end_minute)
+      : Number(config.open_hour) * 60 + Number(item.end_slot || 0) * Number(config.slot_minutes)
+    const start = reservationTime(item.date, startMinute)
+    const now = Date.now()
+    const cancelDeadline = start.getTime() - Number(config.cancel_deadline_minutes) * 60000
+    const checkinStart = start.getTime() - 15 * 60000
+    const checkinEnd = start.getTime() + Number(config.checkin_grace_minutes) * 60000
+    const canCancel = ['pending', 'approved'].includes(status) && now < cancelDeadline
+    const canCheckin = status === 'approved' && now >= checkinStart && now <= checkinEnd
+    const canCleanup = ['cleanup_pending', 'cleanup_rejected'].includes(status)
+    const canRebook = ['rejected', 'cancelled', 'completed', 'missed'].includes(status)
+    const room = item.room || {}
+
+    return Object.assign({}, item, {
+      id: item.id,
+      status,
+      room_code: room.room_code || '?',
+      room_name: room.name || '',
+      sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
+      usageLabel: item.usage_mode === 'shared' ? '共享' : '独占',
+      timeLabel: `${minuteLabel(startMinute)}-${minuteLabel(endMinute)}`,
+      statLabel: status === 'cleanup_pending' && !item.cleanup
+        ? '待清扫'
+        : (STATUS_LABELS[status] || status),
+      statusClass: `s-${status}`,
+      people: item.people_count || 1,
+      purpose: item.purpose || '',
+      reviewNote: item.review_note || '',
+      cleanupNote: item.cleanup && item.cleanup.review_note ? item.cleanup.review_note : '',
+      cleanupLabel: item.cleanup ? '重新上传清扫照片' : '上传清扫照片',
+      canCancel,
+      canCheckin,
+      canCleanup,
+      canRebook
+    })
+  },
+
+  setFilter(e) {
+    this.setData({ filter: e.currentTarget.dataset.f }, () => this.applyFilter())
+  },
+
+  applyFilter() {
+    const filter = this.data.filter
+    let list = this.data.raw
+    if (filter === 'cleanup') {
+      list = list.filter(item => ['cleanup_pending', 'cleanup_rejected'].includes(item.status))
+    } else if (filter !== 'all') {
+      list = list.filter(item => item.status === filter)
+    }
+    this.setData({ list })
+  },
+
+  checkin(reservationId) {
+    if (this.data.actionId) return Promise.resolve()
+    this.setData({ actionId: reservationId })
+    return app.request('/reservations/checkin', {
+      method: 'POST',
+      data: { reservation_id: reservationId }
+    }).then(() => {
+      wx.showToast({ title: '签到成功', icon: 'success' })
+      return this.loadData()
+    }).catch(error => {
+      showError(error, '签到失败')
+    }).finally(() => this.setData({ actionId: null }))
+  },
 
   doCheckin(e) {
-    app.call('reservations', {action:'checkin',reservation_id:e.currentTarget.dataset.id}).then(()=>{wx.showToast({title:'签到成功',icon:'success'});this.onShow()}).catch(err => console.error(err))
+    this.checkin(e.currentTarget.dataset.id)
   },
+
   doCancel(e) {
-    wx.showModal({title:'确认取消',content:'确定取消吗？',success:res=>{if(!res.confirm)return;app.call('reservations',{action:'cancel',reservation_id:e.currentTarget.dataset.id}).then(()=>{wx.showToast({title:'已取消',icon:'success'});this.onShow()}).catch(err => console.error(err))}})
+    const reservationId = e.currentTarget.dataset.id
+    if (this.data.actionId) return
+    wx.showModal({
+      title: '确认取消',
+      content: '取消后将释放该时段，确定继续吗？',
+      success: result => {
+        if (!result.confirm) return
+        this.setData({ actionId: reservationId })
+        app.request(`/reservations/${reservationId}/cancel`, { method: 'POST' }).then(() => {
+          wx.showToast({ title: '已取消', icon: 'success' })
+          return this.loadData()
+        }).catch(error => {
+          showError(error, '取消失败')
+        }).finally(() => this.setData({ actionId: null }))
+      }
+    })
   },
-  goAdmin() { wx.navigateTo({url:'/pages/admin/admin'}) },
 
   scanCheckin() {
-    wx.scanCode({ onlyFromCamera: true, success: res => {
-      let roomId = ''
-      try {
-        const data = JSON.parse(res.result)
-        roomId = data.room_id || data.roomId || ''
-      } catch {
-        // Plain text: room ID directly
-        roomId = res.result.trim()
+    wx.scanCode({
+      onlyFromCamera: true,
+      success: result => {
+        let roomId = ''
+        try {
+          const payload = JSON.parse(result.result)
+          if (payload && typeof payload === 'object') {
+            roomId = payload.room_id != null ? payload.room_id : payload.roomId
+          } else {
+            roomId = payload
+          }
+        } catch (error) {
+          roomId = String(result.result || '').trim()
+        }
+
+        const normalizedRoomId = String(roomId == null ? '' : roomId).trim()
+        if (!normalizedRoomId) {
+          wx.showToast({ title: '无效的房间码', icon: 'none' })
+          return
+        }
+
+        const approved = this.data.raw.filter(item =>
+          item.status === 'approved' && String(item.room_id) === normalizedRoomId
+        )
+        if (!approved.length) {
+          wx.showToast({ title: '未找到本人该房间的已通过预约', icon: 'none' })
+          return
+        }
+        const match = approved.find(item => item.canCheckin)
+        if (!match) {
+          wx.showToast({ title: '当前不在签到时间内', icon: 'none' })
+          return
+        }
+        this.checkin(match.id)
+      },
+      fail: error => {
+        if (!String(error.errMsg || '').includes('cancel')) showError(error, '扫码失败')
       }
-      if (!roomId) return wx.showToast({ title: '无效的房间码', icon: 'none' })
-      // Find active reservation for this room
-      const match = this.data.raw.find(r => r.status === 'active' && r.room_id === roomId)
-      if (!match) return wx.showToast({ title: '未找到该房间的待签到预约', icon: 'none' })
-      app.call('reservations', { action: 'checkin', reservation_id: match._id || match.id }).then(() => {
-        wx.showToast({ title: '签到成功', icon: 'success' })
-        this.onShow()
-      }).catch(() => {})
-    }})
+    })
+  },
+
+  uploadCleanup(e) {
+    const reservationId = e.currentTarget.dataset.id
+    if (this.data.cleanupSubmittingId) return
+    wx.chooseImage({
+      count: 3,
+      sizeType: ['compressed'],
+      sourceType: ['camera', 'album'],
+      success: result => this.submitCleanup(reservationId, result.tempFilePaths.slice(0, 3)),
+      fail: error => {
+        if (!String(error.errMsg || '').includes('cancel')) showError(error, '选择照片失败')
+      }
+    })
+  },
+
+  async submitCleanup(reservationId, filePaths) {
+    if (!filePaths.length) return
+    this.setData({ cleanupSubmittingId: reservationId })
+    wx.showLoading({ title: '上传中', mask: true })
+    try {
+      const photoUrls = []
+      for (const filePath of filePaths) {
+        const response = await app.upload('/reservations/photos', filePath, { name: 'file' })
+        photoUrls.push(response.url)
+      }
+      await app.request(`/reservations/${reservationId}/cleanup`, {
+        method: 'POST',
+        data: { photo_urls: photoUrls }
+      })
+      wx.showToast({ title: '已提交复核', icon: 'success' })
+      await this.loadData()
+    } catch (error) {
+      showError(error, '清扫照片提交失败')
+    } finally {
+      wx.hideLoading()
+      this.setData({ cleanupSubmittingId: null })
+    }
   },
 
   rebook(e) {
-    const r = e.currentTarget.dataset.item
-    if (!r || !r.room) return
-    wx.navigateTo({
-      url: '/pages/reserve/reserve?roomId=' + (r.room_id) +
-        '&roomName=' + encodeURIComponent(r.room.room_code + ' ' + (r.room.name || '')) +
-        '&roomCode=' + encodeURIComponent(r.room.room_code || '')
-    })
+    const scene = e.currentTarget.dataset.scene || 'study'
+    wx.navigateTo({ url: `/pages/reserve/reserve?scene=${encodeURIComponent(scene)}` })
+  },
+
+  goAdmin() {
+    wx.navigateTo({ url: '/pages/admin/admin' })
+  },
+
+  async enableNotifications() {
+    if (this.data.notificationLoading) return
+    this.setData({ notificationLoading: true })
+    try {
+      const loginResult = await loginWithWechat()
+      if (!loginResult.code) throw new Error('未获取到微信登录凭证')
+      await app.request('/auth/wechat/bind', {
+        method: 'POST',
+        data: { code: loginResult.code }
+      })
+      const response = await app.request('/notifications/templates')
+      const templateIds = Array.from(new Set((response.template_ids || []).filter(Boolean)))
+      if (!templateIds.length) {
+        wx.showToast({ title: '服务器尚未配置消息模板', icon: 'none' })
+        return
+      }
+      for (let index = 0; index < templateIds.length; index += 3) {
+        await subscribeMessages(templateIds.slice(index, index + 3))
+      }
+      wx.showToast({ title: '通知设置完成', icon: 'success' })
+    } catch (error) {
+      wx.showToast({ title: (error && error.message) || '未完成通知授权', icon: 'none' })
+    } finally {
+      this.setData({ notificationLoading: false })
+    }
   }
 })

@@ -1,51 +1,109 @@
 const app = getApp()
-const ST = {free:'空闲',busy:'较满',crowded:'已满'}
+
+const STATUS_TEXT = { free: '空闲', busy: '较满', crowded: '已满' }
+const TOP_CODES = ['A101', 'A103', 'C103', 'C101']
+const BOTTOM_CODES = ['A102', 'A104', 'A105', 'A106', 'B101', 'B102', 'C102', 'C104']
+const RESERVABLE_CODES = ['A101', 'A102', 'A103', 'A105', 'A106', 'B102']
+const PUBLIC_CODES = ['A102', 'A104']
+
+function listItem(room) {
+  return {
+    id: room.id,
+    code: room.room_code,
+    name: room.name,
+    desc: room.description || room.category || ''
+  }
+}
 
 Page({
-  data: { user:{}, topRow:[], bottomRow:[], reservable:[], publics:[] },
+  data: {
+    user: {},
+    topRow: [],
+    bottomRow: [],
+    reservable: [],
+    publics: []
+  },
 
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 0 })
     }
-    this.setData({ user: app.globalData.user||{} })
-    const self = this
-    Promise.all([
-      app.call('rooms', { action:'list' }),
-      app.call('rooms', { action:'todaySummary' }).catch(() => ({}))
-    ]).then(([rooms, summary]) => {
-      const map = {}; rooms.forEach(r => map[r.room_code]=r)
-      function heat(code) {
-        const r = map[code]
-        if (!r) return ''
-        const id = r._id || r.id
-        const s = summary[id]
-        if (!s) return ''
-        if (s.pct >= 80) return 'hot'
-        if (s.pct >= 40) return 'warm'
-        return ''
+
+    this.setData({ user: app.globalData.user || {} })
+    app.request('/rooms').then(rooms => {
+      const roomList = Array.isArray(rooms) ? rooms : []
+      const roomMap = {}
+      roomList.forEach(room => { roomMap[room.room_code] = room })
+
+      const toCell = code => {
+        const room = roomMap[code]
+        if (!room) {
+          return {
+            id: '', code, name: '', cls: 'nonpub', tag: '', tagCls: '',
+            canReserve: false, isPublic: false
+          }
+        }
+
+        let cls = 'nonpub'
+        let tag = '非公共'
+        let tagCls = 'tag-gray'
+        if (room.is_public) {
+          cls = 'pub'
+          tag = STATUS_TEXT[room.public_status] || '状态未知'
+          tagCls = 'tag-pub'
+        } else if (room.can_reserve) {
+          cls = 'res'
+          const counselorOnly = room.who_can_reserve === 'counselor'
+          tag = counselorOnly ? '辅导员' : '可预约'
+          tagCls = counselorOnly ? 'tag-cou' : 'tag-res'
+        }
+
+        return {
+          id: room.id,
+          code: room.room_code,
+          name: room.name,
+          cls,
+          tag,
+          tagCls,
+          canReserve: room.can_reserve,
+          isPublic: room.is_public
+        }
       }
-      function c(code) {
-        const r = map[code]; if (!r) return {code, name:'', cls:'nonpub', tagCls:'', tag:'', canReserve:false, isPublic:false, id:'', hot:''}
-        let cls='nonpub', tag='', tc=''
-        if (r.can_reserve) { cls='res'; tc=r.who_can_reserve==='counselor'?'tag-cou':'tag-res'; tag=r.who_can_reserve==='counselor'?'辅导员':'可预约' }
-        else if (r.is_public) { cls='pub'; tc='tag-pub'; tag=ST[r.public_status]||'空闲' }
-        else { tc='tag-gray'; tag='非公共' }
-        return {code:r.room_code, name:r.name, cls, tagCls:tc, tag, canReserve:r.can_reserve, isPublic:r.is_public, id:r._id||r.id, hot:heat(code)}
-      }
-      const purp={A101:'创新空间 · 科创实践', A103:'大剧场 · 讲座演出', A105:'会议室 · 小组讨论', A106:'谈心室 · 师生交谈 · 仅限辅导员', B102:'器乐室 · 器乐练习'}
-      const pp={A102:'图书自习 · 自由阅览', A104:'生活空间 · 就餐休息'}
-      const rv = ['A101','A103','A105','A106','B102'].map(k=>{const r=map[k]; return r?{id:r._id||r.id,code:r.room_code,name:r.name,desc:purp[k]}:null}).filter(Boolean)
-      const pb = ['A102','A104'].map(k=>{const r=map[k]; return r?{id:r._id||r.id,code:r.room_code,name:r.name,desc:pp[k]}:null}).filter(Boolean)
+
+      const orderedItems = codes => codes
+        .map(code => roomMap[code])
+        .filter(Boolean)
+        .map(listItem)
+
       this.setData({
-        topRow: ['A101','A103','C103','C101'].map(c),
-        bottomRow: ['A102','A104','A105','A106','B101','B102','C102','C104'].map(c),
-        reservable: rv, publics: pb
+        topRow: TOP_CODES.map(toCell),
+        bottomRow: BOTTOM_CODES.map(toCell),
+        reservable: orderedItems(RESERVABLE_CODES),
+        publics: orderedItems(PUBLIC_CODES)
       })
-    }).catch(err => console.error(err))
+    }).catch(error => {
+      console.error('load rooms failed', error)
+      wx.showToast({ title: '空间信息加载失败', icon: 'none' })
+    })
   },
 
-  onCell(e) { const d=e.currentTarget.dataset; if (d.res||d.pub) wx.navigateTo({url:'/pages/room/room?id='+d.id}) },
-  onRoom(e) { wx.navigateTo({url:'/pages/room/room?id='+e.currentTarget.dataset.id}) },
-  doLogout() { app.logout() }
+  onCell(event) {
+    const data = event.currentTarget.dataset
+    if ((data.res || data.pub) && data.id) {
+      wx.navigateTo({ url: '/pages/room/room?id=' + data.id })
+    }
+  },
+
+  onRoom(event) {
+    const id = event.currentTarget.dataset.id
+    if (id) wx.navigateTo({ url: '/pages/room/room?id=' + id })
+  },
+
+  goSceneReserve() {
+    wx.navigateTo({ url: '/pages/reserve/reserve' })
+  },
+
+  doLogout() {
+    app.logout()
+  }
 })

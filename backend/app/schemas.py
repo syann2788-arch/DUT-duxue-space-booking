@@ -40,6 +40,20 @@ class UserRegister(BaseModel):
             raise ValueError("手机号格式不正确")
         return value
 
+    @field_validator("class_name")
+    @classmethod
+    def class_name_must_be_four_digits(cls, value: str) -> str:
+        if not re.fullmatch(r"\d{4}", value):
+            raise ValueError("班级必须为4位数字")
+        return value
+
+    @field_validator("password")
+    @classmethod
+    def password_must_contain_letters_and_numbers(cls, value: str) -> str:
+        if not re.search(r"[A-Za-z]", value) or not re.search(r"\d", value):
+            raise ValueError("密码必须同时包含字母和数字")
+        return value
+
 
 class UserLogin(BaseModel):
     student_id: str
@@ -48,6 +62,10 @@ class UserLogin(BaseModel):
 
 class WechatBindRequest(BaseModel):
     code: str = Field(min_length=1, max_length=128)
+
+
+class WechatLoginRequest(WechatBindRequest):
+    pass
 
 
 class UserOut(BaseModel):
@@ -62,6 +80,13 @@ class UserOut(BaseModel):
     wechat_openid: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class UserProfileOut(UserOut):
+    booking_restricted: bool = False
+    restriction_level: RestrictionLevel | None = None
+    restriction_reason: str | None = None
+    restriction_ends_at: datetime | None = None
 
 
 class Token(BaseModel):
@@ -105,6 +130,29 @@ class RoomOut(BaseModel):
 
 class PublicStatusUpdate(BaseModel):
     public_status: PublicStatus
+
+
+class SpaceMessageCreate(BaseModel):
+    content: str = Field(default="", max_length=500)
+    photo_urls: list[str] = Field(default_factory=list, max_length=3)
+
+    @model_validator(mode="after")
+    def validate_message(self):
+        self.content = self.content.strip()
+        if not self.content and not self.photo_urls:
+            raise ValueError("留言文字和照片至少填写一项")
+        if any(not value.startswith("/uploads/message_") for value in self.photo_urls):
+            raise ValueError("留言照片地址无效")
+        return self
+
+
+class SpaceMessageOut(BaseModel):
+    id: int
+    room_id: int
+    content: str
+    photo_urls: list[str]
+    author_name: str
+    created_at: datetime
 
 
 class ReservationCreate(BaseModel):

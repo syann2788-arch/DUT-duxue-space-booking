@@ -1,58 +1,86 @@
+const api = require('./utils/api')
+
 App({
   globalData: {
     token: '',
     user: null
   },
 
+  authReady: null,
+  _authAttemptId: 0,
+
   onLaunch() {
-    wx.cloud.init({ env: wx.cloud.DYNAMIC_CURRENT_ENV, traceUser: true })
-    this.autoLogin()
+    const attemptId = ++this._authAttemptId
+    const token = wx.getStorageSync('token')
+    if (token) {
+      this.globalData.token = token
+      this.authReady = this.request('/auth/me').then(user => {
+        if (attemptId !== this._authAttemptId) return null
+        this.setLogin(token, user)
+        return user
+      }).catch(err => {
+        if (attemptId === this._authAttemptId && err.statusCode === 401) this.clearLogin()
+        return null
+      })
+      return
+    }
+
+    this.authReady = this.getWechatCode().then(code => {
+      return this.request('/auth/wechat/login', { method: 'POST', data: { code } })
+    }).then(result => {
+      if (attemptId !== this._authAttemptId) return null
+      this.setLogin(result.access_token, result.user)
+      return result.user
+    }).catch(() => null)
   },
 
-  // Try WeChat auto-login first, fall back to stored token
-  autoLogin() {
-    this.call('auth', { action: 'wechatLogin' }).then(res => {
-      this.setLogin(res.token, res.user)
-    }).catch(() => {
-      // Not bound yet, try stored token
-      const token = wx.getStorageSync('token')
-      if (token) {
-        this.globalData.token = token
-        this.call('auth', { action: 'me', token }).then(u => {
-          this.setLogin(token, u)
-        }).catch(() => {
-          this.globalData.token = ''
-          wx.removeStorageSync('token')
-        })
-      }
+  getWechatCode() {
+    return new Promise((resolve, reject) => {
+      wx.login({
+        success: result => result.code ? resolve(result.code) : reject(new Error('未获取到微信登录凭证')),
+        fail: reject
+      })
     })
+  },
+
+  prepareInteractiveLogin() {
+    this._authAttemptId += 1
+    this.authReady = Promise.resolve(null)
+    return this.authReady
+  },
+
+  bindWechatInBackground() {
+    return this.getWechatCode().then(code => {
+      return this.request('/auth/wechat/bind', { method: 'POST', data: { code } })
+    }).catch(() => null)
   },
 
   setLogin(token, user) {
     this.globalData.token = token
     this.globalData.user = user
+    this.authReady = Promise.resolve(user || null)
     wx.setStorageSync('token', token)
   },
 
-  logout() {
+  clearLogin() {
     this.globalData.token = ''
     this.globalData.user = null
+    this.authReady = Promise.resolve(null)
     wx.removeStorageSync('token')
+    wx.removeStorageSync('user')
+  },
+
+  logout() {
+    this._authAttemptId += 1
+    this.clearLogin()
     wx.reLaunch({ url: '/pages/login/login' })
   },
 
-  // Unified cloud function caller
-  call(name, data = {}) {
-    if (name !== 'auth') data.token = this.globalData.token
-    return wx.cloud.callFunction({ name, data }).then(res => {
-      if (res.result && res.result.err) {
-        wx.showToast({ title: res.result.err, icon: 'none' })
-        if (res.result.err === '未登录' || res.result.err === '登录已过期') {
-          this.logout()
-        }
-        throw new Error(res.result.err)
-      }
-      return res.result
-    })
+  request(path, options) {
+    return api.request(path, options)
+  },
+
+  upload(path, filePath, options) {
+    return api.uploadFile(path, filePath, options)
   }
 })

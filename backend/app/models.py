@@ -115,6 +115,7 @@ class User(Base):
 
     reservations: Mapped[list["Reservation"]] = relationship(back_populates="user", foreign_keys="Reservation.user_id")
     restrictions: Mapped[list["BookingRestriction"]] = relationship(back_populates="user", foreign_keys="BookingRestriction.user_id")
+    space_messages: Mapped[list["SpaceMessage"]] = relationship(back_populates="user")
 
 
 class Room(Base):
@@ -138,6 +139,7 @@ class Room(Base):
 
     reservations: Mapped[list["Reservation"]] = relationship(back_populates="room")
     scene_rules: Mapped[list["RoomSceneRule"]] = relationship(back_populates="room", cascade="all, delete-orphan")
+    messages: Mapped[list["SpaceMessage"]] = relationship(back_populates="room", cascade="all, delete-orphan")
 
 
 class RoomSceneRule(Base):
@@ -204,6 +206,20 @@ class CleanupVerification(Base):
     review_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     reservation: Mapped[Reservation] = relationship(back_populates="cleanup")
+
+
+class SpaceMessage(Base):
+    __tablename__ = "space_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    room_id: Mapped[int] = mapped_column(ForeignKey("rooms.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    content: Mapped[str] = mapped_column(String(500), default="")
+    photo_urls: Mapped[list[str]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now, index=True)
+
+    room: Mapped[Room] = relationship(back_populates="messages")
+    user: Mapped[User] = relationship(back_populates="space_messages")
 
 
 class BookingRestriction(Base):

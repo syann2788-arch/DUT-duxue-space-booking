@@ -1,95 +1,365 @@
 const app = getApp()
-const C = { openHour:8, closeHour:22, slotMinutes:30, maxSlots:8 }
+
+const SCENES = [
+  {
+    value: 'study',
+    label: '自习',
+    icon: '书',
+    mode: '共享使用 · 一人一约',
+    allocation: '系统依次尝试 A102 → A101 → A105，并按共享容量自动分配。'
+  },
+  {
+    value: 'meeting',
+    label: '开会',
+    icon: '会',
+    mode: '整间独占',
+    allocation: '学生依次尝试 A105 → A101 → A102；辅导员账号会优先尝试 A106。'
+  },
+  {
+    value: 'event',
+    label: '大型活动',
+    icon: '活',
+    mode: 'A103 独占',
+    allocation: '大型活动仅分配 A103，与该房间的音乐练习时段互斥。'
+  },
+  {
+    value: 'music',
+    label: '音乐练习',
+    icon: '乐',
+    mode: '整间独占',
+    allocation: '系统优先分配 B102；A103 钢琴仅在规定开放时段作为备选。'
+  }
+]
+
+const DEFAULT_CONFIG = {
+  open_hour: 8,
+  close_hour: 22,
+  slot_minutes: 30,
+  max_minutes_per_day: 240,
+  advance_days: 7,
+  cancel_deadline_minutes: 30,
+  checkin_grace_minutes: 15
+}
 
 Page({
-  data: { roomId:'', roomName:'', roomCode:'', dateStr:'', dateLabel:'今天', currentTs:0, slots:[], selected:[], loading:false, showInfo:false, infoData:{} },
-
-  onLoad(opt) {
-    const d = new Date(); d.setHours(0,0,0,0)
-    const dateStr = this.fmt(d)
-    this.setData({ roomId:opt.roomId, roomName:decodeURIComponent(opt.roomName||''), roomCode:decodeURIComponent(opt.roomCode||''), currentTs:d.getTime(), dateStr, dateLabel:'今天' })
-    this.loadSlots()
+  data: {
+    scenes: SCENES,
+    scene: 'study',
+    currentScene: SCENES[0],
+    people: 1,
+    peopleInput: '1',
+    config: DEFAULT_CONFIG,
+    dateOffset: 0,
+    dateStr: '',
+    dateLabel: '今天',
+    slots: [],
+    selected: [],
+    durationLabel: '',
+    maxDurationLabel: '4小时',
+    loading: true,
+    loadFailed: false
   },
 
-  fmt(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0') },
+  onLoad(options) {
+    this._availabilitySeq = 0
+    const initialScene = SCENES.find(item => item.value === (options && options.scene)) || SCENES[0]
+    this.setData({
+      scene: initialScene.value,
+      currentScene: initialScene,
+      people: initialScene.value === 'study' ? 1 : this.data.people,
+      peopleInput: initialScene.value === 'study' ? '1' : this.data.peopleInput
+    })
+    this.bootstrap()
+  },
 
-  loadSlots() {
-    const { roomId, dateStr } = this.data
-    if (!roomId) { wx.showToast({ title:'房间信息异常', icon:'none' }); return }
-    this.setData({ loading:true })
-    wx.showLoading({ title:'加载中...' })
-    app.call('rooms', { action:'slots', room_id:roomId, date:dateStr }).then(res => {
-      wx.hideLoading()
-      const slots = (res.slots||[]).map(s => ({ ...s, selected: false }))
-      this.setData({ slots, selected:[], loading:false })
-    }).catch(err => {
-      wx.hideLoading()
-      console.error('loadSlots', err)
-      this.setData({ loading:false })
-      wx.showToast({ title:'加载时段失败', icon:'none' })
+  onUnload() {
+    this._availabilitySeq += 1
+    if (this._peopleTimer) clearTimeout(this._peopleTimer)
+  },
+
+  async bootstrap() {
+    await Promise.resolve(app.authReady).catch(() => null)
+    if (!wx.getStorageSync('token')) {
+      app.logout()
+      return
+    }
+    this.setDate(0, false)
+    try {
+      const remote = await app.request('/reservations/config')
+      const config = this.normaliseConfig(remote)
+      this.setData({
+        config,
+        maxDurationLabel: this.formatDuration(config.max_minutes_per_day)
+      })
+    } catch (err) {
+      wx.showToast({ title: err.message || '预约规则加载失败，已使用默认规则', icon: 'none' })
+    }
+    await this.loadAvailability()
+  },
+
+  normaliseConfig(remote) {
+    const source = Object.assign({}, DEFAULT_CONFIG, remote || {})
+    const numericKeys = [
+      'open_hour', 'close_hour', 'slot_minutes', 'max_minutes_per_day',
+      'advance_days', 'cancel_deadline_minutes', 'checkin_grace_minutes'
+    ]
+    numericKeys.forEach(key => {
+      const value = Number(source[key])
+      source[key] = Number.isFinite(value) ? value : DEFAULT_CONFIG[key]
+    })
+    source.advance_days = Math.max(0, Math.floor(source.advance_days))
+    return source
+  },
+
+  fmt(date) {
+    return date.getFullYear() + '-' +
+      String(date.getMonth() + 1).padStart(2, '0') + '-' +
+      String(date.getDate()).padStart(2, '0')
+  },
+
+  dateForOffset(offset) {
+    const date = new Date()
+    date.setHours(0, 0, 0, 0)
+    date.setDate(date.getDate() + offset)
+    return date
+  },
+
+  labelForOffset(offset) {
+    if (offset === 0) return '今天'
+    if (offset === 1) return '明天'
+    return offset + '天后'
+  },
+
+  setDate(offset, reload = true) {
+    const date = this.dateForOffset(offset)
+    this.setData({
+      dateOffset: offset,
+      dateStr: this.fmt(date),
+      dateLabel: this.labelForOffset(offset),
+      selected: [],
+      durationLabel: ''
+    }, () => {
+      if (reload) this.loadAvailability()
     })
   },
 
-  changeDate(e) {
-    const delta = +e.currentTarget.dataset.d
-    const d = new Date(this.data.currentTs)
-    d.setDate(d.getDate() + delta)
-    d.setHours(0,0,0,0)
-    const today = new Date(); today.setHours(0,0,0,0)
-    const max = new Date(today); max.setDate(max.getDate()+1)
-    const ds = this.fmt(d), ts = this.fmt(today), ms = this.fmt(max)
-    if (ds < ts || ds > ms) { wx.showToast({ title:'仅可提前1天预约', icon:'none' }); return }
-    this.setData({ currentTs:d.getTime(), dateStr:ds, dateLabel: ds===ts?'今天':ds===ms?'明天':'' })
-    this.loadSlots()
-  },
-
-  toggle(e) {
-    const { slot:clicked, avail } = e.currentTarget.dataset
-    if (!avail) {
-      const { name, class:className, people, reason } = e.currentTarget.dataset
-      this.setData({ showInfo:true, infoData:{ name, class_name:className, people, reason: reason||'' } })
+  changeDate(event) {
+    const delta = Number(event.currentTarget.dataset.delta)
+    const next = this.data.dateOffset + delta
+    const max = this.data.config.advance_days
+    if (next < 0) {
+      wx.showToast({ title: '不能预约过去的日期', icon: 'none' })
       return
     }
-    const sel = [...this.data.selected]
-    const idx = sel.indexOf(clicked)
-    const slotMap = {}; this.data.slots.forEach(s => { slotMap[s.slot] = s.available })
+    if (next > max) {
+      wx.showToast({ title: '最多可提前' + max + '天预约', icon: 'none' })
+      return
+    }
+    this.setDate(next)
+  },
 
-    if (idx >= 0) {
-      if (idx === 0 || idx === sel.length - 1) sel.splice(idx, 1)
-      else return wx.showToast({ title:'只能从两端取消', icon:'none' })
-    } else {
-      if (!sel.length) { sel.push(clicked) }
-      else {
-        const min = Math.min(...sel), max = Math.max(...sel)
-        if (clicked >= min && clicked <= max) return
-        let from, to
-        if (clicked < min) { from = clicked; to = min - 1 }
-        else { from = max + 1; to = clicked }
-        for (let s = from; s <= to; s++) {
-          if (!slotMap[s]) return wx.showToast({ title:'所选范围包含已约时段', icon:'none' })
-          sel.push(s)
-        }
-      }
-      sel.sort((a,b) => a-b)
-      if (sel.length > C.maxSlots) return wx.showToast({ title:'单次最多'+C.maxSlots/2+'小时', icon:'none' })
+  selectScene(event) {
+    const scene = event.currentTarget.dataset.scene
+    if (scene === this.data.scene) return
+    const currentScene = SCENES.find(item => item.value === scene)
+    if (!currentScene) return
+    if (this._peopleTimer) clearTimeout(this._peopleTimer)
+    const people = scene === 'study' ? 1 : Math.max(1, Number(this.data.people) || 1)
+    this.setData({
+      scene,
+      currentScene,
+      people,
+      peopleInput: String(people),
+      selected: [],
+      durationLabel: ''
+    }, () => this.loadAvailability())
+  },
+
+  onPeopleInput(event) {
+    if (this.data.scene === 'study') return
+    const peopleInput = String(event.detail.value || '').replace(/\D/g, '').slice(0, 3)
+    this.setData({ peopleInput })
+    if (this._peopleTimer) clearTimeout(this._peopleTimer)
+    this._peopleTimer = setTimeout(() => this.confirmPeople(false), 450)
+  },
+
+  onPeopleBlur() {
+    if (this._peopleTimer) clearTimeout(this._peopleTimer)
+    this.confirmPeople(true)
+  },
+
+  confirmPeople(showError) {
+    if (this.data.scene === 'study') return true
+    const people = Number(this.data.peopleInput)
+    if (!Number.isInteger(people) || people < 1 || people > 500) {
+      if (showError) wx.showToast({ title: '使用人数须为1至500人', icon: 'none' })
+      this.setData({ peopleInput: String(this.data.people) })
+      return false
+    }
+    if (people === this.data.people) return true
+    this.setData({ people, selected: [], durationLabel: '' }, () => this.loadAvailability())
+    return true
+  },
+
+  async loadAvailability() {
+    const people = this.data.scene === 'study' ? 1 : Number(this.data.people)
+    if (!Number.isInteger(people) || people < 1) return
+
+    const seq = ++this._availabilitySeq
+    this.setData({ loading: true, loadFailed: false, selected: [], durationLabel: '' })
+    const query = [
+      'scene=' + encodeURIComponent(this.data.scene),
+      'date=' + encodeURIComponent(this.data.dateStr),
+      'people_count=' + encodeURIComponent(people)
+    ].join('&')
+
+    try {
+      const result = await app.request('/reservations/availability?' + query)
+      if (seq !== this._availabilitySeq) return
+      const slots = (result.slots || []).map(item => ({
+        slot: Number(item.slot),
+        label: item.label,
+        available: item.available === true,
+        availableRoomIds: Array.isArray(item.available_room_ids)
+          ? item.available_room_ids.map(Number)
+          : (item.available === true ? ['legacy'] : []),
+        selected: false
+      }))
+      this.setData({ slots, loading: false, loadFailed: false })
+    } catch (err) {
+      if (seq !== this._availabilitySeq) return
+      this.setData({ slots: [], loading: false, loadFailed: true })
+      wx.showToast({ title: err.message || '可用时段加载失败', icon: 'none' })
+    }
+  },
+
+  retryAvailability() {
+    this.loadAvailability()
+  },
+
+  toggleSlot(event) {
+    if (this.data.loading) return
+    const clicked = Number(event.currentTarget.dataset.slot)
+    const clickedItem = this.data.slots.find(item => item.slot === clicked)
+    if (!clickedItem || !clickedItem.available) {
+      wx.showToast({ title: '该时段暂无可分配空间', icon: 'none' })
+      return
     }
 
-    const slots = this.data.slots.map(s => ({...s, selected: sel.includes(s.slot)}))
-    this.setData({ slots, selected: sel })
+    const selected = this.data.selected.slice()
+    const selectedIndex = selected.indexOf(clicked)
+    if (selectedIndex >= 0) {
+      if (selectedIndex !== 0 && selectedIndex !== selected.length - 1) {
+        wx.showToast({ title: '只能从已选时段的两端取消', icon: 'none' })
+        return
+      }
+      selected.splice(selectedIndex, 1)
+      this.applySelection(selected)
+      return
+    }
+
+    if (!selected.length) {
+      selected.push(clicked)
+    } else {
+      const min = Math.min(...selected)
+      const max = Math.max(...selected)
+      const from = clicked < min ? clicked : max + 1
+      const to = clicked < min ? min - 1 : clicked
+      const slotMap = {}
+      this.data.slots.forEach(item => { slotMap[item.slot] = item.available })
+      for (let slot = from; slot <= to; slot += 1) {
+        if (!slotMap[slot]) {
+          wx.showToast({ title: '所选范围包含不可用时段', icon: 'none' })
+          return
+        }
+        selected.push(slot)
+      }
+    }
+
+    selected.sort((left, right) => left - right)
+    const duration = selected.length * this.data.config.slot_minutes
+    if (duration > this.data.config.max_minutes_per_day) {
+      wx.showToast({ title: '单日预约最多' + this.data.maxDurationLabel, icon: 'none' })
+      return
+    }
+    if (!this.commonAvailableRooms(selected).length) {
+      wx.showToast({ title: '整段时间没有同一间可用空间', icon: 'none' })
+      return
+    }
+    this.applySelection(selected)
+  },
+
+  commonAvailableRooms(selected) {
+    let common = null
+    selected.forEach(slotId => {
+      const slot = this.data.slots.find(item => item.slot === slotId)
+      const roomIds = slot ? slot.availableRoomIds : []
+      common = common === null
+        ? roomIds.slice()
+        : common.filter(roomId => roomIds.includes(roomId))
+    })
+    return common || []
+  },
+
+  applySelection(selected) {
+    const selectedSet = new Set(selected)
+    const slots = this.data.slots.map(item => Object.assign({}, item, {
+      selected: selectedSet.has(item.slot)
+    }))
+    const minutes = selected.length * this.data.config.slot_minutes
+    this.setData({
+      slots,
+      selected,
+      durationLabel: minutes ? this.formatDuration(minutes) : ''
+    })
+  },
+
+  formatDuration(minutes) {
+    const hours = Math.floor(minutes / 60)
+    const remainder = minutes % 60
+    if (!hours) return remainder + '分钟'
+    return hours + '小时' + (remainder ? remainder + '分钟' : '')
+  },
+
+  formatTime(slot) {
+    const total = this.data.config.open_hour * 60 + slot * this.data.config.slot_minutes
+    return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0')
   },
 
   nextStep() {
-    const sel = this.data.selected
-    if (!sel.length) return
-    const start = Math.min(...sel)
-    const end = Math.max(...sel) + 1
-    const fromMin = C.openHour * 60 + start * C.slotMinutes
-    const toMin = C.openHour * 60 + end * C.slotMinutes
-    const fh = Math.floor(fromMin / 60), fm = fromMin % 60
-    const th = Math.floor(toMin / 60), tm = toMin % 60
-    const timeLabel = String(fh).padStart(2,'0')+':'+String(fm).padStart(2,'0')+'-'+String(th).padStart(2,'0')+':'+String(tm).padStart(2,'0')
-    wx.navigateTo({ url:'/pages/reserve/form?roomId='+this.data.roomId+'&roomName='+encodeURIComponent(this.data.roomName)+'&roomCode='+encodeURIComponent(this.data.roomCode)+'&date='+this.data.dateStr+'&startSlot='+start+'&endSlot='+end+'&timeLabel='+encodeURIComponent(timeLabel) })
-  },
+    if (this.data.scene !== 'study') {
+      const people = Number(this.data.peopleInput)
+      if (!Number.isInteger(people) || people < 1 || people > 500) {
+        wx.showToast({ title: '使用人数须为1至500人', icon: 'none' })
+        return
+      }
+      if (people !== this.data.people) {
+        if (this._peopleTimer) clearTimeout(this._peopleTimer)
+        this.setData({ people, selected: [], durationLabel: '' }, () => this.loadAvailability())
+        wx.showToast({ title: '人数已更新，请重新选择时段', icon: 'none' })
+        return
+      }
+    }
+    if (!this.data.selected.length) {
+      wx.showToast({ title: '请先选择连续时段', icon: 'none' })
+      return
+    }
+    if (!this.commonAvailableRooms(this.data.selected).length) {
+      wx.showToast({ title: '整段时间没有同一间可用空间，请重选', icon: 'none' })
+      return
+    }
 
-  closeInfo() { this.setData({ showInfo:false }) }
+    const startSlot = Math.min(...this.data.selected)
+    const endSlot = Math.max(...this.data.selected) + 1
+    const timeLabel = this.formatTime(startSlot) + '-' + this.formatTime(endSlot)
+    const params = [
+      'scene=' + encodeURIComponent(this.data.scene),
+      'date=' + encodeURIComponent(this.data.dateStr),
+      'startSlot=' + encodeURIComponent(startSlot),
+      'endSlot=' + encodeURIComponent(endSlot),
+      'timeLabel=' + encodeURIComponent(timeLabel),
+      'people=' + encodeURIComponent(this.data.scene === 'study' ? 1 : this.data.people)
+    ].join('&')
+    wx.navigateTo({ url: '/pages/reserve/form?' + params })
+  }
 })

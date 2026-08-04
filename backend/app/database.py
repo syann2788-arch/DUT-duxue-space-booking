@@ -65,6 +65,11 @@ async def _upgrade_legacy_sqlite(conn) -> None:
             "UPDATE reservations SET start_minute=COALESCE(start_hour*60, 480+start_slot*30), "
             "end_minute=COALESCE(end_hour*60, 480+end_slot*30) WHERE start_minute IS NULL"
         ))
+        # V1 had no shared/exclusive field and treated every room booking as a
+        # whole-room conflict. Preserve that safer meaning during migration.
+        await conn.execute(text(
+            "UPDATE reservations SET usage_mode='exclusive' WHERE usage_mode IS NULL"
+        ))
 
     result = await conn.execute(text("PRAGMA table_info(rooms)"))
     room_columns = {row[1] for row in result.fetchall()}

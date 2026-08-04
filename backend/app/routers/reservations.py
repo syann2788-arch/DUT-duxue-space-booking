@@ -1,18 +1,18 @@
-from pathlib import Path
-from uuid import uuid4
+from datetime import date
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
-from app.config import settings
 from app.database import get_db
-from app.models import ReservationStatus
+from app.models import ReservationStatus, SceneType, User
 from app.schemas import CheckinRequest, CleanupSubmit, ReservationCreate, ReservationOut
+from app.uploads import store_image
 from app.services import (
     cancel_reservation,
     checkin_reservation,
     create_reservation,
+    get_scene_availability,
     get_runtime_config,
     get_user_reservations,
     submit_cleanup,
@@ -25,6 +25,20 @@ router = APIRouter(prefix="/api/reservations", tags=["预约"])
 async def public_booking_config(db: AsyncSession = Depends(get_db)):
     """Public values required to render slots; secrets are never stored here."""
     return await get_runtime_config(db)
+
+
+@router.get("/availability")
+async def scene_availability(
+    scene: SceneType,
+    date_value: date = Query(alias="date"),
+    people_count: int = Query(default=1, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+    token: dict = Depends(get_current_user),
+):
+    user = await db.get(User, int(token["sub"]))
+    if not user or not user.is_active:
+        raise HTTPException(403, "账号不存在或已停用")
+    return await get_scene_availability(db, scene, date_value, people_count, user.role)
 
 
 @router.post("", response_model=ReservationOut, status_code=201)
@@ -65,33 +79,12 @@ async def checkin(data: CheckinRequest, db: AsyncSession = Depends(get_db), toke
 
 @router.post("/photos", status_code=201)
 async def upload_cleanup_photo(file: UploadFile = File(...), token: dict = Depends(get_current_user)):
-    return await _store_photo(file, token, "cleanup")
+    return await store_image(file, int(token["sub"]), "cleanup")
 
 
 @router.post("/campus-card-photo", status_code=201)
 async def upload_campus_card_photo(file: UploadFile = File(...), token: dict = Depends(get_current_user)):
-    return await _store_photo(file, token, "campus_card")
-
-
-async def _store_photo(file: UploadFile, token: dict, prefix: str) -> dict:
-    if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
-        raise HTTPException(400, "仅支持 JPG、PNG、WebP 图片")
-    content = await file.read(settings.MAX_UPLOAD_MB * 1024 * 1024 + 1)
-    if len(content) > settings.MAX_UPLOAD_MB * 1024 * 1024:
-        raise HTTPException(413, f"单张照片不能超过{settings.MAX_UPLOAD_MB}MB")
-    suffix = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}[file.content_type]
-    signatures_ok = {
-        "image/jpeg": content.startswith(b"\xff\xd8\xff"),
-        "image/png": content.startswith(b"\x89PNG\r\n\x1a\n"),
-        "image/webp": len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP",
-    }
-    if not signatures_ok[file.content_type]:
-        raise HTTPException(400, "文件内容与图片格式不匹配")
-    upload_dir = Path(settings.UPLOAD_DIR)
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{prefix}_{token['sub']}_{uuid4().hex}{suffix}"
-    (upload_dir / filename).write_bytes(content)
-    return {"url": f"/uploads/{filename}"}
+    return await store_image(file, int(token["sub"]), "campus_card")
 
 
 @router.post("/{reservation_id}/cleanup", response_model=ReservationOut)

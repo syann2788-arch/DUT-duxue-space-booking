@@ -1,25 +1,55 @@
-<view style="min-height:100vh;background:#f6f5f8;padding:20rpx 0">
-  <view class="card">
-    <text class="title">{{roomCode}} {{roomName}}</text>
-    <text class="sub">{{date}} {{timeLabel}}</text>
+<view class="form-page">
+  <view class="card summary-card">
+    <view class="summary-top">
+      <view>
+        <text class="title">{{sceneLabel}}</text>
+        <text class="auto-tag">系统自动分房</text>
+      </view>
+      <text class="people">{{people}}人</text>
+    </view>
+    <text class="sub">{{date}}　{{timeLabel}}</text>
+    <text class="summary-hint">提交后系统将按场景优先级分配可用房间，申请进入待审核队列。</text>
   </view>
 
   <view class="card">
-    <view class="row">
-      <text class="label">使用人数</text>
-      <input class="inp" type="number" placeholder="请输入人数" value="{{people}}" bindinput="onPeople"/>
+    <view class="section-head">
+      <text class="step">1</text>
+      <text class="section-title">填写使用信息</text>
     </view>
-    <view class="row">
-      <text class="label">申请理由</text>
-      <input class="inp" placeholder="请输入申请理由" value="{{reason}}" bindinput="onReason"/>
+
+    <view class="study-purpose" wx:if="{{scene==='study'}}">
+      <text class="fixed-label">申请用途</text>
+      <text class="fixed-value">个人自习</text>
+      <text class="fixed-hint">自习实行一人一约，无需重复填写用途。</text>
     </view>
-    <view class="row" style="border:none">
-      <text class="label">备注</text>
-      <input class="inp" placeholder="选填" value="{{notes}}" bindinput="onNotes"/>
+    <view wx:else>
+      <textarea class="purpose" value="{{purpose}}" maxlength="300" placeholder="请说明活动内容、课程或会议用途（至少10字）" bindinput="onPurpose"/>
+      <text class="counter">至少10字 · {{purpose.length}}/300</text>
     </view>
   </view>
 
-  <view style="padding:0 20rpx;margin-top:32rpx">
-    <button class="btn-primary btn-full" bindtap="submit" loading="{{submitting}}">确认预约</button>
+  <view class="card">
+    <view class="section-head">
+      <text class="step">2</text>
+      <text class="section-title">玉兰卡身份核验</text>
+    </view>
+    <text class="upload-hint">请选择或拍摄本人玉兰卡清晰照片。照片仅用于管理员核验预约人身份。</text>
+
+    <view class="photo-wrap" wx:if="{{campusCardLocal}}">
+      <image class="card-photo" src="{{campusCardLocal}}" mode="aspectFill"/>
+      <view class="uploading-mask" wx:if="{{uploading}}">正在上传...</view>
+    </view>
+    <button class="upload-btn" bindtap="chooseCampusCard" disabled="{{uploading||submitting}}">
+      {{campusCardLocal?'重新选择玉兰卡照片':'拍照或选择玉兰卡照片'}}
+    </button>
+    <text class="upload-success" wx:if="{{campusCardUrl}}">✓ 已上传，可提交预约申请</text>
+  </view>
+
+  <view class="notice">
+    <text>预约提交后需等待管理员审核；订阅消息授权失败不会影响本次申请。</text>
+  </view>
+
+  <view class="submit-wrap">
+    <button class="btn-primary btn-full" loading="{{submitting}}" disabled="{{submitting||uploading}}" bindtap="submit">提交预约申请</button>
   </view>
 </view>

@@ -4,6 +4,11 @@
 .top-sub { font-size: 24rpx; color: #aaa; margin-top: 4rpx; display: block; }
 .logout-btn { font-size: 26rpx; color: #999; padding: 8rpx 20rpx; border: 1rpx solid #ddd; border-radius: 8rpx; }
 
+.scene-entry { display: flex; align-items: center; justify-content: space-between; margin: 20rpx; padding: 28rpx 30rpx; color: #fff; background: linear-gradient(135deg, #6b2d8e, #8b4daf); border-radius: 18rpx; box-shadow: 0 10rpx 28rpx rgba(107,45,142,.24); }
+.scene-entry-title { display: block; font-size: 32rpx; font-weight: 700; }
+.scene-entry-sub { display: block; max-width: 570rpx; margin-top: 6rpx; font-size: 21rpx; line-height: 1.5; color: rgba(255,255,255,.78); }
+.scene-entry-arrow { font-size: 52rpx; line-height: 1; margin-left: 16rpx; }
+
 .legend { display: flex; gap: 20rpx; padding: 0 28rpx 16rpx; background: #fff; font-size: 20rpx; color: #999; }
 .leg { display: flex; align-items: center; gap: 4rpx; }
 .dot { width: 12rpx; height: 12rpx; border-radius: 3px; display: inline-block; }
@@ -29,6 +34,8 @@
 .litem:last-of-type { border-radius: 0 0 16rpx 16rpx; }
 .litem:only-of-type { border-radius: 16rpx; }
 .litem+.litem { border-top: 1rpx solid #f5f5f5; }
+.list-copy { min-width: 0; padding-right: 16rpx; }
 .lcode { font-size: 28rpx; font-weight: 700; color: #6b2d8e; }
-.ldesc { font-size: 22rpx; color: #aaa; margin-top: 2rpx; }
+.ldesc { display: block; font-size: 22rpx; color: #aaa; margin-top: 2rpx; line-height: 1.45; }
 .larr { font-size: 26rpx; color: #ddd; }
+.page-bottom { height: 100rpx; }

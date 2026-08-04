@@ -1,104 +1,109 @@
-<view wx:if="{{room}}" style="padding-bottom:40rpx">
-  <view class="card" style="padding-bottom:28rpx">
-    <view style="display:flex;justify-content:space-between;align-items:center">
-      <view style="display:flex;align-items:baseline;gap:12rpx">
-        <text style="font-size:44rpx;font-weight:700;color:#6b2d8e">{{room.room_code}}</text>
-        <text style="font-size:26rpx;color:#b0a0c0">{{room.name}}</text>
+<view wx:if="{{room}}" class="page">
+  <view class="card room-card">
+    <view class="room-head">
+      <view class="room-title">
+        <text class="room-code">{{room.room_code}}</text>
+        <text class="room-name">{{room.name}}</text>
       </view>
-      <text wx:if="{{room.can_reserve && !room.is_public && (!(room.who_can_reserve==='counselor')||isC)}}" style="font-size:24rpx;color:#fff;background:#6b2d8e;padding:10rpx 24rpx;border-radius:20rpx;font-weight:500" bindtap="goReserve">预约</text>
+      <text wx:if="{{canStartReservation}}" class="reserve-entry" bindtap="goReserve">发起预约</text>
     </view>
-    <view style="display:flex;align-items:center;gap:12rpx;margin-top:16rpx">
-      <text style="font-size:22rpx;color:#6b2d8e;background:#f5eef9;padding:4rpx 14rpx;border-radius:6rpx">{{room.category}}</text>
-      <text wx:if="{{room.has_fridge}}" style="font-size:20rpx;color:#5b8def;background:#eef3fd;padding:4rpx 14rpx;border-radius:6rpx">有冰箱</text>
-      <text wx:if="{{room.has_instruments}}" style="font-size:20rpx;color:#e67e22;background:#fef6ee;padding:4rpx 14rpx;border-radius:6rpx">有乐器</text>
+    <view class="tags">
+      <text class="category-tag">{{room.category}}</text>
+      <text wx:if="{{room.has_fridge}}" class="feature-tag fridge">有冰箱</text>
+      <text wx:if="{{room.has_instruments}}" class="feature-tag instrument">有乐器</text>
     </view>
-    <text style="display:block;font-size:26rpx;color:#999;margin-top:18rpx;line-height:1.8">{{room.description}}</text>
+    <text class="description">{{room.description}}</text>
+    <text wx:if="{{canStartReservation}}" class="allocation-hint">预约时请选择使用场景，系统将按规则与空闲情况自动分配空间，不保证分配本房间。</text>
   </view>
 
-  <block wx:if="{{room.is_public}}">
-    <view class="card">
-      <text style="font-size:26rpx;color:#888">当前状态</text>
-      <text style="font-size:36rpx;font-weight:700;color:{{statusColor}};display:block;margin-top:8rpx">{{statusText}}</text>
-      <view wx:if="{{isAdmin}}" style="display:flex;gap:12rpx;margin-top:20rpx">
-        <button class="btn-primary" style="flex:1;font-size:24rpx;padding:16rpx" bindtap="setStatus" data-s="free">空闲</button>
-        <button style="flex:1;font-size:24rpx;padding:16rpx;border-radius:14rpx;background:#e67e22;color:#fff;border:none" bindtap="setStatus" data-s="busy">较满</button>
-        <button style="flex:1;font-size:24rpx;padding:16rpx;border-radius:14rpx;background:#e0556a;color:#fff;border:none" bindtap="setStatus" data-s="crowded">已满</button>
-      </view>
+  <view wx:if="{{room.is_public}}" class="card public-card">
+    <text class="section-label">当前状态</text>
+    <text class="public-status" style="color:{{statusColor}}">{{statusText}}</text>
+    <view wx:if="{{isAdmin}}" class="status-actions">
+      <button class="status-btn free" bindtap="setStatus" data-s="free">空闲</button>
+      <button class="status-btn busy" bindtap="setStatus" data-s="busy">较满</button>
+      <button class="status-btn crowded" bindtap="setStatus" data-s="crowded">已满</button>
     </view>
-  </block>
+  </view>
 
-  <block wx:elif="{{!room.can_reserve}}">
-    <view class="card" style="background:#fef9e7"><text style="color:#b7950b">该空间不对外开放预约</text></view>
-  </block>
-  <block wx:elif="{{room.who_can_reserve === 'counselor' && !isC}}">
-    <view class="card" style="background:#fdedec"><text style="color:#c0392b">仅限辅导员预约</text></view>
-  </block>
-  <block wx:else>
-    <view class="card">
-      <text style="font-size:24rpx;color:#999;margin-bottom:16rpx;display:block">今日 {{todayDate}}</text>
+  <view wx:if="{{!room.can_reserve}}" class="card notice notice-closed">
+    <text>该空间不参与预约分配</text>
+  </view>
+  <view wx:elif="{{room.who_can_reserve === 'counselor' && !isCounselor}}" class="card notice notice-counselor">
+    <text>该空间仅限辅导员发起预约</text>
+  </view>
 
-      <!-- Timeline bar — merged segments, only gaps between different reservations -->
-      <view style="display:flex;height:32rpx;border-radius:8rpx;overflow:hidden;margin-bottom:20rpx">
+  <view wx:if="{{room.can_reserve}}" class="card timeline-card">
+    <view class="timeline-head">
+      <text class="section-title">今日占用情况</text>
+      <text class="timeline-date">{{todayDate}}</text>
+    </view>
+    <text class="privacy-note">仅展示时段是否占用，不展示预约人身份、班级或申请用途。</text>
+
+    <text wx:if="{{slotsLoading}}" class="timeline-state">加载中...</text>
+    <text wx:elif="{{slotsError}}" class="timeline-state error">{{slotsError}}</text>
+    <block wx:else>
+      <view wx:if="{{totalSlots}}" class="timeline-bar">
         <block wx:for="{{timelineSegments}}" wx:key="start">
-          <view style="width:{{(item.end-item.start)/totalSlots*100}}%;margin-left:{{index>0&&!item.available&&!timelineSegments[index-1].available?'3rpx':'0'}};background:{{item.available?'#e8e8e8':'#6b2d8e'}};border-radius:{{item.borderRadius}};flex-shrink:0" bindtap="{{item.available?'':'showSlotInfo'}}" data-name="{{item.user_name}}" data-class="{{item.user_class}}" data-people="{{item.people}}" data-reason="{{item.reason}}"></view>
+          <view class="timeline-segment {{item.available ? 'available' : 'occupied'}}" style="width:{{(item.end-item.start)/totalSlots*100}}%;border-radius:{{item.borderRadius}}"></view>
         </block>
       </view>
-
-      <!-- Time axis labels -->
-      <view style="display:flex;justify-content:space-between;font-size:18rpx;color:#ccc;margin-bottom:20rpx">
-        <text>8:00</text><text>10:00</text><text>12:00</text><text>14:00</text><text>16:00</text><text>18:00</text><text>20:00</text><text>22:00</text>
+      <view wx:if="{{axisLabels.length}}" class="time-axis">
+        <text wx:for="{{axisLabels}}" wx:key="*this">{{item}}</text>
       </view>
 
-      <!-- Detail list -->
-      <view wx:if="{{todayBlocks.length}}">
-        <view wx:for="{{todayBlocks}}" wx:key="start" style="display:flex;align-items:center;gap:12rpx;padding:12rpx 0;border-bottom:1rpx solid #f8f8f8">
-          <view style="width:8rpx;height:32rpx;background:#6b2d8e;border-radius:4rpx;flex-shrink:0"></view>
-          <view style="flex:1">
-            <text style="font-size:24rpx;font-weight:600;color:#333;display:block">{{item.user_name}} · {{item.people}}人</text>
-            <text style="font-size:20rpx;color:#aaa;display:block">{{item.reason||'无理由'}}</text>
-          </view>
-          <text style="font-size:22rpx;color:#6b2d8e;font-weight:500;flex-shrink:0">{{item.timeLabel}}</text>
+      <view wx:if="{{todayBlocks.length}}" class="occupied-list">
+        <view wx:for="{{todayBlocks}}" wx:key="start" class="occupied-row">
+          <view class="occupied-mark"></view>
+          <text class="occupied-title">已占用</text>
+          <text class="occupied-time">{{item.timeLabel}}</text>
         </view>
       </view>
-      <text wx:else style="text-align:center;color:#5b9e6d;font-size:24rpx;display:block;padding:16rpx 0">今日暂无预约</text>
-    </view>
-  </block>
-
-  <!-- 空间留言板 -->
-  <view class="card">
-    <view style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20rpx">
-      <text style="font-size:28rpx;font-weight:700;color:#444">空间留言板</text>
-      <text style="font-size:22rpx;color:#6b2d8e;padding:8rpx 20rpx;background:#f5eef9;border-radius:8rpx" bindtap="openPost">写留言</text>
-    </view>
-
-    <block wx:for="{{messages}}" wx:key="_id">
-      <view style="padding:20rpx 0;border-bottom:1rpx solid #f5f5f5">
-        <view style="display:flex;justify-content:space-between;align-items:center">
-          <text style="font-size:26rpx;font-weight:600;color:#333">{{item.user_name}}</text>
-          <text style="font-size:20rpx;color:#ccc">{{item.created_at}}</text>
-        </view>
-        <text wx:if="{{item.content}}" style="font-size:26rpx;color:#555;display:block;margin-top:10rpx;line-height:1.6">{{item.content}}</text>
-        <image wx:if="{{item.photo_url}}" src="{{item.photo_url}}" mode="widthFix" style="width:100%;border-radius:12rpx;margin-top:12rpx" bindtap="previewPhoto" data-url="{{item.photo_url}}"/>
-      </view>
+      <text wx:else class="timeline-state empty">今日暂无占用</text>
     </block>
-    <text wx:if="{{!messages.length}}" style="text-align:center;color:#ccc;font-size:26rpx;display:block;padding:40rpx 0">暂无留言，成为第一个留言的人吧</text>
   </view>
 
-  <!-- 发留言弹窗 -->
-  <view class="mask" wx:if="{{showPost}}" bindtap="closePost">
-    <view class="popup" catchtap>
-      <text style="font-size:30rpx;font-weight:700;color:#6b2d8e;text-align:center;display:block;margin-bottom:24rpx">空间留言</text>
-      <textarea style="width:100%;height:160rpx;background:#f6f5f8;border-radius:12rpx;padding:16rpx;font-size:26rpx;box-sizing:border-box" placeholder="分享你的使用感受，或上传清理后的房间照片..." value="{{postContent}}" bindinput="onPostContent" maxlength="500"/>
-      <text style="font-size:20rpx;color:#ccc;text-align:right;display:block;margin:8rpx 0">{{postContent.length||0}}/500</text>
+  <view class="card message-card">
+    <view class="message-head">
+      <text class="section-title">空间留言板</text>
+      <text class="write-message" bindtap="openPost">写留言</text>
+    </view>
+    <text class="message-rule">仅实际使用过该空间的用户可以发布留言。</text>
 
-      <view wx:if="{{postPhoto}}" style="position:relative;display:inline-block;margin-bottom:16rpx">
-        <image src="{{postPhoto}}" mode="aspectFill" style="width:160rpx;height:160rpx;border-radius:12rpx"/>
-        <text style="position:absolute;top:-12rpx;right:-12rpx;background:#333;color:#fff;width:40rpx;height:40rpx;border-radius:50%;text-align:center;line-height:40rpx;font-size:24rpx" bindtap="removePhoto">✕</text>
+    <text wx:if="{{messagesLoading}}" class="message-state">加载中...</text>
+    <text wx:elif="{{messagesError}}" class="message-state error" bindtap="loadMessages">{{messagesError}}</text>
+    <block wx:else>
+      <view wx:for="{{messages}}" wx:for-item="message" wx:key="id" class="message-row">
+        <view class="message-meta">
+          <text class="message-author">{{message.author_name}}</text>
+          <text class="message-time">{{message.createdAtLabel}}</text>
+        </view>
+        <text wx:if="{{message.content}}" class="message-content">{{message.content}}</text>
+        <view wx:if="{{message.photo_urls.length}}" class="message-photos">
+          <image wx:for="{{message.photo_urls}}" wx:for-item="photo" wx:key="*this" class="message-photo {{message.photo_urls.length===1?'single':''}}" src="{{photo}}" mode="aspectFill" bindtap="previewPhoto" data-url="{{photo}}" data-urls="{{message.photo_urls}}"/>
+        </view>
+      </view>
+      <text wx:if="{{!messages.length}}" class="message-state">暂无留言，成为第一个留言的人吧</text>
+    </block>
+  </view>
+
+  <view wx:if="{{showPost}}" class="message-mask" bindtap="closePost">
+    <view class="message-popup" catchtap="stopPopup">
+      <view class="popup-head">
+        <text class="popup-title">空间留言</text>
+        <text class="popup-close" bindtap="closePost">取消</text>
+      </view>
+      <textarea class="message-input" placeholder="分享你的使用感受，或上传空间照片..." value="{{postContent}}" bindinput="onPostContent" maxlength="500" cursor-spacing="30"/>
+      <text class="message-count">{{postContent.length||0}}/500</text>
+
+      <view wx:if="{{postPhotoDisplay}}" class="post-photo-wrap">
+        <image class="post-photo" src="{{postPhotoDisplay}}" mode="aspectFill" bindtap="previewPhoto" data-url="{{postPhotoDisplay}}"/>
+        <text class="remove-photo" bindtap="removePhoto">×</text>
       </view>
 
-      <view style="display:flex;gap:16rpx">
-        <button style="flex:1;font-size:26rpx;padding:20rpx;border-radius:12rpx;background:#f5eef9;color:#6b2d8e;border:none" bindtap="choosePhoto">{{postPhoto?'换照片':'添加照片'}}</button>
-        <button class="btn-primary" style="flex:2;font-size:26rpx;padding:20rpx" bindtap="submitPost" loading="{{posting}}">发布</button>
+      <view class="popup-actions">
+        <button class="photo-button" bindtap="choosePhoto" loading="{{photoUploading}}" disabled="{{posting||photoUploading}}">{{postPhoto?'换照片':'添加照片'}}</button>
+        <button class="publish-button" bindtap="submitPost" loading="{{posting}}" disabled="{{posting||photoUploading}}">发布</button>
       </view>
     </view>
   </view>

@@ -31,9 +31,12 @@ RULES = [
     ("A102", SceneType.study, 1, 6, UsageMode.shared),
     ("A101", SceneType.study, 2, 10, UsageMode.shared),
     ("A105", SceneType.study, 3, 10, UsageMode.shared),
-    ("A105", SceneType.meeting, 1, 500, UsageMode.exclusive),
-    ("A101", SceneType.meeting, 2, 500, UsageMode.exclusive),
-    ("A102", SceneType.meeting, 3, 500, UsageMode.exclusive),
+    # A106 is the counselor-only first candidate. Students are permission-
+    # filtered before allocation and retain A105 -> A101 -> A102 order.
+    ("A106", SceneType.meeting, 1, 6, UsageMode.exclusive),
+    ("A105", SceneType.meeting, 2, 10, UsageMode.exclusive),
+    ("A101", SceneType.meeting, 3, 10, UsageMode.exclusive),
+    ("A102", SceneType.meeting, 4, 6, UsageMode.exclusive),
     ("A103", SceneType.event, 1, 100, UsageMode.exclusive),
     ("B102", SceneType.music, 1, 4, UsageMode.exclusive),
     ("A103", SceneType.music, 2, 4, UsageMode.exclusive),
@@ -65,7 +68,7 @@ async def seed():
         if not admin:
             db.add(User(student_id="admin001", name="系统管理员", phone="13800000000", class_name="笃学书院", password_hash=hash_password("admin123"), role=UserRole.admin))
         await db.commit()
-        print("Seed complete: 12 rooms, 9 allocation rules, admin001/admin123 (change immediately).")
+        print("Seed complete: 12 rooms, 10 allocation rules, admin001/admin123 (change immediately).")
 
 
 if __name__ == "__main__":
