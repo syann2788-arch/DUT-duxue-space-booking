@@ -85,42 +85,42 @@ function goReserve() {
 
 <style scoped>
 .page { padding-bottom: 40rpx; }
-.room-code { font-size: 48rpx; font-weight: 700; color: #1a5c3a; }
-.room-name { font-size: 32rpx; color: #666; display: block; margin-top: 4rpx; }
+.room-code { font-size: 48rpx; font-weight: 700; color: #F25B15; }
+.room-name { font-size: 32rpx; color: #667180; display: block; margin-top: 4rpx; }
 .tags { display: flex; gap: 12rpx; margin-top: 16rpx; flex-wrap: wrap; }
 .tag {
-  background: #e8f5e9;
-  color: #1a5c3a;
+  background: #FEF1EA;
+  color: #B8430A;
   font-size: 22rpx;
   padding: 6rpx 16rpx;
-  border-radius: 6rpx;
+  border-radius: 9999rpx;
 }
-.tag-info { background: #e3f2fd; color: #1565c0; }
-.desc { font-size: 28rpx; color: #666; margin-top: 20rpx; line-height: 1.6; }
+.tag-info { background: #E9EFFA; color: #3D6FD1; }
+.desc { font-size: 28rpx; color: #454F5E; margin-top: 20rpx; line-height: 1.6; }
 
 .public-box {
-  background: #fafafa;
+  background: #F6F7F9;
   padding: 24rpx;
   border-radius: 12rpx;
   margin-top: 24rpx;
 }
-.public-status-label { font-size: 26rpx; color: #666; }
+.public-status-label { font-size: 26rpx; color: #667180; }
 .public-status { font-size: 32rpx; font-weight: 700; margin-left: 8rpx; }
 .admin-btns { display: flex; gap: 12rpx; margin-top: 16rpx; }
 .btn-sm {
   flex: 1;
   padding: 12rpx;
   font-size: 24rpx;
-  border-radius: 8rpx;
-  background: #4caf50;
+  border-radius: 9999rpx;
+  background: #0E9868;
   color: #fff;
   border: none;
 }
-.btn-warn { background: #ff9800; }
-.btn-danger { background: #f44336; }
+.btn-warn { background: #F25B15; }
+.btn-danger { background: #CE3F36; }
 
-.notice { margin-top: 24rpx; padding: 24rpx; background: #fff3cd; border-radius: 12rpx; }
-.notice-text { font-size: 26rpx; color: #856404; }
-.rule-text { font-size: 24rpx; color: #f44336; display: block; margin-top: 16rpx; }
-.reserve-btn { width: 100%; margin-top: 24rpx; }
+.notice { margin-top: 24rpx; padding: 24rpx; background: #FBECEB; border-radius: 12rpx; border: 1rpx solid #F3CBC8; }
+.notice-text { font-size: 26rpx; color: #CE3F36; }
+.rule-text { font-size: 24rpx; color: #CE3F36; display: block; margin-top: 16rpx; }
+.reserve-btn { width: 100%; margin-top: 24rpx; box-shadow: 0 5px 12px rgba(242,91,21,0.22); }
 </style>
