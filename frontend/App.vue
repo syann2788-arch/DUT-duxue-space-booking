@@ -16,33 +16,34 @@ export default {
 
 <style>
 page {
-  background-color: #f5f5f5;
+  background-color: #F6F7F9;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.status-free { color: #4caf50; }
-.status-busy { color: #ff9800; }
+.status-free { color: #0E9868; }
+.status-busy { color: #F25B15; }
 .status-crowded { color: #f44336; }
 .status-active { color: #2196f3; }
-.status-checked_in { color: #4caf50; }
+.status-checked_in { color: #0E9868; }
 .status-missed { color: #f44336; }
 .status-cancelled { color: #999; }
 
 .btn-primary {
-  background-color: #1a5c3a;
+  background-color: #F25B15;
   color: #fff;
   border: none;
-  border-radius: 8rpx;
+  border-radius: 9999rpx;
   padding: 20rpx 40rpx;
   font-size: 30rpx;
+  font-weight: 600;
 }
-.btn-primary:active { opacity: 0.8; }
+.btn-primary:active { opacity: 0.85; }
 
 .btn-danger {
   background-color: #f44336;
   color: #fff;
   border: none;
-  border-radius: 8rpx;
+  border-radius: 9999rpx;
   padding: 20rpx 40rpx;
   font-size: 30rpx;
 }
@@ -52,6 +53,7 @@ page {
   border-radius: 16rpx;
   padding: 24rpx;
   margin: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+  border: 1rpx solid #ECEEF2;
+  box-shadow: 0 6rpx 24rpx rgba(23, 28, 36, 0.05);
 }
 </style>

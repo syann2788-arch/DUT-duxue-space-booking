@@ -26,7 +26,7 @@
         <picker class="time-picker" mode="selector" :range="startLabels" :value="startIndex" @change="changeStart">
           <view class="time-box"><text class="muted">开始</text><text>{{ startLabels[startIndex] }}</text></view>
         </picker>
-        <text class="dash">—</text>
+        <text class="dash">-</text>
         <picker class="time-picker" mode="selector" :range="endLabels" :value="endIndex" @change="endIndex = Number($event.detail.value)">
           <view class="time-box"><text class="muted">结束</text><text>{{ endLabels[endIndex] }}</text></view>
         </picker>
@@ -67,8 +67,8 @@ import { computed, reactive, ref, onMounted, watch } from 'vue'
 import { bindWechat, createReservation, getBookingConfig, getNotificationTemplates, uploadCampusCardPhoto } from '@/api/index.js'
 
 const scenes = [
-  { value: 'study', label: '自习', icon: '📚', desc: '共享使用', allocation: '优先分配：A102 → A101 → A105' },
-  { value: 'meeting', label: '开会', icon: '👥', desc: '独占使用', allocation: '优先分配：A105 → A101 → A102' },
+  { value: 'study', label: '自习', icon: '📚', desc: '共享使用', allocation: '优先分配：A102 -> A101 -> A105' },
+  { value: 'meeting', label: '开会', icon: '👥', desc: '独占使用', allocation: '优先分配：A105 -> A101 -> A102' },
   { value: 'event', label: '大型活动', icon: '🎤', desc: 'A103 独占', allocation: '仅 A103；与 A103 钢琴练习时段互斥' },
   { value: 'music', label: '音乐练习', icon: '🎵', desc: '独占使用', allocation: 'B102 优先；A103 钢琴15:00–21:00可用' },
 ]
@@ -173,5 +173,35 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page{padding:24rpx 24rpx 60rpx;background:#f4f6f8;min-height:100vh}.hero{padding:28rpx 8rpx}.hero-title{display:block;font-size:42rpx;font-weight:700;color:#173f2d}.hero-subtitle{display:block;margin-top:8rpx;font-size:24rpx;color:#718078}.card{background:#fff;border-radius:20rpx;padding:28rpx;margin-bottom:20rpx;box-shadow:0 8rpx 30rpx rgba(20,60,40,.05)}.section-title{display:block;font-size:28rpx;font-weight:700;margin-bottom:22rpx}.scene-grid{display:grid;grid-template-columns:1fr 1fr;gap:16rpx}.scene{padding:22rpx;border:2rpx solid #e7ece9;border-radius:16rpx;display:flex;flex-direction:column}.scene.selected{border-color:#1a6b47;background:#eef8f3}.scene-icon{font-size:38rpx}.scene-name{font-size:28rpx;font-weight:700;margin-top:8rpx}.scene-desc{font-size:21rpx;color:#87928c}.allocation-note{margin-top:18rpx;padding:16rpx;background:#f6f8f7;border-radius:10rpx;font-size:23rpx;color:#496356}.field{height:88rpx;border-bottom:1rpx solid #edf0ee;display:flex;align-items:center;justify-content:space-between;font-size:26rpx}.value{color:#1a6b47}.time-row{display:flex;align-items:center;gap:16rpx;margin-top:22rpx}.time-picker{flex:1}.time-box{padding:20rpx;background:#f6f8f7;border-radius:12rpx;display:flex;flex-direction:column;gap:5rpx}.muted,.duration,.counter,.upload-hint{font-size:21rpx;color:#8a9690}.dash{color:#9aa29e}.duration{display:block;margin-top:14rpx}.number-input{text-align:right;width:180rpx}.purpose{box-sizing:border-box;width:100%;height:180rpx;margin-top:20rpx;padding:18rpx;background:#f6f8f7;border-radius:12rpx;font-size:25rpx}.counter{display:block;text-align:right}.upload-hint{display:block;margin-bottom:18rpx;line-height:1.6}.upload{background:#eef6f2;color:#1a6b47;font-size:24rpx}.card-photo{width:100%;height:300rpx;border-radius:12rpx}.uploaded{display:block;margin-top:12rpx;color:#1a6b47;font-size:22rpx}.rules{padding:8rpx 12rpx 24rpx}.rules text{display:block;font-size:22rpx;color:#6f7b75;line-height:1.8}.submit{background:#1a6b47!important;color:#fff!important;border-radius:14rpx;font-size:29rpx;font-weight:600}
+.page{padding:24rpx 24rpx 60rpx;background:#F6F7F9;min-height:100vh}
+.hero{padding:28rpx 8rpx}
+.hero-title{display:block;font-size:42rpx;font-weight:700;color:#171C24}
+.hero-subtitle{display:block;margin-top:8rpx;font-size:24rpx;color:#667180}
+.card{background:#fff;border-radius:20rpx;padding:28rpx;margin-bottom:20rpx;border:1rpx solid #ECEEF2;box-shadow:0 6rpx 24rpx rgba(23,28,36,0.05)}
+.section-title{display:block;font-size:28rpx;font-weight:700;margin-bottom:22rpx}
+.scene-grid{display:grid;grid-template-columns:1fr 1fr;gap:16rpx}
+.scene{padding:22rpx;border:2rpx solid #ECEEF2;border-radius:16rpx;display:flex;flex-direction:column}
+.scene.selected{border-color:#F25B15;background:#FEF1EA}
+.scene-icon{font-size:38rpx}
+.scene-name{font-size:28rpx;font-weight:700;margin-top:8rpx}
+.scene-desc{font-size:21rpx;color:#667180}
+.allocation-note{margin-top:18rpx;padding:16rpx;background:#F6F7F9;border-radius:10rpx;font-size:23rpx;color:#454F5E}
+.field{height:88rpx;border-bottom:1rpx solid #ECEEF2;display:flex;align-items:center;justify-content:space-between;font-size:26rpx}
+.value{color:#F25B15}
+.time-row{display:flex;align-items:center;gap:16rpx;margin-top:22rpx}
+.time-picker{flex:1}
+.time-box{padding:20rpx;background:#F6F7F9;border-radius:12rpx;display:flex;flex-direction:column;gap:5rpx}
+.muted,.duration,.counter,.upload-hint{font-size:21rpx;color:#667180}
+.dash{color:#A9B1BD}
+.duration{display:block;margin-top:14rpx}
+.number-input{text-align:right;width:180rpx}
+.purpose{box-sizing:border-box;width:100%;height:180rpx;margin-top:20rpx;padding:18rpx;background:#F6F7F9;border-radius:12rpx;font-size:25rpx}
+.counter{display:block;text-align:right}
+.upload-hint{display:block;margin-bottom:18rpx;line-height:1.6}
+.upload{background:#FEF1EA;color:#F25B15;font-size:24rpx;border-radius:9999rpx}
+.card-photo{width:100%;height:300rpx;border-radius:12rpx}
+.uploaded{display:block;margin-top:12rpx;color:#F25B15;font-size:22rpx}
+.rules{padding:8rpx 12rpx 24rpx}
+.rules text{display:block;font-size:22rpx;color:#667180;line-height:1.8}
+.submit{background:#F25B15!important;color:#fff!important;border-radius:9999rpx;font-size:29rpx;font-weight:600;box-shadow:0 5px 12px rgba(242,91,21,0.22)}
 </style>

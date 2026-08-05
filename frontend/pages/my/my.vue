@@ -115,6 +115,35 @@ onShow(load)
 </script>
 
 <style scoped>
-.page{min-height:100vh;background:#f4f6f8;padding-bottom:130rpx}.profile{display:flex;align-items:center;padding:42rpx 30rpx;background:linear-gradient(135deg,#174d35,#287253);color:#fff}.avatar{width:82rpx;height:82rpx;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:34rpx;font-weight:700}.profile-main{flex:1;margin-left:20rpx}.name{display:block;font-size:34rpx;font-weight:700}.meta{font-size:23rpx;opacity:.75}.admin{padding:10rpx 16rpx;border:1rpx solid rgba(255,255,255,.5);border-radius:10rpx;font-size:22rpx}.tabs{white-space:nowrap;background:#fff}.tabs-inner{display:flex;padding:0 16rpx}.tab{padding:24rpx 20rpx;font-size:25rpx;color:#758079}.tab.active{color:#1a6b47;font-weight:700;border-bottom:4rpx solid #1a6b47}.list{padding:20rpx}.reservation{background:#fff;border-radius:18rpx;padding:24rpx;margin-bottom:16rpx}.reservation-head{display:flex;justify-content:space-between}.room{display:block;font-size:29rpx;font-weight:700}.scene{font-size:21rpx;color:#8b958f}.status{font-size:21rpx;padding:7rpx 12rpx;border-radius:20rpx;background:#edf0ee}.s-pending{color:#a66b00;background:#fff4d8}.s-approved,.s-completed{color:#157a4d;background:#e8f7ef}.s-rejected,.s-cleanup_rejected,.s-missed{color:#b53535;background:#fdecec}.s-cleanup_pending{color:#985f00;background:#fff2d4}.time,.purpose,.note{display:block;margin-top:12rpx;font-size:24rpx;color:#5d6962}.note{padding:12rpx;background:#f6f7f6;border-radius:8rpx;color:#8a6552}.actions{display:flex;justify-content:flex-end;gap:12rpx;margin-top:18rpx}.btn{margin:0;padding:0 22rpx;line-height:62rpx;font-size:23rpx;border-radius:10rpx}.ghost{background:#f0f2f1;color:#65716a}.primary{background:#1a6b47;color:#fff}.warning{background:#dc7d19;color:#fff}.empty{text-align:center;color:#9ca49f;padding:100rpx}.reserve-fab{position:fixed;right:28rpx;bottom:110rpx;background:#1a6b47;color:#fff;border-radius:50rpx;padding:0 30rpx;font-size:25rpx;box-shadow:0 8rpx 28rpx rgba(26,107,71,.28)}
+.page{min-height:100vh;background:#F6F7F9;padding-bottom:130rpx}
+.profile{display:flex;align-items:center;padding:42rpx 30rpx;background:linear-gradient(135deg,#F1EDFB,#F6F7F9);color:#171C24}
+.avatar{width:82rpx;height:82rpx;border-radius:50%;background:linear-gradient(135deg,#F5C9B0,#F25B15);color:#B8430A;display:flex;align-items:center;justify-content:center;font-size:34rpx;font-weight:700}
+.profile-main{flex:1;margin-left:20rpx}
+.name{display:block;font-size:34rpx;font-weight:700}
+.meta{font-size:23rpx;color:#667180}
+.admin{padding:10rpx 16rpx;border:1rpx solid #ECEEF2;color:#667180;border-radius:9999rpx;font-size:22rpx}
+.tabs{white-space:nowrap;background:#fff;border-bottom:1rpx solid #ECEEF2}
+.tabs-inner{display:flex;padding:0 16rpx}
+.tab{padding:24rpx 20rpx;font-size:25rpx;color:#667180}
+.tab.active{color:#F25B15;font-weight:700;border-bottom:4rpx solid #F25B15}
+.list{padding:20rpx}
+.reservation{background:#fff;border-radius:18rpx;padding:24rpx;margin-bottom:16rpx;border:1rpx solid #ECEEF2;box-shadow:0 6rpx 24rpx rgba(23,28,36,0.05)}
+.reservation-head{display:flex;justify-content:space-between}
+.room{display:block;font-size:29rpx;font-weight:700;color:#171C24}
+.scene{font-size:21rpx;color:#667180}
+.status{font-size:21rpx;padding:7rpx 12rpx;border-radius:20rpx;background:#edf0ee}
+.s-pending{color:#a66b00;background:#fff4d8}
+.s-approved,.s-completed{color:#157a4d;background:#e8f7ef}
+.s-rejected,.s-cleanup_rejected,.s-missed{color:#b53535;background:#fdecec}
+.s-cleanup_pending{color:#985f00;background:#fff2d4}
+.time,.purpose,.note{display:block;margin-top:12rpx;font-size:24rpx;color:#454F5E}
+.note{padding:12rpx;background:#f6f7f6;border-radius:8rpx;color:#8a6552}
+.actions{display:flex;justify-content:flex-end;gap:12rpx;margin-top:18rpx}
+.btn{margin:0;padding:0 22rpx;line-height:62rpx;font-size:23rpx;border-radius:9999rpx}
+.ghost{background:#F6F7F9;color:#667180}
+.primary{background:#F25B15;color:#fff}
+.warning{background:#dc7d19;color:#fff}
+.empty{text-align:center;color:#A9B1BD;padding:100rpx}
+.reserve-fab{position:fixed;right:28rpx;bottom:110rpx;background:#F25B15;color:#fff;border-radius:9999rpx;padding:0 30rpx;font-size:25rpx;font-weight:600;box-shadow:0 8rpx 28rpx rgba(242,91,21,.28)}
 .profile-actions{display:flex;flex-direction:column;gap:8rpx}.profile-actions .admin{padding:7rpx 11rpx;font-size:19rpx;text-align:center}
 </style>

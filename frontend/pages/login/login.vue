@@ -50,7 +50,7 @@ function goRegister() {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #1a5c3a, #2e7d5a);
+  background: linear-gradient(180deg, #F1EDFB 0%, #F6F7F9 60%);
 }
 .login-card {
   background: #fff;
@@ -60,19 +60,22 @@ function goRegister() {
   display: flex;
   flex-direction: column;
   align-items: center;
+  border: 1rpx solid #ECEEF2;
+  box-shadow: 0 6rpx 24rpx rgba(23, 28, 36, 0.05);
 }
 .logo { width: 120rpx; height: 120rpx; margin-bottom: 16rpx; }
-.title { font-size: 36rpx; font-weight: 700; color: #1a5c3a; margin-bottom: 40rpx; }
+.title { font-size: 36rpx; font-weight: 700; color: #F25B15; margin-bottom: 40rpx; }
 .input {
   width: 100%;
-  border: 2rpx solid #ddd;
+  border: 2rpx solid #ECEEF2;
   border-radius: 12rpx;
   padding: 24rpx 20rpx;
   margin-bottom: 24rpx;
   font-size: 28rpx;
   box-sizing: border-box;
+  background: #F6F7F9;
 }
-.login-btn { width: 100%; margin-top: 16rpx; }
+.login-btn { width: 100%; margin-top: 16rpx; box-shadow: 0 5px 12px rgba(242,91,21,0.22); }
 .link-row { margin-top: 32rpx; }
-.link { color: #1a5c3a; font-size: 26rpx; }
+.link { color: #6B46C1; font-size: 26rpx; }
 </style>
