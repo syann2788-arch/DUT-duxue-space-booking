@@ -185,3 +185,36 @@ def test_constitution_frontend_mainline_consistent():
             if "主线" in stripped or "交付" in stripped:
                 offenders.append(f"{filename}: 可能把 frontend 声明为主线，与决策矛盾: {stripped}")
     assert not offenders, "三份宪法文档前端主线声明不一致:\n" + "\n".join(offenders)
+
+
+LEGACY_PURPLE_VALUES = {
+    "#6b2d8e", "#672987", "#7d3da0", "#9252b5", "#572073", "#8b4daf",
+    "#f1e8f6", "#f1e7f7", "#f5eef9", "#f8f1fc", "#f8f1fb", "#eee8f1",
+    "#dcd0e8", "#bda3ca", "#b0a0c0", "#d0c8d8", "#faf6fc", "#f6f5f8",
+    "#f8f3fb", "#765589", "#e0cfee", "#e8e2ed", "#d7c5df",
+}
+
+
+def test_miniprogram_no_legacy_purple():
+    """miniprogram/ 已从旧紫 #6b2d8e 体系迁移到橙紫(橙 #F25B15 + 紫 #6B46C1)。
+    旧紫色值复现是迁移回退的直接指标--色值散落 15 文件 68 处的历史证明"靠记得"
+    守不住，必须靠扫描。设计稿 colors_and_type.css 是视觉规范唯一源，旧紫不在
+    该体系内。CLAUDE.md 待办已记录迁移完成。
+    【守护: CLAUDE.md 视觉规范唯一源 / 工作约定 - UI 风格】"""
+    offenders = []
+    root = PROJECT_ROOT / "miniprogram"
+    if not root.exists():
+        return
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() not in {".wxss", ".wxml", ".json", ".js"}:
+            continue
+        text = _read(path)
+        lower = text.lower()
+        for legacy in LEGACY_PURPLE_VALUES:
+            if legacy in lower:
+                for i, line in enumerate(text.splitlines(), 1):
+                    if legacy in line.lower():
+                        offenders.append(f"{path.name}:{i} 残留旧紫 {legacy}")
+    assert not offenders, "miniprogram 不得残留旧紫色值(已迁移到橙紫):\n" + "\n".join(offenders)

@@ -19,7 +19,7 @@
   flex-direction: column;
   padding: 42rpx 32rpx 36rpx;
   color: #fff;
-  background: linear-gradient(135deg, #572073 0%, #6b2d8e 52%, #9252b5 100%);
+  background: linear-gradient(135deg, #6B46C1 0%, #F25B15 52%, #B8430A 100%);
   box-shadow: 0 12rpx 34rpx rgba(83, 29, 111, 0.2);
 }
 
@@ -68,7 +68,7 @@
 }
 
 .tab.active {
-  color: #6b2d8e;
+  color: #F25B15;
   font-weight: 700;
 }
 
@@ -79,14 +79,14 @@
   left: 22rpx;
   height: 6rpx;
   content: '';
-  background: #6b2d8e;
+  background: #F25B15;
   border-radius: 6rpx 6rpx 0 0;
 }
 
 .loading-bar {
   margin: 16rpx 24rpx 0;
   padding: 14rpx 20rpx;
-  color: #6b2d8e;
+  color: #F25B15;
   font-size: 23rpx;
   text-align: center;
   background: #eee4f4;
@@ -108,7 +108,7 @@
   padding: 24rpx 26rpx;
   overflow: hidden;
   background: #fff;
-  border: 1rpx solid #eee8f1;
+  border: 1rpx solid #ECEEF2;
   border-radius: 18rpx;
   box-sizing: border-box;
   box-shadow: 0 6rpx 22rpx rgba(70, 43, 82, 0.05);
@@ -121,10 +121,10 @@
   left: 0;
   width: 7rpx;
   content: '';
-  background: #6b2d8e;
+  background: #F25B15;
 }
 
-.stat-card.purple::before { background: #6b2d8e; }
+.stat-card.purple::before { background: #F25B15; }
 .stat-card.orange::before { background: #d48836; }
 .stat-card.blue::before { background: #447aca; }
 .stat-card.green::before { background: #40936a; }
@@ -221,7 +221,7 @@ button.full-purple-button::after {
   min-width: 132rpx;
   height: 66rpx;
   padding: 0 24rpx;
-  color: #6b2d8e;
+  color: #F25B15;
   font-size: 24rpx;
   line-height: 66rpx;
   background: #f3ebf7;
@@ -231,7 +231,7 @@ button.full-purple-button::after {
 
 .compact-btn.primary {
   color: #fff;
-  background: #6b2d8e;
+  background: #F25B15;
 }
 
 .compact-btn.approve,
@@ -265,7 +265,7 @@ button.full-purple-button::after {
 .danger-action {
   flex-shrink: 0;
   padding: 12rpx 0 12rpx 20rpx;
-  color: #6b2d8e;
+  color: #F25B15;
   font-size: 23rpx;
   font-weight: 600;
 }
@@ -283,9 +283,9 @@ button.full-purple-button::after {
 }
 
 .placeholder-card {
-  background: linear-gradient(135deg, #fff 0%, #faf6fc 100%);
+  background: linear-gradient(135deg, #fff 0%, #FEF1EA 100%);
   border-style: dashed;
-  border-color: #d7c5df;
+  border-color: #F5C9B0;
 }
 
 .placeholder-arrow,
@@ -354,14 +354,14 @@ button.full-purple-button::after {
 .scene-badge {
   display: inline-block;
   margin-top: 7rpx;
-  color: #6b2d8e;
+  color: #F25B15;
   font-size: 21rpx;
   line-height: 1.4;
 }
 
 .scene-badge {
   padding: 3rpx 12rpx;
-  background: #f1e7f7;
+  background: #FEF1EA;
   border-radius: 7rpx;
 }
 
@@ -377,8 +377,8 @@ button.full-purple-button::after {
 
 .select-pill.selected {
   color: #fff;
-  background: #6b2d8e;
-  border-color: #6b2d8e;
+  background: #F25B15;
+  border-color: #F25B15;
 }
 
 .detail-line {
@@ -419,7 +419,7 @@ button.full-purple-button::after {
   flex-shrink: 0;
   width: 128rpx;
   height: 88rpx;
-  background: #eee8f1;
+  background: #FEF1EA;
   border-radius: 10rpx;
 }
 
@@ -490,7 +490,7 @@ button.full-purple-button::after {
 .cleanup-photo {
   width: 100%;
   height: 182rpx;
-  background: #eee8f1;
+  background: #FEF1EA;
   border-radius: 12rpx;
 }
 
@@ -523,13 +523,13 @@ button.full-purple-button::after {
   color: #fff;
   font-size: 24rpx;
   line-height: 66rpx;
-  background: #6b2d8e;
+  background: #F25B15;
   border: 0;
   border-radius: 12rpx;
 }
 
 .selected-user-card {
-  border-top: 6rpx solid #6b2d8e;
+  border-top: 6rpx solid #F25B15;
 }
 
 .user-name {
@@ -546,10 +546,10 @@ button.full-purple-button::after {
   display: inline-block;
   margin-left: 12rpx;
   padding: 3rpx 11rpx;
-  color: #6b2d8e;
+  color: #F25B15;
   font-size: 19rpx;
   line-height: 1.4;
-  background: #f1e8f6;
+  background: #FEF1EA;
   border-radius: 7rpx;
   vertical-align: 3rpx;
 }
@@ -569,7 +569,7 @@ button.full-purple-button::after {
 .restriction-form {
   margin-top: 26rpx;
   padding-top: 24rpx;
-  border-top: 1rpx solid #eee8f1;
+  border-top: 1rpx solid #ECEEF2;
 }
 
 .sub-title {
@@ -637,7 +637,7 @@ button.full-purple-button::after {
 }
 
 .form-value {
-  color: #6b2d8e;
+  color: #F25B15;
   font-size: 22rpx;
 }
 
@@ -674,7 +674,7 @@ button.full-purple-button::after {
   font-size: 25rpx;
   line-height: 76rpx;
   font-weight: 600;
-  background: linear-gradient(135deg, #672987, #7d3da0);
+  background: linear-gradient(135deg, #6B46C1, #F25B15);
   border: 0;
   border-radius: 13rpx;
 }
@@ -704,7 +704,7 @@ button.full-purple-button::after {
   flex-shrink: 0;
   width: 70rpx;
   height: 70rpx;
-  color: #6b2d8e;
+  color: #F25B15;
   font-size: 28rpx;
   font-weight: 700;
   background: #eee3f3;

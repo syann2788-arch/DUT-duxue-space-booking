@@ -190,7 +190,7 @@
       <view wx:for="{{roomRules}}" wx:key="id" class="admin-card rule-card">
         <view class="rule-head">
           <view><text class="reservation-room">{{item.roomCode}} {{item.roomName}}</text><text class="scene-badge">{{item.sceneLabel}}</text></view>
-          <view class="switch-line"><text>启用</text><switch color="#6b2d8e" checked="{{item.is_enabled}}" data-id="{{item.id}}" bindchange="onRuleEnabledChange" /></view>
+          <view class="switch-line"><text>启用</text><switch color="#F25B15" checked="{{item.is_enabled}}" data-id="{{item.id}}" bindchange="onRuleEnabledChange" /></view>
         </view>
         <view class="rule-fields">
           <view class="rule-field"><text>优先级</text><input type="number" value="{{item.priority}}" data-id="{{item.id}}" data-field="priority" bindinput="onRuleInput" /></view>

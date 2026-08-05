@@ -90,7 +90,7 @@
 - `reservations` 表需要 `created_at` 降序索引（非唯一）
 - 签到二维码需外部生成（管理后台可复制 JSON），永久有效
 - 预约并发：SQLite 本地演示无 PostgreSQL 等价的 `WITH FOR UPDATE` 行锁语义，生产必须使用 PostgreSQL；行锁 + 锁内复检的并发模式见上方业务红线 #4
-- `miniprogram/` 当前仍为旧紫 `#6b2d8e`（散落 15 文件 68 处），须按视觉规范唯一源对齐到橙 `#F25B15` + 紫 `#6B46C1`，是独立迭代
+- `miniprogram/` 已从旧紫 `#6b2d8e` 迁移到橙紫（橙 `#F25B15` + 紫 `#6B46C1`），色值变量集中在 `app.wxss`，旧紫复现由守护拦截【守护: backend/guards/test_conventions.py】
 
 ## 工作约定
 

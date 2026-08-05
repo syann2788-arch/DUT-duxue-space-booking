@@ -12,15 +12,15 @@
     "pages/admin/admin"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#6b2d8e",
-    "navigationBarTextStyle": "white",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTextStyle": "black",
     "navigationBarTitleText": "笃学书院",
-    "backgroundColor": "#f3f4f6"
+    "backgroundColor": "#F6F7F9"
   },
   "tabBar": {
     "custom": true,
-    "color": "#999",
-    "selectedColor": "#6b2d8e",
+    "color": "#A9B1BD",
+    "selectedColor": "#F25B15",
     "list": [
       {
         "pagePath": "pages/index/index",

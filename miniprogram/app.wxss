@@ -1,15 +1,47 @@
-page { --purple: #6b2d8e; --bg: #f6f5f8; --card: #fff; --text: #2c2c2c; --sub: #999; --border: #eee; font-size: 28rpx; color: var(--text); background: var(--bg); }
+page {
+  --brand: #F25B15;
+  --brand-deep: #B8430A;
+  --brand-grad: linear-gradient(100deg, #6B46C1, #F25B15);
+  --brand-tint: #FEF1EA;
+  --brand-dis: #F5C9B0;
+  --brand2: #6B46C1;
+  --brand2-tint: #F1EDFB;
+  --ink: #171C24;
+  --n700: #454F5E;
+  --n500: #667180;
+  --n300: #A9B1BD;
+  --n200: #ECEEF2;
+  --bg: #F6F7F9;
+  --card: #fff;
+  --text: #2c2c2c;
+  --sub: #999;
+  --border: #eee;
+  --success: #0E9868;
+  --success-tint: #E9F8F0;
+  --danger: #CE3F36;
+  --danger-tint: #FBECEB;
+  --pending: #C9490C;
+  --pending-tint: #FDEBE0;
+  --cleanup: #9A6503;
+  --cleanup-tint: #F7EDDA;
+  --info: #3D6FD1;
+  --info-tint: #E9EFFA;
+  --shadow-cta: 0 10rpx 28rpx rgba(242, 91, 21, 0.22);
+  font-size: 28rpx;
+  color: var(--text);
+  background: var(--bg);
+}
 
 .card { background: var(--card); margin: 20rpx; padding: 30rpx; border-radius: 20rpx; box-shadow: 0 4rpx 24rpx rgba(0,0,0,.03); }
 
-.btn-primary { background: var(--purple); color: #fff; border-radius: 14rpx; font-weight: 600; border: none; }
-.btn-primary[disabled] { background: #dcd0e8; color: #bbb; }
+.btn-primary { background: var(--brand); color: #fff; border-radius: 14rpx; font-weight: 600; border: none; }
+.btn-primary[disabled] { background: var(--brand-dis); color: #fff; }
 
-.btn-outline { background: #fff; color: var(--purple); border: 2rpx solid var(--purple); border-radius: 14rpx; }
+.btn-outline { background: #fff; color: var(--brand); border: 2rpx solid var(--brand); border-radius: 14rpx; }
 
 .btn-full { width: 100%; padding: 26rpx; font-size: 30rpx; border-radius: 16rpx; }
 
-.tag-res { background: #f1e7f7; color: var(--purple); font-size: 18rpx; padding: 4rpx 14rpx; border-radius: 6rpx; }
-.tag-pub { background: #e4edfb; color: #3b7ad9; font-size: 18rpx; padding: 4rpx 14rpx; border-radius: 6rpx; }
-.tag-cou { background: #fce4e7; color: #c0392b; font-size: 18rpx; padding: 4rpx 14rpx; border-radius: 6rpx; }
+.tag-res { background: var(--brand-tint); color: var(--brand-deep); font-size: 18rpx; padding: 4rpx 14rpx; border-radius: 6rpx; }
+.tag-pub { background: var(--info-tint); color: var(--info); font-size: 18rpx; padding: 4rpx 14rpx; border-radius: 6rpx; }
+.tag-cou { background: var(--danger-tint); color: var(--danger); font-size: 18rpx; padding: 4rpx 14rpx; border-radius: 6rpx; }
 .tag-gray { background: #eee; color: #999; font-size: 18rpx; padding: 4rpx 14rpx; border-radius: 6rpx; }

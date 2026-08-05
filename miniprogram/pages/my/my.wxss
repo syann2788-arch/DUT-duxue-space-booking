@@ -1,13 +1,13 @@
 .page-my {
   min-height: 100vh;
   box-sizing: border-box;
-  background: #f6f5f8;
+  background: #F6F7F9;
   padding-bottom: 120rpx;
   padding-bottom: calc(120rpx + constant(safe-area-inset-bottom));
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
 }
 .profile { display: flex; align-items: center; padding: 40rpx 28rpx 30rpx; background: #fff; }
-.avatar { width: 80rpx; height: 80rpx; flex: none; border-radius: 50%; background: #f5eef9; display: flex; align-items: center; justify-content: center; color: #6b2d8e; font-size: 36rpx; font-weight: 700; }
+.avatar { width: 80rpx; height: 80rpx; flex: none; border-radius: 50%; background: #FEF1EA; display: flex; align-items: center; justify-content: center; color: #F25B15; font-size: 36rpx; font-weight: 700; }
 .profile-main { flex: 1; min-width: 0; margin-left: 20rpx; }
 .profile-name { display: block; color: #2c2c2c; font-size: 32rpx; font-weight: 700; }
 .profile-meta { display: block; margin-top: 5rpx; color: #999; font-size: 24rpx; }
@@ -16,10 +16,10 @@
 .ban-state.banned { color: #fff; background: #e0556a; }
 
 .quick-actions { display: flex; gap: 12rpx; margin: 20rpx; }
-.quick-card { flex: 1; min-width: 0; padding: 22rpx 10rpx; border-radius: 16rpx; background: #f5eef9; text-align: center; }
-.quick-card.primary { background: #6b2d8e; }
+.quick-card { flex: 1; min-width: 0; padding: 22rpx 10rpx; border-radius: 16rpx; background: #FEF1EA; text-align: center; }
+.quick-card.primary { background: #F25B15; }
 .quick-card.admin { background: #fef4d9; }
-.quick-title { display: block; color: #6b2d8e; font-size: 25rpx; font-weight: 700; }
+.quick-title { display: block; color: #F25B15; font-size: 25rpx; font-weight: 700; }
 .quick-sub { display: block; margin-top: 5rpx; color: #a89caf; font-size: 18rpx; }
 .quick-card.primary .quick-title, .quick-card.primary .quick-sub { color: #fff; }
 .quick-card.primary .quick-sub { opacity: .72; }
@@ -33,7 +33,7 @@
 .tabs-scroll { width: auto; margin: 0 20rpx; border-radius: 16rpx 16rpx 0 0; background: #fff; white-space: nowrap; }
 .tabs { display: flex; min-width: 100%; }
 .tab { flex: 1; min-width: 120rpx; padding: 24rpx 8rpx; color: #aaa2ad; font-size: 25rpx; text-align: center; }
-.tab.active { color: #6b2d8e; font-weight: 700; border-bottom: 4rpx solid #6b2d8e; }
+.tab.active { color: #F25B15; font-weight: 700; border-bottom: 4rpx solid #F25B15; }
 
 .reservation-list { margin: 0 20rpx; }
 .reservation-card { padding: 24rpx 26rpx; border-top: 1rpx solid #f0edf2; background: #fff; }
@@ -44,7 +44,7 @@
 .scene { display: block; margin-top: 4rpx; color: #aaa1ae; font-size: 20rpx; }
 .status { flex: none; padding: 5rpx 13rpx; border-radius: 16rpx; color: #777; background: #f0f0f0; font-size: 20rpx; }
 .s-pending { color: #a66b00; background: #fff3d5; }
-.s-approved { color: #6b2d8e; background: #f1e7f7; }
+.s-approved { color: #F25B15; background: #FEF1EA; }
 .s-rejected, .s-cleanup_rejected, .s-missed { color: #bd3c50; background: #fdebed; }
 .s-cancelled { color: #999; background: #f1f1f1; }
 .s-in_use { color: #26783c; background: #e7f5ea; }
@@ -58,9 +58,9 @@
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12rpx; margin-top: 18rpx; }
 .action-btn { width: auto; min-width: 118rpx; margin: 0; padding: 0 20rpx; border-radius: 10rpx; font-size: 22rpx; line-height: 58rpx; }
 .action-btn::after { border: none; }
-.action-btn.checkin { color: #fff; background: #6b2d8e; }
+.action-btn.checkin { color: #fff; background: #F25B15; }
 .action-btn.cancel { color: #d04a61; background: #fff; border: 1rpx solid #e8a6b1; }
 .action-btn.cleanup { color: #fff; background: #d97828; }
-.action-btn.rebook { color: #6b2d8e; background: #f5eef9; }
+.action-btn.rebook { color: #F25B15; background: #FEF1EA; }
 .action-btn[disabled] { opacity: .55; }
 .empty { padding: 100rpx 0; color: #c2bcc5; font-size: 27rpx; text-align: center; }
