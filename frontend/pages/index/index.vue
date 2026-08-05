@@ -43,7 +43,7 @@
         <text class="corridor-text">═══ 主通道 ═══</text>
         <view class="corridor-end left-end"><text class="end-text">西</text></view>
         <view class="corridor-end right-end">
-          <text class="end-text">东南门 → 东</text>
+          <text class="end-text">东南门 -> 东</text>
         </view>
       </view>
 
@@ -149,13 +149,13 @@ onMounted(async () => {
 
 <style scoped>
 .page { padding-bottom: 40rpx; }
-.quick-reserve { margin: 16rpx 20rpx; padding: 26rpx; border-radius: 16rpx; background: linear-gradient(135deg,#1a5c3a,#31815f); color:#fff; display:flex; align-items:center; justify-content:space-between; }
+.quick-reserve { margin: 16rpx 20rpx; padding: 26rpx; border-radius: 16rpx; background: linear-gradient(135deg,#6B46C1,#F25B15); color:#fff; display:flex; align-items:center; justify-content:space-between; box-shadow: 0 5px 12px rgba(242,91,21,0.22); }
 .quick-title { display:block; font-size:30rpx; font-weight:700; }
-.quick-desc { display:block; margin-top:4rpx; font-size:22rpx; opacity:.72; }
+.quick-desc { display:block; margin-top:4rpx; font-size:22rpx; opacity:.85; }
 .quick-arrow { font-size:48rpx; }
 
 .header {
-  background: linear-gradient(135deg, #1a5c3a, #2e7d5a);
+  background: linear-gradient(135deg, #6B46C1, #F25B15);
   padding: 40rpx 32rpx;
   display: flex;
   justify-content: space-between;
@@ -163,9 +163,9 @@ onMounted(async () => {
 }
 .header-info { display: flex; flex-direction: column; }
 .welcome { color: #fff; font-size: 36rpx; font-weight: 700; }
-.subtitle { color: rgba(255,255,255,0.7); font-size: 24rpx; margin-top: 4rpx; }
+.subtitle { color: rgba(255,255,255,0.85); font-size: 24rpx; margin-top: 4rpx; }
 .header-btns { display: flex; gap: 24rpx; }
-.header-btn { color: #fff; font-size: 26rpx; padding: 8rpx 16rpx; border: 2rpx solid rgba(255,255,255,0.5); border-radius: 8rpx; }
+.header-btn { color: #fff; font-size: 26rpx; padding: 8rpx 16rpx; border: 2rpx solid rgba(255,255,255,0.5); border-radius: 9999rpx; }
 
 .legend {
   display: flex;
@@ -175,21 +175,23 @@ onMounted(async () => {
   background: #fff;
   margin: 16rpx 20rpx;
   border-radius: 12rpx;
+  border: 1rpx solid #ECEEF2;
 }
-.legend-item { display: flex; align-items: center; gap: 8rpx; font-size: 22rpx; color: #666; }
+.legend-item { display: flex; align-items: center; gap: 8rpx; font-size: 22rpx; color: #667180; }
 .dot { width: 16rpx; height: 16rpx; border-radius: 4rpx; }
-.dot.green { background: #4caf50; }
-.dot.blue { background: #2196f3; }
-.dot.gray { background: #999; }
-.dot.red { background: #f44336; }
+.dot.green { background: #0E9868; }
+.dot.blue { background: #3D6FD1; }
+.dot.gray { background: #A9B1BD; }
+.dot.red { background: #CE3F36; }
 
 .floor-plan {
   background: #fff;
   margin: 16rpx 20rpx;
   padding: 24rpx 16rpx;
   border-radius: 16rpx;
+  border: 1rpx solid #ECEEF2;
 }
-.section-label { text-align: center; font-size: 22rpx; color: #999; display: block; margin: 8rpx 0; }
+.section-label { text-align: center; font-size: 22rpx; color: #A9B1BD; display: block; margin: 8rpx 0; }
 .room-row { display: flex; flex-wrap: wrap; gap: 8rpx; justify-content: center; padding: 8rpx 0; }
 .room-item {
   width: 150rpx;
@@ -202,49 +204,50 @@ onMounted(async () => {
   gap: 4rpx;
 }
 .room-item:active { opacity: 0.7; }
-.room-code { font-size: 22rpx; font-weight: 700; color: #333; }
-.room-name { font-size: 20rpx; color: #666; }
-.room-tag { font-size: 18rpx; padding: 2rpx 8rpx; border-radius: 4rpx; }
+.room-code { font-size: 22rpx; font-weight: 700; color: #171C24; }
+.room-name { font-size: 20rpx; color: #667180; }
+.room-tag { font-size: 18rpx; padding: 2rpx 8rpx; border-radius: 9999rpx; }
 
-.non-public { background: #f0f0f0; }
+.non-public { background: #F6F7F9; }
 .reservable { background: #e8f5e9; }
-.tag-reservable { background: #4caf50; color: #fff; }
-.tag-counselor { background: #f44336; color: #fff; }
-.status-free { background: #4caf50; color: #fff; }
-.status-busy { background: #ff9800; color: #fff; }
-.status-crowded { background: #f44336; color: #fff; }
+.tag-reservable { background: #0E9868; color: #fff; }
+.tag-counselor { background: #CE3F36; color: #fff; }
+.status-free { background: #0E9868; color: #fff; }
+.status-busy { background: #F25B15; color: #fff; }
+.status-crowded { background: #CE3F36; color: #fff; }
 
 .corridor {
   background: #fafafa;
   padding: 16rpx;
   text-align: center;
-  border-top: 2rpx dashed #ddd;
-  border-bottom: 2rpx dashed #ddd;
+  border-top: 2rpx dashed #ECEEF2;
+  border-bottom: 2rpx dashed #ECEEF2;
   margin: 12rpx 0;
   position: relative;
 }
-.corridor-text { font-size: 24rpx; color: #999; }
+.corridor-text { font-size: 24rpx; color: #A9B1BD; }
 .corridor-end { position: absolute; top: 50%; transform: translateY(-50%); }
 .left-end { left: 8rpx; }
 .right-end { right: 8rpx; }
-.end-text { font-size: 20rpx; color: #bbb; }
+.end-text { font-size: 20rpx; color: #A9B1BD; }
 
 .list-section { margin-top: 8rpx; }
-.section-title { font-size: 28rpx; font-weight: 600; color: #333; padding: 24rpx 20rpx 12rpx; }
+.section-title { font-size: 28rpx; font-weight: 600; color: #171C24; padding: 24rpx 20rpx 12rpx; }
 .room-card {
   background: #fff;
   margin: 8rpx 20rpx;
   padding: 24rpx;
   border-radius: 12rpx;
+  border: 1rpx solid #ECEEF2;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .room-card:active { background: #f9f9f9; }
 .card-left { display: flex; flex-direction: column; gap: 4rpx; }
-.card-code { font-size: 28rpx; font-weight: 700; color: #1a5c3a; }
-.card-name { font-size: 24rpx; color: #999; }
+.card-code { font-size: 28rpx; font-weight: 700; color: #F25B15; }
+.card-name { font-size: 24rpx; color: #667180; }
 .card-right { display: flex; align-items: center; gap: 12rpx; }
-.card-category { font-size: 24rpx; color: #666; }
-.card-arrow { font-size: 24rpx; color: #ccc; }
+.card-category { font-size: 24rpx; color: #667180; }
+.card-arrow { font-size: 24rpx; color: #A9B1BD; }
 </style>
