@@ -104,7 +104,7 @@ Page({
   data: {
     room: null,
     statusText: '',
-    statusColor: '#999999',
+    statusColor: '#A9B1BD',
     isAdmin: false,
     isCounselor: false,
     canStartReservation: false,
@@ -151,7 +151,7 @@ Page({
       this.setData({
         room,
         statusText: STATUS_TEXT[room.public_status] || '状态未知',
-        statusColor: STATUS_COLOR[room.public_status] || '#999999',
+        statusColor: STATUS_COLOR[room.public_status] || '#A9B1BD',
         isAdmin,
         isCounselor,
         canStartReservation

@@ -1,8 +1,8 @@
 .admin-page {
   min-height: 100vh;
   padding-bottom: env(safe-area-inset-bottom);
-  background: #f6f3f8;
-  color: #2f2834;
+  background: #F6F7F9;
+  color: #171C24;
 }
 
 .auth-state {
@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: center;
   min-height: 70vh;
-  color: #8f8497;
+  color: #A9B1BD;
   font-size: 26rpx;
 }
 
@@ -44,7 +44,7 @@
   width: 100%;
   white-space: nowrap;
   background: rgba(255, 255, 255, 0.97);
-  border-bottom: 1rpx solid #ece5f0;
+  border-bottom: 1rpx solid #F6F7F9;
   box-shadow: 0 5rpx 16rpx rgba(69, 38, 82, 0.05);
 }
 
@@ -62,7 +62,7 @@
   justify-content: center;
   height: 90rpx;
   padding: 0 22rpx;
-  color: #8b8091;
+  color: #667180;
   font-size: 25rpx;
   box-sizing: border-box;
 }
@@ -89,7 +89,7 @@
   color: #F25B15;
   font-size: 23rpx;
   text-align: center;
-  background: #eee4f4;
+  background: #F6F7F9;
   border-radius: 12rpx;
 }
 
@@ -125,12 +125,12 @@
 }
 
 .stat-card.purple::before { background: #F25B15; }
-.stat-card.orange::before { background: #d48836; }
+.stat-card.orange::before { background: #667180; }
 .stat-card.blue::before { background: #447aca; }
 .stat-card.green::before { background: #40936a; }
 
 .stat-number {
-  color: #3b2c43;
+  color: #171C24;
   font-size: 42rpx;
   line-height: 1.15;
   font-weight: 750;
@@ -138,7 +138,7 @@
 
 .stat-label {
   margin-top: 10rpx;
-  color: #918598;
+  color: #A9B1BD;
   font-size: 22rpx;
 }
 
@@ -146,7 +146,7 @@
   margin: 20rpx 24rpx;
   padding: 28rpx;
   background: #fff;
-  border: 1rpx solid #eee9f1;
+  border: 1rpx solid #F6F7F9;
   border-radius: 20rpx;
   box-sizing: border-box;
   box-shadow: 0 6rpx 24rpx rgba(69, 38, 82, 0.045);
@@ -186,14 +186,14 @@
 }
 
 .card-title {
-  color: #33283a;
+  color: #171C24;
   font-size: 29rpx;
   line-height: 1.4;
   font-weight: 700;
 }
 
 .card-desc {
-  color: #978d9d;
+  color: #A9B1BD;
   font-size: 22rpx;
   line-height: 1.55;
 }
@@ -224,7 +224,7 @@ button.full-purple-button::after {
   color: #F25B15;
   font-size: 24rpx;
   line-height: 66rpx;
-  background: #f3ebf7;
+  background: #F6F7F9;
   border: 0;
   border-radius: 12rpx;
 }
@@ -242,13 +242,13 @@ button.full-purple-button::after {
 
 .compact-btn.reject,
 .batch-btn.reject {
-  color: #b84754;
-  background: #fbecef;
+  color: #667180;
+  background: #F6F7F9;
 }
 
 .simple-row {
   min-height: 76rpx;
-  border-top: 1rpx solid #f1edf3;
+  border-top: 1rpx solid #F6F7F9;
 }
 
 .simple-row:first-of-type {
@@ -257,7 +257,7 @@ button.full-purple-button::after {
 
 .simple-main {
   padding-right: 20rpx;
-  color: #514657;
+  color: #171C24;
   font-size: 24rpx;
 }
 
@@ -271,13 +271,13 @@ button.full-purple-button::after {
 }
 
 .danger-action {
-  color: #bd4552;
+  color: #667180;
 }
 
 .empty-small {
   display: block;
   padding: 22rpx 0 8rpx;
-  color: #aaa1af;
+  color: #A9B1BD;
   font-size: 22rpx;
   text-align: center;
 }
@@ -291,7 +291,7 @@ button.full-purple-button::after {
 .placeholder-arrow,
 .row-arrow {
   flex-shrink: 0;
-  color: #b7a4c0;
+  color: #A9B1BD;
   font-size: 42rpx;
   line-height: 1;
 }
@@ -299,7 +299,7 @@ button.full-purple-button::after {
 .section-toolbar {
   min-height: 62rpx;
   margin: 22rpx 28rpx 2rpx;
-  color: #4b4051;
+  color: #171C24;
   font-size: 26rpx;
   font-weight: 700;
 }
@@ -317,7 +317,7 @@ button.full-purple-button::after {
 .toolbar-note {
   display: block;
   margin-top: 3rpx;
-  color: #a198a7;
+  color: #A9B1BD;
   font-size: 20rpx;
   line-height: 1.4;
   font-weight: 400;
@@ -344,7 +344,7 @@ button.full-purple-button::after {
 
 .reservation-room {
   display: block;
-  color: #35293c;
+  color: #171C24;
   font-size: 29rpx;
   line-height: 1.4;
   font-weight: 700;
@@ -368,10 +368,10 @@ button.full-purple-button::after {
 .select-pill {
   flex-shrink: 0;
   padding: 8rpx 18rpx;
-  color: #8d8194;
+  color: #667180;
   font-size: 21rpx;
-  background: #f4f1f5;
-  border: 1rpx solid #e6dfe9;
+  background: #F6F7F9;
+  border: 1rpx solid #ECEEF2;
   border-radius: 999rpx;
 }
 
@@ -384,13 +384,13 @@ button.full-purple-button::after {
 .detail-line {
   display: block;
   margin-top: 9rpx;
-  color: #8b828f;
+  color: #667180;
   font-size: 22rpx;
   line-height: 1.45;
 }
 
 .detail-line.strong {
-  color: #55485c;
+  color: #667180;
   font-weight: 600;
 }
 
@@ -398,11 +398,11 @@ button.full-purple-button::after {
   display: block;
   margin-top: 17rpx;
   padding: 18rpx 20rpx;
-  color: #625769;
+  color: #667180;
   font-size: 23rpx;
   line-height: 1.55;
   word-break: break-all;
-  background: #f8f5f9;
+  background: #F6F7F9;
   border-radius: 12rpx;
 }
 
@@ -412,7 +412,7 @@ button.full-purple-button::after {
   gap: 18rpx;
   margin-top: 18rpx;
   padding-top: 18rpx;
-  border-top: 1rpx solid #f0ebf2;
+  border-top: 1rpx solid #F6F7F9;
 }
 
 .campus-card-photo {
@@ -424,7 +424,7 @@ button.full-purple-button::after {
 }
 
 .photo-note {
-  color: #a098a5;
+  color: #A9B1BD;
   font-size: 20rpx;
   line-height: 1.5;
 }
@@ -439,11 +439,11 @@ button.full-purple-button::after {
 .empty-state {
   margin: 42rpx 24rpx;
   padding: 52rpx 20rpx;
-  color: #a39aa8;
+  color: #A9B1BD;
   font-size: 24rpx;
   text-align: center;
   background: rgba(255, 255, 255, 0.72);
-  border: 1rpx dashed #ded5e2;
+  border: 1rpx dashed #ECEEF2;
   border-radius: 18rpx;
 }
 
@@ -501,7 +501,7 @@ button.full-purple-button::after {
   margin: 22rpx 24rpx;
   padding: 14rpx;
   background: #fff;
-  border: 1rpx solid #ece5ef;
+  border: 1rpx solid #F6F7F9;
   border-radius: 18rpx;
   box-shadow: 0 6rpx 20rpx rgba(69, 38, 82, 0.04);
 }
@@ -511,7 +511,7 @@ button.full-purple-button::after {
   height: 66rpx;
   flex: 1;
   padding: 0 16rpx;
-  color: #3f3545;
+  color: #171C24;
   font-size: 24rpx;
   box-sizing: border-box;
 }
@@ -533,7 +533,7 @@ button.full-purple-button::after {
 }
 
 .user-name {
-  color: #352b3b;
+  color: #171C24;
   font-size: 30rpx;
   font-weight: 700;
 }
@@ -558,7 +558,7 @@ button.full-purple-button::after {
   display: block;
   margin-top: 8rpx;
   overflow: hidden;
-  color: #928997;
+  color: #A9B1BD;
   font-size: 21rpx;
   line-height: 1.45;
   text-overflow: ellipsis;
@@ -575,7 +575,7 @@ button.full-purple-button::after {
 .sub-title {
   display: block;
   margin-bottom: 8rpx;
-  color: #55485c;
+  color: #667180;
   font-size: 24rpx;
   font-weight: 700;
 }
@@ -585,7 +585,7 @@ button.full-purple-button::after {
   gap: 18rpx;
   min-height: 82rpx;
   padding: 12rpx 0;
-  border-bottom: 1rpx solid #f3eff5;
+  border-bottom: 1rpx solid #F6F7F9;
 }
 
 .record-row > view {
@@ -600,7 +600,7 @@ button.full-purple-button::after {
 }
 
 .record-main {
-  color: #534759;
+  color: #667180;
   font-size: 23rpx;
   line-height: 1.45;
   font-weight: 600;
@@ -609,7 +609,7 @@ button.full-purple-button::after {
 .record-sub,
 .record-time {
   margin-top: 4rpx;
-  color: #9d94a2;
+  color: #A9B1BD;
   font-size: 20rpx;
   line-height: 1.45;
 }
@@ -631,9 +631,9 @@ button.full-purple-button::after {
 
 .form-row {
   min-height: 78rpx;
-  color: #5c5062;
+  color: #667180;
   font-size: 23rpx;
-  border-bottom: 1rpx solid #f1ecf3;
+  border-bottom: 1rpx solid #F6F7F9;
 }
 
 .form-value {
@@ -645,10 +645,10 @@ button.full-purple-button::after {
   width: 180rpx;
   height: 58rpx;
   padding: 0 14rpx;
-  color: #433849;
+  color: #171C24;
   font-size: 23rpx;
   text-align: right;
-  background: #f7f4f8;
+  background: #F6F7F9;
   border-radius: 9rpx;
   box-sizing: border-box;
 }
@@ -658,11 +658,11 @@ button.full-purple-button::after {
   height: 150rpx;
   margin: 18rpx 0;
   padding: 18rpx;
-  color: #433849;
+  color: #171C24;
   font-size: 23rpx;
   line-height: 1.5;
-  background: #f7f4f8;
-  border: 1rpx solid #eee6f1;
+  background: #F6F7F9;
+  border: 1rpx solid #F6F7F9;
   border-radius: 12rpx;
   box-sizing: border-box;
 }
@@ -691,7 +691,7 @@ button.full-purple-button::after {
   margin: 0 24rpx 14rpx;
   padding: 18rpx 22rpx;
   background: #fff;
-  border: 1rpx solid #eee9f1;
+  border: 1rpx solid #F6F7F9;
   border-radius: 16rpx;
   box-sizing: border-box;
   box-shadow: 0 4rpx 18rpx rgba(69, 38, 82, 0.035);
@@ -707,21 +707,21 @@ button.full-purple-button::after {
   color: #F25B15;
   font-size: 28rpx;
   font-weight: 700;
-  background: #eee3f3;
+  background: #F6F7F9;
   border-radius: 50%;
 }
 
 .legacy-ban {
   display: block;
   margin-top: 5rpx;
-  color: #c2525e;
+  color: #667180;
   font-size: 19rpx;
 }
 
 .switch-line {
   flex-shrink: 0;
   gap: 8rpx;
-  color: #817587;
+  color: #667180;
   font-size: 21rpx;
 }
 
@@ -740,10 +740,10 @@ button.full-purple-button::after {
 .rule-field {
   min-width: 0;
   padding: 16rpx;
-  color: #8c8192;
+  color: #667180;
   font-size: 20rpx;
-  background: #f8f5f9;
-  border: 1rpx solid #eee7f1;
+  background: #F6F7F9;
+  border: 1rpx solid #F6F7F9;
   border-radius: 11rpx;
   box-sizing: border-box;
 }
@@ -755,7 +755,7 @@ button.full-purple-button::after {
 .rule-field input {
   height: 52rpx;
   margin-top: 4rpx;
-  color: #423648;
+  color: #171C24;
   font-size: 25rpx;
   font-weight: 600;
 }
@@ -775,7 +775,7 @@ button.full-purple-button::after {
   gap: 18rpx;
   min-height: 100rpx;
   padding: 13rpx 0;
-  border-bottom: 1rpx solid #f0ebf2;
+  border-bottom: 1rpx solid #F6F7F9;
 }
 
 .setting-copy {
@@ -784,14 +784,14 @@ button.full-purple-button::after {
 }
 
 .setting-label {
-  color: #504456;
+  color: #171C24;
   font-size: 23rpx;
   line-height: 1.45;
 }
 
 .setting-key {
   margin-top: 3rpx;
-  color: #aaa0ae;
+  color: #A9B1BD;
   font-family: monospace;
   font-size: 18rpx;
 }
@@ -801,11 +801,11 @@ button.full-purple-button::after {
   width: 208rpx;
   height: 62rpx;
   padding: 0 14rpx;
-  color: #433849;
+  color: #171C24;
   font-size: 23rpx;
   text-align: right;
-  background: #f7f4f8;
-  border: 1rpx solid #ebe3ee;
+  background: #F6F7F9;
+  border: 1rpx solid #F6F7F9;
   border-radius: 10rpx;
   box-sizing: border-box;
 }

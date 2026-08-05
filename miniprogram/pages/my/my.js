@@ -376,6 +376,10 @@ Page({
     wx.navigateTo({ url: '/pages/admin/admin' })
   },
 
+  goReserve() {
+    wx.navigateTo({ url: '/pages/reserve/reserve' })
+  },
+
   async enableNotifications() {
     if (this.data.notificationLoading) return
     this.setData({ notificationLoading: true })

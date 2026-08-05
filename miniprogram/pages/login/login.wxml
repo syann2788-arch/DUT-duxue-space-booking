@@ -1,11 +1,12 @@
 <view class="page">
   <view class="card-login">
+    <image class="logo" src="/static/logo.png" mode="aspectFit" />
     <view class="brand">笃学书院</view>
     <view class="sub">空间预约系统</view>
 
     <view class="fields">
-      <input class="inp" placeholder="学号" placeholder-style="font-size:26rpx;color:#bfb8c8" bindinput="onId" value="{{id}}"/>
-      <input class="inp" type="password" placeholder="密码" placeholder-style="font-size:26rpx;color:#bfb8c8" bindinput="onPass" value="{{pw}}"/>
+      <input class="inp" placeholder="学号" placeholder-style="font-size:26rpx;color:#A9B1BD" bindinput="onId" value="{{id}}"/>
+      <input class="inp" type="password" placeholder="密码" placeholder-style="font-size:26rpx;color:#A9B1BD" bindinput="onPass" value="{{pw}}"/>
     </view>
 
     <button class="btn btn-full" bindtap="doLogin" loading="{{loading}}">登录</button>

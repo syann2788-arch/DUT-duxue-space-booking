@@ -32,7 +32,7 @@ page {
   background: var(--bg);
 }
 
-.card { background: var(--card); margin: 20rpx; padding: 30rpx; border-radius: 20rpx; box-shadow: 0 4rpx 24rpx rgba(0,0,0,.03); }
+.card { background: var(--card); margin: 20rpx; padding: 30rpx; border-radius: 20rpx; border: 1rpx solid var(--n200); box-shadow: 0 6rpx 24rpx rgba(23, 28, 36, 0.05); }
 
 .btn-primary { background: var(--brand); color: #fff; border-radius: 14rpx; font-weight: 600; border: none; }
 .btn-primary[disabled] { background: var(--brand-dis); color: #fff; }

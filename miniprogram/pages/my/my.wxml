@@ -63,4 +63,5 @@
   </view>
 
   <view wx:if="{{!loading&&!list.length}}" class="empty">暂无记录</view>
+  <view class="reserve-fab" bindtap="goReserve">＋ 发起预约</view>
 </view>
