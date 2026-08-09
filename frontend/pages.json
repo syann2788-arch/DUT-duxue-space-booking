@@ -8,96 +8,96 @@
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "笃学书院",
-        "navigationBarBackgroundColor": "#1a5c3a",
-        "navigationBarTextStyle": "white"
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black"
       }
     },
     {
       "path": "pages/login/login",
       "style": {
         "navigationBarTitleText": "登录",
-        "navigationBarBackgroundColor": "#1a5c3a",
-        "navigationBarTextStyle": "white"
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black"
       }
     },
     {
       "path": "pages/register/register",
       "style": {
         "navigationBarTitleText": "注册",
-        "navigationBarBackgroundColor": "#1a5c3a",
-        "navigationBarTextStyle": "white"
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black"
       }
     },
     {
       "path": "pages/room/room",
       "style": {
         "navigationBarTitleText": "房间详情",
-        "navigationBarBackgroundColor": "#1a5c3a",
-        "navigationBarTextStyle": "white"
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black"
       }
     },
     {
       "path": "pages/reserve/reserve",
       "style": {
         "navigationBarTitleText": "预约空间",
-        "navigationBarBackgroundColor": "#1a5c3a",
-        "navigationBarTextStyle": "white"
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black"
       }
     },
     {
       "path": "pages/my/my",
       "style": {
         "navigationBarTitleText": "我的",
-        "navigationBarBackgroundColor": "#1a5c3a",
-        "navigationBarTextStyle": "white"
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black"
       }
     },
     {
       "path": "pages/admin/dashboard",
       "style": {
         "navigationBarTitleText": "管理后台",
-        "navigationBarBackgroundColor": "#8b0000",
-        "navigationBarTextStyle": "white"
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black"
       }
     },
     {
       "path": "pages/admin/counselors",
       "style": {
         "navigationBarTitleText": "辅导员管理",
-        "navigationBarBackgroundColor": "#8b0000",
-        "navigationBarTextStyle": "white"
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black"
       }
     },
     {
       "path": "pages/admin/users",
       "style": {
         "navigationBarTitleText": "用户管理",
-        "navigationBarBackgroundColor": "#8b0000",
-        "navigationBarTextStyle": "white"
+        "navigationBarBackgroundColor": "#FFFFFF",
+        "navigationBarTextStyle": "black"
       }
     },
     {
       "path": "pages/admin/reservations",
-      "style": { "navigationBarTitleText": "预约审核", "navigationBarBackgroundColor": "#263b32", "navigationBarTextStyle": "white" }
+      "style": { "navigationBarTitleText": "预约审核", "navigationBarBackgroundColor": "#FFFFFF", "navigationBarTextStyle": "black" }
     },
     {
       "path": "pages/admin/cleanup",
-      "style": { "navigationBarTitleText": "清扫复核", "navigationBarBackgroundColor": "#263b32", "navigationBarTextStyle": "white" }
+      "style": { "navigationBarTitleText": "清扫复核", "navigationBarBackgroundColor": "#FFFFFF", "navigationBarTextStyle": "black" }
     },
     {
       "path": "pages/admin/settings",
-      "style": { "navigationBarTitleText": "系统配置", "navigationBarBackgroundColor": "#263b32", "navigationBarTextStyle": "white" }
+      "style": { "navigationBarTitleText": "系统配置", "navigationBarBackgroundColor": "#FFFFFF", "navigationBarTextStyle": "black" }
     }
   ],
   "globalStyle": {
-    "navigationBarBackgroundColor": "#1a5c3a",
-    "navigationBarTextStyle": "white",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTextStyle": "black",
     "navigationBarTitleText": "笃学书院",
-    "backgroundColor": "#f5f5f5"
+    "backgroundColor": "#F6F7F9"
   },
   "tabBar": {
-    "color": "#999999",
-    "selectedColor": "#1a5c3a",
+    "color": "#A9B1BD",
+    "selectedColor": "#F25B15",
     "backgroundColor": "#ffffff",
     "borderStyle": "black",
     "list": [

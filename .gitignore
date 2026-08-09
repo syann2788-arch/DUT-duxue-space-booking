@@ -8,6 +8,8 @@ cloudfunctions/**/node_modules/
 !.env.example
 backend/.env
 backend/*.db
+backend/backups/
+backend/.runtime/
 backend/uploads/
 backend/test_*.db
 frontend/node_modules/

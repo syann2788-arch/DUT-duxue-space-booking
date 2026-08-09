@@ -1,2 +1,2 @@
-.inp { width: 100%; height: 84rpx; line-height: 84rpx; padding: 0 16rpx; border-bottom: 2rpx solid #eee; font-size: 28rpx; color: #2c2c2c; margin-bottom: 14rpx; box-sizing: border-box; }
+.inp { width: 100%; height: 84rpx; line-height: 84rpx; padding: 0 16rpx; border-bottom: 2rpx solid #eee; font-size: 28rpx; color: #333333; margin-bottom: 14rpx; box-sizing: border-box; }
 .field-label { display: block; margin: 18rpx 0 8rpx; color: #4d3d54; font-size: 24rpx; font-weight: 600; }

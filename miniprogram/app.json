@@ -12,15 +12,15 @@
     "pages/admin/admin"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#6b2d8e",
-    "navigationBarTextStyle": "white",
-    "navigationBarTitleText": "笃学书院",
-    "backgroundColor": "#f3f4f6"
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "笃学书院空间预约",
+    "backgroundColor": "#F8F6FA"
   },
   "tabBar": {
     "custom": true,
-    "color": "#999",
-    "selectedColor": "#6b2d8e",
+    "color": "#777777",
+    "selectedColor": "#612276",
     "list": [
       {
         "pagePath": "pages/index/index",

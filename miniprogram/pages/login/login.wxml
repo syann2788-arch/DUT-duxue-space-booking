@@ -5,9 +5,9 @@
 
     <view class="fields">
       <text class="field-label">学号</text>
-      <input class="inp" aria-label="学号" placeholder="请输入学号" placeholder-style="font-size:26rpx;color:#bfb8c8" bindinput="onId" value="{{id}}"/>
+      <input class="inp" aria-label="学号" placeholder="请输入学号" placeholder-style="font-size:26rpx;color:#777777" bindinput="onId" value="{{id}}"/>
       <text class="field-label">密码</text>
-      <input class="inp" aria-label="密码" type="password" placeholder="请输入密码" placeholder-style="font-size:26rpx;color:#bfb8c8" bindinput="onPass" value="{{pw}}"/>
+      <input class="inp" aria-label="密码" type="password" placeholder="请输入密码" placeholder-style="font-size:26rpx;color:#777777" bindinput="onPass" value="{{pw}}"/>
     </view>
 
     <button class="btn btn-full" bindtap="doLogin" loading="{{loading}}">登录</button>

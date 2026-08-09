@@ -35,7 +35,16 @@
   "compileType": "miniprogram",
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": ".pytest_cache"
+      },
+      {
+        "type": "prefix",
+        "value": "pytest-cache-files-"
+      }
+    ],
     "include": []
   },
   "editorSetting": {}

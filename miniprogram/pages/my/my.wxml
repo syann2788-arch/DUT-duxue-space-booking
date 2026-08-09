@@ -76,4 +76,5 @@
   </view>
 
   <view wx:if="{{loadState==='empty'}}" class="empty">暂无记录</view>
+  <view class="reserve-fab" bindtap="goReserve" aria-role="button" aria-label="发起预约">＋ 发起预约</view>
 </view>

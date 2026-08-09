@@ -1,9 +1,9 @@
 .phone-row { display: flex; align-items: center; gap: 12rpx; margin-bottom: 14rpx; }
-.inp-half { width: 70%; height: 84rpx; line-height: 84rpx; padding: 0 16rpx; border-bottom: 2rpx solid #eee; font-size: 28rpx; color: #2c2c2c; box-sizing: border-box; }
-.code-btn { width: 30%; font-size: 28rpx; background: #f5eef9; color: #6b2d8e; border: none; border-radius: 10rpx; padding: 0; line-height: 84rpx; text-align: center; }
+.inp-half { width: 70%; height: 84rpx; line-height: 84rpx; padding: 0 16rpx; border-bottom: 2rpx solid #eee; font-size: 28rpx; color: #333333; box-sizing: border-box; }
+.code-btn { width: 30%; font-size: 28rpx; background: #F8F6FA; color: #612276; border: none; border-radius: 10rpx; padding: 0; line-height: 84rpx; text-align: center; }
 .code-btn::after { border: none; }
 .code-btn[disabled] { background: #f5f5f5; color: #ccc; }
-.inp { width: 100%; height: 84rpx; line-height: 84rpx; padding: 0 16rpx; border-bottom: 2rpx solid #eee; font-size: 28rpx; color: #2c2c2c; margin-bottom: 14rpx; box-sizing: border-box; }
-.reset-notice { padding: 30rpx; margin-bottom: 32rpx; border-radius: 16rpx; background: #f8f3fb; }
-.reset-title { display: block; color: #6b2d8e; font-size: 28rpx; font-weight: 700; }
+.inp { width: 100%; height: 84rpx; line-height: 84rpx; padding: 0 16rpx; border-bottom: 2rpx solid #eee; font-size: 28rpx; color: #333333; margin-bottom: 14rpx; box-sizing: border-box; }
+.reset-notice { padding: 30rpx; margin-bottom: 32rpx; border-radius: 16rpx; background: #F8F6FA; }
+.reset-title { display: block; color: #612276; font-size: 28rpx; font-weight: 700; }
 .reset-copy { display: block; margin-top: 16rpx; color: #777; font-size: 25rpx; line-height: 1.8; }

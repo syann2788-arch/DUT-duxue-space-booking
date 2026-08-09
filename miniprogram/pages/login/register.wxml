@@ -1,6 +1,6 @@
-<view style="min-height:100vh;background:#f6f5f8;padding:30rpx 0">
+<view style="min-height:100vh;background:#F8F6FA;padding:30rpx 0">
   <view class="card" style="margin-top:0">
-    <view style="font-size:32rpx;font-weight:700;color:#6b2d8e;text-align:center;margin-bottom:40rpx">注册</view>
+    <view style="font-size:32rpx;font-weight:700;color:#612276;text-align:center;margin-bottom:40rpx">注册</view>
 
     <text class="field-label">学号</text>
     <input class="inp" aria-label="学号" placeholder="请输入学号" bindinput="onF" data-key="student_id"/>

@@ -1,6 +1,6 @@
-.form-page { min-height: 100vh; padding: 4rpx 0 48rpx; background: #f6f5f8; }
+.form-page { min-height: 100vh; padding: 4rpx 0 48rpx; background: #F8F6FA; }
 
-.summary-card { padding: 32rpx; background: linear-gradient(135deg, #5b237a, #7b3d9b); }
+.summary-card { padding: 32rpx; background: linear-gradient(135deg, #171C24, #667180); }
 .summary-top { display: flex; align-items: flex-start; justify-content: space-between; }
 .title { display: inline-block; color: #fff; font-size: 38rpx; font-weight: 700; }
 .auto-tag { display: inline-block; margin-left: 14rpx; padding: 5rpx 12rpx; border: 1rpx solid rgba(255,255,255,.45); border-radius: 6rpx; color: rgba(255,255,255,.88); font-size: 19rpx; vertical-align: 5rpx; }
@@ -9,25 +9,25 @@
 .summary-hint { display: block; margin-top: 14rpx; color: rgba(255,255,255,.67); font-size: 21rpx; line-height: 1.6; }
 
 .section-head { display: flex; align-items: center; margin-bottom: 24rpx; }
-.step { width: 42rpx; height: 42rpx; margin-right: 14rpx; border-radius: 50%; background: #6b2d8e; color: #fff; text-align: center; line-height: 42rpx; font-size: 22rpx; font-weight: 700; }
-.section-title { color: #403746; font-size: 30rpx; font-weight: 700; }
+.step { width: 42rpx; height: 42rpx; margin-right: 14rpx; border-radius: 50%; background: #612276; color: #fff; text-align: center; line-height: 42rpx; font-size: 22rpx; font-weight: 700; }
+.section-title { color: #171C24; font-size: 30rpx; font-weight: 700; }
 
-.study-purpose { padding: 22rpx; border-radius: 14rpx; background: #f8f3fa; }
-.fixed-label { display: block; color: #8f8297; font-size: 21rpx; }
-.fixed-value { display: block; margin-top: 7rpx; color: #5d286f; font-size: 29rpx; font-weight: 700; }
-.fixed-hint { display: block; margin-top: 8rpx; color: #a79dab; font-size: 20rpx; }
+.study-purpose { padding: 22rpx; border-radius: 14rpx; background: #F8F6FA; }
+.fixed-label { display: block; color: #777777; font-size: 21rpx; }
+.fixed-value { display: block; margin-top: 7rpx; color: #171C24; font-size: 29rpx; font-weight: 700; }
+.fixed-hint { display: block; margin-top: 8rpx; color: #777777; font-size: 20rpx; }
 
-.purpose { width: 100%; height: 190rpx; padding: 20rpx; border: 2rpx solid #e6dce9; border-radius: 14rpx; box-sizing: border-box; background: #fbf9fc; color: #403746; font-size: 26rpx; line-height: 1.55; }
-.counter { display: block; margin-top: 9rpx; color: #aaa1af; font-size: 20rpx; text-align: right; }
+.purpose { width: 100%; height: 190rpx; padding: 20rpx; border: 2rpx solid #EAE3ED; border-radius: 14rpx; box-sizing: border-box; background: #F8F6FA; color: #171C24; font-size: 26rpx; line-height: 1.55; }
+.counter { display: block; margin-top: 9rpx; color: #777777; font-size: 20rpx; text-align: right; }
 
-.upload-hint { display: block; margin-bottom: 20rpx; color: #84798b; font-size: 23rpx; line-height: 1.7; }
-.photo-wrap { position: relative; width: 100%; height: 300rpx; margin-bottom: 16rpx; overflow: hidden; border-radius: 14rpx; background: #f2eef4; }
+.upload-hint { display: block; margin-bottom: 20rpx; color: #667180; font-size: 23rpx; line-height: 1.7; }
+.photo-wrap { position: relative; width: 100%; height: 300rpx; margin-bottom: 16rpx; overflow: hidden; border-radius: 14rpx; background: #F8F6FA; }
 .card-photo { width: 100%; height: 100%; }
 .uploading-mask { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; background: rgba(43,25,51,.55); color: #fff; font-size: 25rpx; }
-.upload-btn { width: 100%; border: 2rpx dashed #bda3ca; border-radius: 13rpx; background: #f8f1fb; color: #6b2d8e; font-size: 25rpx; }
+.upload-btn { width: 100%; border: 2rpx dashed #DCCFE1; border-radius: 13rpx; background: #F8F6FA; color: #612276; font-size: 25rpx; }
 .upload-btn::after { border: none; }
-.upload-success { display: block; margin-top: 13rpx; color: #6b2d8e; font-size: 22rpx; }
+.upload-success { display: block; margin-top: 13rpx; color: #612276; font-size: 22rpx; }
 
-.notice { margin: 4rpx 30rpx 24rpx; padding: 18rpx 20rpx; border-radius: 12rpx; background: #f0e8f5; }
-.notice text { color: #75647e; font-size: 21rpx; line-height: 1.65; }
+.notice { margin: 4rpx 30rpx 24rpx; padding: 18rpx 20rpx; border-radius: 12rpx; background: #F8F6FA; }
+.notice text { color: #667180; font-size: 21rpx; line-height: 1.65; }
 .submit-wrap { padding: 0 20rpx; }
