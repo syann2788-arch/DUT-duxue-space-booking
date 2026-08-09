@@ -6,7 +6,7 @@ from openpyxl import load_workbook
 from sqlalchemy import select
 from conftest import auth_header
 from app.database import async_session
-from app.models import Reservation, ReservationStatus, Room, SceneType, UsageMode, User, UserRole
+from app.models import CleanupVerification, Reservation, ReservationStatus, Room, SceneType, UsageMode, User, UserRole
 
 
 async def force_finished(reservation_id: int):
@@ -17,14 +17,28 @@ async def force_finished(reservation_id: int):
         await db.commit()
 
 
-async def force_missed(reservation_ids: list[int]):
+async def force_cleanup_review(reservation_ids: list[int]):
     async with async_session() as db:
         for reservation_id in reservation_ids:
             reservation = await db.get(Reservation, reservation_id)
             reservation.date = date.today() - timedelta(days=1)
             reservation.start_minute = 8 * 60
             reservation.end_minute = 8 * 60 + 30
-            reservation.status = ReservationStatus.approved
+            reservation.status = ReservationStatus.cleanup_pending
+            db.add(CleanupVerification(
+                reservation_id=reservation_id,
+                photo_urls=[f"/uploads/cleanup_{reservation_id}.jpg"],
+            ))
+        await db.commit()
+
+
+async def force_approved_past(reservation_id: int):
+    async with async_session() as db:
+        reservation = await db.get(Reservation, reservation_id)
+        reservation.date = date.today() - timedelta(days=1)
+        reservation.start_minute = 8 * 60
+        reservation.end_minute = 8 * 60 + 30
+        reservation.status = ReservationStatus.approved
         await db.commit()
 
 
@@ -470,7 +484,37 @@ def test_allocation_review_limit_priority_and_export(client):
     assert "照片无法确认" in profile["restriction_reason"]
 
 
-def test_three_violations_trigger_thirty_day_ban(client):
+def test_approved_booking_auto_advances_without_checkin_or_no_show_penalty(client):
+    token = register(client, 10)
+    day = (date.today() + timedelta(days=1)).isoformat()
+    created = client.post("/api/reservations", headers=auth_header(token), json={
+        "scene": "study", "date": day, "start_slot": 4, "end_slot": 5,
+        "people_count": 1, "purpose": "个人自习",
+        "campus_card_photo_url": "/uploads/campus_card_test.jpg",
+    })
+    assert created.status_code == 201, created.text
+
+    admin_login = client.post("/api/auth/login", json={"student_id": "admin001", "password": "admin123"})
+    admin = auth_header(admin_login.json()["access_token"])
+    reviewed = client.post("/api/admin/reservations/review", headers=admin, json={
+        "reservation_ids": [created.json()["id"]], "decision": "approved", "note": "测试通过",
+    })
+    assert reviewed.status_code == 200
+
+    # Move the booking into the past. A single state refresh must go directly
+    # to cleanup, without creating a missed/no-show violation.
+    asyncio.run(force_approved_past(created.json()["id"]))
+
+    mine = client.get("/api/reservations/my", headers=auth_header(token))
+    assert mine.status_code == 200
+    item = next(value for value in mine.json() if value["id"] == created.json()["id"])
+    assert item["status"] == "cleanup_pending"
+    users = client.get("/api/admin/users?search=20260010", headers=admin).json()
+    violations = client.get(f"/api/admin/users/{users[0]['id']}/violations", headers=admin).json()
+    assert violations == []
+
+
+def test_three_cleanup_violations_trigger_thirty_day_ban(client):
     token = register(client, 11)
     admin_login = client.post("/api/auth/login", json={"student_id": "admin001", "password": "admin123"})
     admin = auth_header(admin_login.json()["access_token"])
@@ -492,8 +536,21 @@ def test_three_violations_trigger_thirty_day_ban(client):
         "reservation_ids": reservation_ids, "decision": "approved", "note": "测试通过",
     })
     assert reviewed.status_code == 200
-    asyncio.run(force_missed(reservation_ids))
-    client.get("/api/reservations/my", headers=auth_header(token))
+    asyncio.run(force_cleanup_review(reservation_ids))
+    cleanup_queue = client.get("/api/admin/cleanup", headers=admin).json()
+    cleanup_ids = {
+        item["id"]: item["cleanup"]["id"]
+        for item in cleanup_queue
+        if item["id"] in reservation_ids
+    }
+    assert set(cleanup_ids) == set(reservation_ids)
+    for reservation_id in reservation_ids:
+        rejected = client.post(
+            f"/api/admin/cleanup/{cleanup_ids[reservation_id]}/review",
+            headers=admin,
+            json={"decision": "rejected", "note": "现场清扫核验不合格", "restrict_user": False},
+        )
+        assert rejected.status_code == 200, rejected.text
 
     # Use the admin API instead of relying on database-assigned user ids.
     users = client.get("/api/admin/users?search=20260011", headers=admin).json()
@@ -501,6 +558,7 @@ def test_three_violations_trigger_thirty_day_ban(client):
     violations = client.get(f"/api/admin/users/{user_id}/violations", headers=admin).json()
     restrictions = client.get(f"/api/admin/users/{user_id}/restrictions", headers=admin).json()
     assert len(violations) == 3
+    assert {item["type"] for item in violations} == {"cleanup_failed"}
     automatic = next(item for item in restrictions if "自动禁约30天" in item["reason"])
     assert automatic["level"] == "timed"
     profile = client.get("/api/auth/me", headers=auth_header(token)).json()

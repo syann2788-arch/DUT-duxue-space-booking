@@ -11,15 +11,15 @@
   </view>
 
   <view class="quick-actions">
-    <view class="quick-card" bindtap="enableNotifications">
+    <view class="quick-card" bindtap="enableNotifications" aria-role="button" aria-label="通知设置，预约进度提醒">
       <text class="quick-title">{{notificationLoading?'设置中…':'通知设置'}}</text>
       <text class="quick-sub">预约进度提醒</text>
     </view>
-    <view class="quick-card primary" bindtap="scanCheckin">
-      <text class="quick-title">扫码签到</text>
-      <text class="quick-sub">扫描房间二维码</text>
+    <view class="quick-card primary" bindtap="goCurrentTask" aria-role="button" aria-label="{{currentTask.title}}，{{currentTask.sub}}">
+      <text class="quick-title">{{currentTask.title}}</text>
+      <text class="quick-sub">{{currentTask.sub}}</text>
     </view>
-    <view wx:if="{{isAdmin}}" class="quick-card admin" bindtap="goAdmin">
+    <view wx:if="{{isAdmin}}" class="quick-card admin" bindtap="goAdmin" aria-role="button" aria-label="进入管理后台">
       <text class="quick-title">管理后台</text>
       <text class="quick-sub">审核与管理</text>
     </view>
@@ -32,11 +32,18 @@
 
   <scroll-view scroll-x class="tabs-scroll" enhanced="true" show-scrollbar="false">
     <view class="tabs">
-      <text wx:for="{{tabs}}" wx:key="value" class="tab {{filter===item.value?'active':''}}" bindtap="setFilter" data-f="{{item.value}}">{{item.label}}</text>
+      <text wx:for="{{tabs}}" wx:key="value" class="tab {{filter===item.value?'active':''}}" bindtap="setFilter" data-f="{{item.value}}" aria-role="tab" aria-selected="{{filter===item.value}}" aria-label="筛选{{item.label}}预约">{{item.label}}</text>
     </view>
   </scroll-view>
 
   <view wx:if="{{loading&&!list.length}}" class="empty">加载中…</view>
+
+  <view wx:if="{{loadState==='error'}}" class="load-error" aria-live="assertive">
+    <text class="load-error-title">预约记录加载失败</text>
+    <text class="load-error-message">{{loadError}}</text>
+    <button class="retry-btn" bindtap="retryLoad">重新加载</button>
+    <text wx:if="{{list.length}}" class="stale-note">当前仍显示上次成功加载的记录</text>
+  </view>
 
   <view class="reservation-list">
     <view wx:for="{{list}}" wx:key="id" class="reservation-card">
@@ -53,8 +60,14 @@
       <text wx:if="{{item.reviewNote}}" class="note">审核备注：{{item.reviewNote}}</text>
       <text wx:if="{{item.cleanupNote}}" class="note warning-note">清扫备注：{{item.cleanupNote}}</text>
 
-      <view wx:if="{{item.canCheckin||item.canCancel||item.canCleanup||item.canRebook}}" class="actions">
-        <button wx:if="{{item.canCheckin}}" class="action-btn checkin" bindtap="doCheckin" data-id="{{item.id}}" loading="{{actionId===item.id}}" disabled="{{actionId}}">签到</button>
+      <view wx:if="{{item.flowVisible}}" class="status-flow">
+        <view wx:for="{{item.flow}}" wx:key="label" wx:for-item="flowItem" class="flow-item {{flowItem.state}}">
+          <view class="flow-dot"></view>
+          <text class="flow-label">{{flowItem.label}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{item.canCancel||item.canCleanup||item.canRebook}}" class="actions">
         <button wx:if="{{item.canCancel}}" class="action-btn cancel" bindtap="doCancel" data-id="{{item.id}}" loading="{{actionId===item.id}}" disabled="{{actionId}}">取消</button>
         <button wx:if="{{item.canCleanup}}" class="action-btn cleanup" bindtap="uploadCleanup" data-id="{{item.id}}" loading="{{cleanupSubmittingId===item.id}}" disabled="{{cleanupSubmittingId}}">{{item.cleanupLabel}}</button>
         <button wx:if="{{item.canRebook}}" class="action-btn rebook" bindtap="rebook" data-scene="{{item.scene}}">再次预约</button>
@@ -62,6 +75,6 @@
     </view>
   </view>
 
-  <view wx:if="{{!loading&&!list.length}}" class="empty">暂无记录</view>
-  <view class="reserve-fab" bindtap="goReserve">＋ 发起预约</view>
+  <view wx:if="{{loadState==='empty'}}" class="empty">暂无记录</view>
+  <view class="reserve-fab" bindtap="goReserve" aria-role="button" aria-label="发起预约">＋ 发起预约</view>
 </view>

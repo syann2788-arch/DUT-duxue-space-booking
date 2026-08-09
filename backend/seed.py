@@ -7,6 +7,7 @@ sys.path.insert(0, ".")
 from sqlalchemy import select
 
 from app.auth import hash_password
+from app.config import settings
 from app.database import async_session, init_db
 from app.models import Room, RoomSceneRule, SceneType, UsageMode, User, UserRole
 
@@ -64,11 +65,24 @@ async def seed():
                 existing.priority, existing.capacity, existing.usage_mode, existing.is_enabled = priority, capacity, mode, True
             else:
                 db.add(RoomSceneRule(room_id=room_map[code].id, scene=scene, priority=priority, capacity=capacity, usage_mode=mode))
-        admin = (await db.execute(select(User).where(User.student_id == "admin001"))).scalar_one_or_none()
-        if not admin:
-            db.add(User(student_id="admin001", name="系统管理员", phone="13800000000", class_name="笃学书院", password_hash=hash_password("admin123"), role=UserRole.admin))
+        admin_id = settings.BOOTSTRAP_ADMIN_STUDENT_ID.strip()
+        admin_password = settings.BOOTSTRAP_ADMIN_PASSWORD
+        if bool(admin_id) != bool(admin_password):
+            raise RuntimeError("BOOTSTRAP_ADMIN_STUDENT_ID 与 BOOTSTRAP_ADMIN_PASSWORD 必须同时设置")
+        if admin_id:
+            admin = (await db.execute(select(User).where(User.student_id == admin_id))).scalar_one_or_none()
+            if not admin:
+                db.add(User(
+                    student_id=admin_id,
+                    name="系统管理员",
+                    phone="",
+                    class_name="笃学书院",
+                    password_hash=hash_password(admin_password),
+                    role=UserRole.admin,
+                ))
         await db.commit()
-        print("Seed complete: 12 rooms, 10 allocation rules, admin001/admin123 (change immediately).")
+        admin_message = f", bootstrap admin {admin_id}" if admin_id else ", no bootstrap admin requested"
+        print(f"Seed complete: 12 rooms, 10 allocation rules{admin_message}.")
 
 
 if __name__ == "__main__":

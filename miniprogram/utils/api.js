@@ -40,6 +40,9 @@ function extractError(data, fallback = '请求失败') {
   if (detail && typeof detail === 'object') {
     return detail.message || detail.msg || fallback
   }
+  if (data.error && typeof data.error === 'object') {
+    return data.error.message || data.error.msg || fallback
+  }
   return data.message || data.msg || data.errMsg || fallback
 }
 

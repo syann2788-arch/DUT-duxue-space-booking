@@ -191,7 +191,7 @@ class CleanupOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ReservationOut(BaseModel):
+class ReservationBaseOut(BaseModel):
     id: int
     user_id: int
     room_id: int
@@ -204,22 +204,28 @@ class ReservationOut(BaseModel):
     usage_mode: UsageMode | None
     people_count: int
     purpose: str
-    campus_card_photo_url: str | None
     status: ReservationStatus
     review_note: str | None
     auto_approved: bool
     created_at: datetime
     cancelled_at: datetime | None
     checked_in_at: datetime | None
-    user: UserOut | None = None
     room: RoomOut | None = None
     cleanup: CleanupOut | None = None
 
     model_config = {"from_attributes": True}
 
 
-class CheckinRequest(BaseModel):
-    reservation_id: int
+class ReservationSelfOut(ReservationBaseOut):
+    """Fields visible to the reservation owner; never reuse for public lists."""
+
+    campus_card_photo_url: str | None
+
+
+class ReservationAdminOut(ReservationSelfOut):
+    """Explicit administrator-only view containing another user's PII."""
+
+    user: UserOut | None = None
 
 
 class CleanupSubmit(BaseModel):
@@ -228,7 +234,7 @@ class CleanupSubmit(BaseModel):
     @field_validator("photo_urls")
     @classmethod
     def validate_urls(cls, values: list[str]) -> list[str]:
-        if any(not value.startswith(("/uploads/", "https://")) for value in values):
+        if any(not value.startswith("/uploads/cleanup_") for value in values):
             raise ValueError("照片地址无效")
         return values
 

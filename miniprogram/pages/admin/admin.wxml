@@ -34,16 +34,6 @@
         <button class="compact-btn primary" bindtap="exportExcel">导出</button>
       </view>
 
-      <view class="admin-card">
-        <text class="card-title">房间签到码</text>
-        <text class="card-desc block">复制房间 JSON 后生成二维码，张贴于对应空间。</text>
-        <view wx:for="{{qrRooms}}" wx:key="id" class="simple-row">
-          <text class="simple-main">{{item.code}} {{item.name}}</text>
-          <text class="text-action" data-id="{{item.id}}" bindtap="copyRoomCode">复制签到码</text>
-        </view>
-        <text wx:if="{{!qrRooms.length}}" class="empty-small">暂无可预约房间</text>
-      </view>
-
       <view class="admin-card placeholder-card" bindtap="importCounselors">
         <view>
           <text class="card-title">辅导员 CSV 导入</text>
@@ -190,7 +180,7 @@
       <view wx:for="{{roomRules}}" wx:key="id" class="admin-card rule-card">
         <view class="rule-head">
           <view><text class="reservation-room">{{item.roomCode}} {{item.roomName}}</text><text class="scene-badge">{{item.sceneLabel}}</text></view>
-          <view class="switch-line"><text>启用</text><switch color="#F25B15" checked="{{item.is_enabled}}" data-id="{{item.id}}" bindchange="onRuleEnabledChange" /></view>
+          <view class="switch-line"><text>启用</text><switch color="#612276" checked="{{item.is_enabled}}" data-id="{{item.id}}" bindchange="onRuleEnabledChange" /></view>
         </view>
         <view class="rule-fields">
           <view class="rule-field"><text>优先级</text><input type="number" value="{{item.priority}}" data-id="{{item.id}}" data-field="priority" bindinput="onRuleInput" /></view>

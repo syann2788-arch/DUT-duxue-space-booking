@@ -18,7 +18,7 @@
   </view>
 
   <view class="legend">
-    <view class="leg"><view class="dot" style="background:#F25B15"></view>可参与预约</view>
+    <view class="leg"><view class="dot" style="background:#612276"></view>可参与预约</view>
     <view class="leg"><view class="dot" style="background:#5b8def"></view>公开空间</view>
     <view class="leg"><view class="dot" style="background:#e0556a"></view>需辅导员</view>
     <view class="leg"><view class="dot" style="background:#aaa"></view>不可互动</view>
@@ -34,7 +34,7 @@
         </view>
       </block>
     </view>
-    <view class="channel"><text class="gate">正门 →</text>主通道</view>
+    <view class="channel"><text class="gate">侧门 →</text>主通道</view>
     <view class="rr">
       <block wx:for="{{bottomRow}}" wx:key="code">
         <view class="cell {{item.cls}}" data-id="{{item.id}}" data-res="{{item.canReserve}}" data-pub="{{item.isPublic}}" bindtap="onCell">

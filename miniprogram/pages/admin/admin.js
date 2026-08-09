@@ -13,7 +13,7 @@ const TABS = [
 const ROLE_LABELS = { student: '学生', counselor: '辅导员', admin: '管理员' }
 const SCENE_LABELS = { study: '自习', meeting: '开会', event: '大型活动', music: '音乐练习' }
 const MODE_LABELS = { shared: '共享', exclusive: '独占' }
-const VIOLATION_LABELS = { no_show: '未签到', cleanup_failed: '清扫不合格' }
+const VIOLATION_LABELS = { no_show: '历史未签到（旧版）', cleanup_failed: '清扫不合格' }
 const RESTRICTION_LABELS = { temporary: '临时限制', timed: '限时限制', permanent: '永久限制' }
 const USAGE_MODES = ['shared', 'exclusive']
 
@@ -24,7 +24,6 @@ const SETTING_META = [
   { key: 'max_minutes_per_day', label: '每日预约上限（分钟）', inputType: 'number' },
   { key: 'advance_days', label: '可提前预约天数', inputType: 'number' },
   { key: 'cancel_deadline_minutes', label: '取消截止（开始前分钟）', inputType: 'number' },
-  { key: 'checkin_grace_minutes', label: '签到宽限（分钟）', inputType: 'number' },
   { key: 'auto_approval_time', label: '每日自动审批时间', inputType: 'text', placeholder: 'HH:MM' },
   { key: 'reminder_minutes', label: '开始前提醒（分钟）', inputType: 'number' },
   { key: 'temporary_ban_days', label: '临时限制默认天数', inputType: 'number' },
@@ -85,7 +84,6 @@ Page({
     tabs: TABS,
     activeTab: 'overview',
     stats: { total_users: 0, pending: 0, cleanup_pending: 0, today: 0 },
-    qrRooms: [],
 
     pendingReservations: [],
     selectedPendingIds: [],
@@ -181,24 +179,14 @@ Page({
   async loadOverview() {
     this.setData({ loading: true })
     try {
-      const result = await Promise.all([
-        app.request('/admin/stats'),
-        app.request('/rooms')
-      ])
-      const stats = result[0] || {}
-      const rooms = Array.isArray(result[1]) ? result[1] : []
+      const stats = await app.request('/admin/stats') || {}
       this.setData({
         stats: {
           total_users: stats.total_users || 0,
           pending: stats.pending || 0,
           cleanup_pending: stats.cleanup_pending || 0,
           today: stats.today || 0
-        },
-        qrRooms: rooms.filter(room => room.can_reserve).map(room => ({
-          id: room.id,
-          code: room.room_code,
-          name: room.name
-        }))
+        }
       })
     } catch (error) {
       toastError(error, '概览加载失败')
@@ -708,15 +696,6 @@ Page({
     } finally {
       wx.hideLoading()
     }
-  },
-
-  copyRoomCode(event) {
-    const roomId = Number(event.currentTarget.dataset.id)
-    wx.setClipboardData({
-      data: JSON.stringify({ room_id: roomId }),
-      success: () => wx.showToast({ title: '签到码内容已复制', icon: 'success' }),
-      fail: error => toastError(error, '签到码复制失败')
-    })
   },
 
   exportExcel() {

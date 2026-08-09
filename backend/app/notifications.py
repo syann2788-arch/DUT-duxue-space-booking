@@ -4,6 +4,7 @@ Events are committed with the business transaction and sent asynchronously.  A
 provider outage therefore never rolls back an approved reservation.
 """
 from datetime import datetime
+from time import monotonic
 
 import httpx
 from sqlalchemy import select
@@ -20,12 +21,17 @@ TEMPLATE_IDS = {
     NotificationType.restriction: settings.WECHAT_TEMPLATE_RESTRICTION,
 }
 
+_TOKEN_CACHE: dict[str, float | str] = {"value": "", "expires_at": 0.0}
+
 
 def public_template_ids() -> list[str]:
     return [value for value in TEMPLATE_IDS.values() if value]
 
 
 async def _access_token(client: httpx.AsyncClient) -> str:
+    cached = str(_TOKEN_CACHE["value"])
+    if cached and float(_TOKEN_CACHE["expires_at"]) > monotonic():
+        return cached
     response = await client.get("https://api.weixin.qq.com/cgi-bin/token", params={
         "grant_type": "client_credential",
         "appid": settings.WECHAT_APP_ID,
@@ -34,7 +40,12 @@ async def _access_token(client: httpx.AsyncClient) -> str:
     payload = response.json()
     if "access_token" not in payload:
         raise RuntimeError(payload.get("errmsg", "获取access_token失败"))
-    return payload["access_token"]
+    token = str(payload["access_token"])
+    # WeChat normally returns 7200 seconds. Refresh five minutes early and use
+    # a small lower bound for deterministic tests and unusual provider replies.
+    expires_in = max(int(payload.get("expires_in", 7200)) - 300, 1)
+    _TOKEN_CACHE.update(value=token, expires_at=monotonic() + expires_in)
+    return token
 
 
 def _template_data(notification: Notification) -> dict:
@@ -50,8 +61,6 @@ def _template_data(notification: Notification) -> dict:
 
 
 async def deliver_due_notifications(db: AsyncSession, limit: int = 100) -> int:
-    if not settings.WECHAT_APP_ID or not settings.WECHAT_APP_SECRET:
-        return 0
     result = await db.execute(select(Notification).where(
         Notification.status == NotificationStatus.pending,
         Notification.scheduled_at <= local_now(),
@@ -59,29 +68,48 @@ async def deliver_due_notifications(db: AsyncSession, limit: int = 100) -> int:
     notifications = list(result.scalars())
     if not notifications:
         return 0
-    async with httpx.AsyncClient(timeout=10) as client:
-        token = await _access_token(client)
+    if not settings.WECHAT_APP_ID or not settings.WECHAT_APP_SECRET:
         for notification in notifications:
-            user = await db.get(User, notification.user_id)
-            template_id = TEMPLATE_IDS.get(notification.type)
-            if not user or not user.wechat_openid or not template_id:
-                # Keep pending: the account may be bound or templates configured later.
-                continue
             notification.attempts += 1
-            try:
-                response = await client.post(
-                    f"https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token={token}",
-                    json={"touser": user.wechat_openid, "template_id": template_id, "page": "pages/my/my", "data": _template_data(notification)},
-                )
-                payload = response.json()
-                if payload.get("errcode", 0) != 0:
-                    raise RuntimeError(payload.get("errmsg", "发送失败"))
-                notification.status = NotificationStatus.sent
-                notification.sent_at = local_now()
-                notification.error = None
-            except Exception as exc:  # provider errors are captured in the outbox
-                notification.error = str(exc)[:500]
-                if notification.attempts >= 5:
-                    notification.status = NotificationStatus.failed
+            notification.status = NotificationStatus.failed
+            notification.error = "WeChat application credentials are not configured"
+        await db.commit()
+        return len(notifications)
+    deliverable: list[tuple[Notification, User, str]] = []
+    for notification in notifications:
+        user = await db.get(User, notification.user_id)
+        template_id = TEMPLATE_IDS.get(notification.type)
+        if not user or not user.wechat_openid or not template_id:
+            notification.attempts += 1
+            notification.status = NotificationStatus.failed
+            if not user:
+                notification.error = "notification user no longer exists"
+            elif not user.wechat_openid:
+                notification.error = "user has no bound WeChat account"
+            else:
+                notification.error = "notification template is not configured"
+            continue
+        deliverable.append((notification, user, template_id))
+
+    if deliverable:
+        async with httpx.AsyncClient(timeout=10) as client:
+            token = await _access_token(client)
+            for notification, user, template_id in deliverable:
+                notification.attempts += 1
+                try:
+                    response = await client.post(
+                        f"https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token={token}",
+                        json={"touser": user.wechat_openid, "template_id": template_id, "page": "pages/my/my", "data": _template_data(notification)},
+                    )
+                    payload = response.json()
+                    if payload.get("errcode", 0) != 0:
+                        raise RuntimeError(payload.get("errmsg", "发送失败"))
+                    notification.status = NotificationStatus.sent
+                    notification.sent_at = local_now()
+                    notification.error = None
+                except Exception as exc:  # provider errors are captured in the outbox
+                    notification.error = str(exc)[:500]
+                    if notification.attempts >= 5:
+                        notification.status = NotificationStatus.failed
     await db.commit()
     return len(notifications)

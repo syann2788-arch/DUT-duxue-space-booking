@@ -7,43 +7,43 @@
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
 }
 
-.top { background: linear-gradient(135deg, #6B46C1, #F25B15); padding: 40rpx 32rpx 28rpx; }
+.top { background: linear-gradient(135deg, #8C6498, #612276); padding: 40rpx 32rpx 28rpx; }
 .top-row { display: flex; justify-content: space-between; align-items: flex-start; }
 .top-name { font-size: 36rpx; font-weight: 700; color: #fff; }
 .top-sub { font-size: 24rpx; color: rgba(255,255,255,0.85); margin-top: 4rpx; display: block; }
 .logout-btn { font-size: 26rpx; color: #fff; padding: 8rpx 20rpx; border: 2rpx solid rgba(255,255,255,0.5); border-radius: 9999rpx; }
 
-.scene-entry { display: flex; align-items: center; justify-content: space-between; margin: 20rpx; padding: 28rpx 30rpx; color: #fff; background: linear-gradient(135deg, #6B46C1, #F25B15); border-radius: 18rpx; box-shadow: 0 10rpx 28rpx rgba(242,91,21,.22); }
+.scene-entry { display: flex; align-items: center; justify-content: space-between; margin: 20rpx; padding: 28rpx 30rpx; color: #fff; background: linear-gradient(135deg, #8C6498, #612276); border-radius: 18rpx; box-shadow: 0 10rpx 28rpx rgba(97,34,118,.22); }
 .scene-entry-title { display: block; font-size: 32rpx; font-weight: 700; }
 .scene-entry-sub { display: block; max-width: 570rpx; margin-top: 6rpx; font-size: 21rpx; line-height: 1.5; color: rgba(255,255,255,.78); }
 .scene-entry-arrow { font-size: 52rpx; line-height: 1; margin-left: 16rpx; }
 
-.legend { display: flex; gap: 20rpx; padding: 0 28rpx 16rpx; background: #fff; font-size: 20rpx; color: #A9B1BD; }
+.legend { display: flex; gap: 20rpx; padding: 0 28rpx 16rpx; background: #fff; font-size: 20rpx; color: #777777; }
 .leg { display: flex; align-items: center; gap: 4rpx; }
 .dot { width: 12rpx; height: 12rpx; border-radius: 3px; display: inline-block; }
 
-.floor { margin: 16rpx 20rpx; background: #fff; border-radius: 16rpx; padding: 24rpx 16rpx; border: 1rpx solid #ECEEF2; }
+.floor { margin: 16rpx 20rpx; background: #fff; border-radius: 16rpx; padding: 24rpx 16rpx; border: 1rpx solid #EAE3ED; }
 .rr { display: flex; flex-wrap: wrap; gap: 8rpx; justify-content: center; margin: 6rpx 0; }
 .cell { width: calc(25% - 6rpx); padding: 14rpx 4rpx; border-radius: 12rpx; text-align: center; box-sizing: border-box; }
-.cell.res { background: #FEF1EA; border: 1rpx solid #F5C9B0; }
+.cell.res { background: #F8F6FA; border: 1rpx solid #DCCFE1; }
 .cell.res.hot { background: #ffe8e8; border-color: #f5c6c6; }
 .cell.res.warm { background: #fff3e0; border-color: #f5dcc6; }
-.cell.pub { background: #F6F7F9; border: 1rpx solid #ECEEF2; }
+.cell.pub { background: #F8F6FA; border: 1rpx solid #EAE3ED; }
 .cell.nonpub { background: #f4f4f4; }
 .ccode { font-size: 22rpx; font-weight: 700; color: #444; display: block; }
 .cname { font-size: 18rpx; color: #888; display: block; margin: 2rpx 0; }
 .ctag { display: inline-block; font-size: 16rpx; padding: 2rpx 8rpx; border-radius: 3px; margin-top: 2rpx; }
 
-.channel { text-align: center; font-size: 18rpx; color: #A9B1BD; padding: 10rpx 0; border-top: 1rpx dashed #ECEEF2; border-bottom: 1rpx dashed #ECEEF2; margin: 10rpx 0; position: relative; }
-.gate { position: absolute; left: 8rpx; font-size: 16rpx; color: #F25B15; font-weight: 700; }
+.channel { text-align: center; font-size: 18rpx; color: #777777; padding: 10rpx 0; border-top: 1rpx dashed #EAE3ED; border-bottom: 1rpx dashed #EAE3ED; margin: 10rpx 0; position: relative; }
+.gate { position: absolute; left: 8rpx; font-size: 16rpx; color: #612276; font-weight: 700; }
 
 .sec { font-size: 26rpx; font-weight: 700; color: #555; padding: 24rpx 28rpx 8rpx; }
-.litem { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; background: #fff; margin: 8rpx 20rpx; border-radius: 12rpx; border: 1rpx solid #ECEEF2; }
+.litem { display: flex; justify-content: space-between; align-items: center; padding: 24rpx; background: #fff; margin: 8rpx 20rpx; border-radius: 12rpx; border: 1rpx solid #EAE3ED; }
 .litem:first-of-type { border-radius: 16rpx 16rpx 0 0; }
 .litem:last-of-type { border-radius: 0 0 16rpx 16rpx; }
 .litem:only-of-type { border-radius: 16rpx; }
 .litem+.litem { border-top: 1rpx solid #f5f5f5; }
 .list-copy { min-width: 0; padding-right: 16rpx; }
-.lcode { font-size: 28rpx; font-weight: 700; color: #F25B15; }
+.lcode { font-size: 28rpx; font-weight: 700; color: #612276; }
 .ldesc { display: block; font-size: 22rpx; color: #667180; margin-top: 2rpx; line-height: 1.45; }
-.larr { font-size: 26rpx; color: #A9B1BD; }
+.larr { font-size: 26rpx; color: #777777; }

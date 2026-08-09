@@ -171,7 +171,11 @@ async def refresh_reservation_states(db: AsyncSession, now: datetime | None = No
     """Advance time-derived states. Safe to run from requests and scheduler."""
     now = now or local_now()
     config = await get_runtime_config(db)
-    result = await db.execute(select(Reservation).where(Reservation.status.in_(OCCUPYING_STATUSES)))
+    recent_cutoff = now.date() - timedelta(days=1)
+    result = await db.execute(select(Reservation).where(
+        Reservation.status.in_(OCCUPYING_STATUSES),
+        Reservation.date >= recent_cutoff,
+    ))
     changed = False
     for reservation in result.scalars():
         if reservation.start_slot is None or reservation.end_slot is None:
@@ -186,9 +190,20 @@ async def refresh_reservation_states(db: AsyncSession, now: datetime | None = No
                 "result": "rejected", "reason": reservation.review_note,
             })
             changed = True
-        elif reservation.status in (ReservationStatus.approved, ReservationStatus.active) and now > start + timedelta(minutes=config["checkin_grace_minutes"]):
-            reservation.status = ReservationStatus.missed
-            await _record_violation(db, reservation.user_id, reservation.id, ViolationType.no_show, now, config)
+        # The teacher's formal workflow does not require an arrival scan.  An
+        # approved booking therefore becomes active from its reserved start
+        # time.  This also avoids penalising students for a static QR code that
+        # cannot prove who was physically present.
+        elif reservation.status in (ReservationStatus.approved, ReservationStatus.active) and now >= start:
+            # A delayed scheduler run may first see the booking after its end;
+            # advance directly to cleanup instead of requiring a second pass.
+            if now >= end:
+                reservation.status = ReservationStatus.cleanup_pending
+                _queue_notification(db, reservation.user_id, reservation.id, NotificationType.restriction, {
+                    "change": "cleanup_required", "reason": "预约已结束，请及时上传现场清扫照片后解锁下一次预约",
+                })
+            else:
+                reservation.status = ReservationStatus.in_use
             changed = True
         elif reservation.status in (ReservationStatus.in_use, ReservationStatus.checked_in) and now >= end:
             reservation.status = ReservationStatus.cleanup_pending
@@ -540,7 +555,13 @@ async def get_reservation(db: AsyncSession, reservation_id: int) -> Reservation 
     return result.unique().scalar_one_or_none()
 
 
-async def get_user_reservations(db: AsyncSession, user_id: int, status_filter: ReservationStatus | None = None) -> list[Reservation]:
+async def get_user_reservations(
+    db: AsyncSession,
+    user_id: int,
+    status_filter: ReservationStatus | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[Reservation]:
     await refresh_reservation_states(db)
     query = select(Reservation).options(
         joinedload(Reservation.room).selectinload(Room.scene_rules),
@@ -549,7 +570,9 @@ async def get_user_reservations(db: AsyncSession, user_id: int, status_filter: R
     ).where(Reservation.user_id == user_id)
     if status_filter:
         query = query.where(Reservation.status == status_filter)
-    result = await db.execute(query.order_by(Reservation.date.desc(), Reservation.start_slot.desc()))
+    result = await db.execute(
+        query.order_by(Reservation.date.desc(), Reservation.start_slot.desc()).limit(limit).offset(offset)
+    )
     return list(result.scalars().unique())
 
 
@@ -563,21 +586,6 @@ async def cancel_reservation(db: AsyncSession, reservation_id: int, user_id: int
         raise ValueError(f"已超过开始前{config['cancel_deadline_minutes']}分钟的取消截止时间")
     reservation.status = ReservationStatus.cancelled
     reservation.cancelled_at = local_now()
-    await db.commit()
-    return reservation
-
-
-async def checkin_reservation(db: AsyncSession, reservation_id: int, user_id: int) -> Reservation | None:
-    reservation = await db.get(Reservation, reservation_id, with_for_update=True)
-    if not reservation or reservation.user_id != user_id or reservation.status not in (ReservationStatus.approved, ReservationStatus.active):
-        return None
-    config = await get_runtime_config(db)
-    now = local_now()
-    start = reservation_start(reservation, config)
-    if now < start - timedelta(minutes=15) or now > start + timedelta(minutes=config["checkin_grace_minutes"]):
-        raise ValueError("仅可在开始前15分钟至签到宽限期内签到")
-    reservation.status = ReservationStatus.in_use
-    reservation.checked_in_at = now
     await db.commit()
     return reservation
 
@@ -733,6 +741,8 @@ async def list_admin_reservations(
     date_from: date | None = None,
     date_to: date | None = None,
     scene: SceneType | None = None,
+    limit: int = 100,
+    offset: int = 0,
 ) -> list[Reservation]:
     await refresh_reservation_states(db)
     if date_from and date_to and date_from > date_to:
@@ -752,11 +762,16 @@ async def list_admin_reservations(
         query = query.where(Reservation.date <= date_to)
     if scene:
         query = query.where(Reservation.scene == scene)
-    result = await db.execute(query.order_by(Reservation.created_at.desc()))
+    result = await db.execute(query.order_by(Reservation.created_at.desc()).limit(limit).offset(offset))
     return list(result.scalars().unique())
 
 
-async def get_all_users(db: AsyncSession, search: str | None = None) -> list[User]:
+async def get_all_users(
+    db: AsyncSession,
+    search: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[User]:
     query = select(User)
     if search and search.strip():
         keyword = f"%{search.strip()}%"
@@ -766,7 +781,7 @@ async def get_all_users(db: AsyncSession, search: str | None = None) -> list[Use
             User.phone.ilike(keyword),
             User.class_name.ilike(keyword),
         ))
-    return list((await db.scalars(query.order_by(User.student_id))).all())
+    return list((await db.scalars(query.order_by(User.student_id).limit(limit).offset(offset))).all())
 
 
 async def set_counselor(db: AsyncSession, student_ids: list[str]) -> int:

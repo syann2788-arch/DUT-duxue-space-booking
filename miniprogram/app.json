@@ -14,13 +14,13 @@
   "window": {
     "navigationBarBackgroundColor": "#FFFFFF",
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "笃学书院",
-    "backgroundColor": "#F6F7F9"
+    "navigationBarTitleText": "笃学书院空间预约",
+    "backgroundColor": "#F8F6FA"
   },
   "tabBar": {
     "custom": true,
-    "color": "#A9B1BD",
-    "selectedColor": "#F25B15",
+    "color": "#777777",
+    "selectedColor": "#612276",
     "list": [
       {
         "pagePath": "pages/index/index",

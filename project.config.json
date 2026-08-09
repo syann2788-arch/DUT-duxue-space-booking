@@ -1,15 +1,48 @@
 {
   "miniprogramRoot": "miniprogram/",
-  "cloudfunctionRoot": "cloudfunctions/",
   "setting": {
-    "urlCheck": false,
+    "urlCheck": true,
     "es6": true,
     "postcss": true,
-    "minified": true
+    "minified": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "enhance": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
   },
-  "appid": "",
-  "cloud": true,
+  "appid": "wx79185f601a9b58ca",
   "projectname": "笃学书院空间预约",
   "condition": {},
-  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
+  "libVersion": "3.16.0",
+  "compileType": "miniprogram",
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [
+      {
+        "type": "folder",
+        "value": ".pytest_cache"
+      },
+      {
+        "type": "prefix",
+        "value": "pytest-cache-files-"
+      }
+    ],
+    "include": []
+  },
+  "editorSetting": {}
 }
