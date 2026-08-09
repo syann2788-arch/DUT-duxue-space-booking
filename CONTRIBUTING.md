@@ -2,7 +2,7 @@
 
 本项目当前是校内试点候选。提交前请先阅读 `README.md`、`AGENTS.md`、`SECURITY.md` 和 `docs/REVIEW_REMEDIATION.md`。
 
-1. 从 `main` 创建短期分支；正式微信端只修改 `miniprogram/`，`frontend/` 仅供参考。
+1. 从 `main` 创建短期分支；微信端只修改 `miniprogram/`，业务后端只修改 `backend/`，不得另建平行实现。
 2. 一个 PR 聚焦一个可验收目标并关联 Issue；涉及数据模型时说明迁移与回滚。
 3. 运行 `python -m pytest -q`（`backend/`）和 `npm run check`（`miniprogram/`）。
 4. 不提交真实学号、手机号、照片、密钥、数据库或辅导员名单。

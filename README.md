@@ -1,6 +1,6 @@
 # 笃学书院空间预约系统 v2
 
-面向大连理工大学笃学书院的原生微信小程序 + FastAPI 预约系统。v2 以第一版 `miniprogram/` 的紫色界面、空间导览和交互为产品基线，将数据层从微信云函数升级为可交接学校服务器的 FastAPI。默认用 SQLite 本地演示，学校接手时通过环境变量切换 PostgreSQL。
+面向大连理工大学笃学书院的原生微信小程序 + FastAPI 预约系统。正式运行链路唯一确定为 `miniprogram/` 原生微信前端与 `backend/` FastAPI 后端；默认用 SQLite 本地演示，学校接手时通过环境变量切换 PostgreSQL。
 
 > 当前定位：`v0.x` 校内试点候选，不是已达到生产标准的通用开源预约产品。评审问题、修复证据与外部阻断项见 [评审整改台账](docs/REVIEW_REMEDIATION.md)。
 
@@ -58,11 +58,11 @@ npm.cmd run check
 ## 目录说明
 
 - `backend/app/`：唯一业务后端和全部一致性规则
-- `miniprogram/`：正式原生微信小程序（v1 产品体验基础上的 v2 主线）
-- `frontend/`：此前的 uni-app 实验实现，仅作页面和业务逻辑参考
+- `miniprogram/`：唯一正式原生微信小程序
 - `backend/tests/`：HTTP 级业务回归
 - `deploy/`：学校服务器 nginx 模板
-- `cloudfunctions/`：第一版历史参考；`project.config.json` 已关闭云开发，不能作为 v2 部署入口
+
+旧 uni-app 与微信云函数实现已从工作树移除，必要时可从 Git 历史恢复，不属于当前构建、测试或交付范围。
 
 ## 生产部署
 

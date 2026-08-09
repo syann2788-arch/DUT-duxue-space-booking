@@ -21,6 +21,7 @@
 
 ### Changed
 
+- 统一正式运行链路为原生微信小程序 `miniprogram/` + FastAPI `backend/`；移除工作树中的旧 uni-app 与微信云函数实现，并将 AI 开发规范统一到 `AGENTS.md`。
 - 通知 access token 增加缓存；无法投递的配置错误不再永久 pending。
 - 状态刷新只扫描最近仍可能流转的预约，列表接口增加有界分页参数。
 - pytest 使用进程唯一临时数据库和上传目录。

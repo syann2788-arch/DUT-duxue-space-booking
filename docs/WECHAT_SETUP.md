@@ -9,11 +9,10 @@
 ├── project.config.json     ← 开发者工具读取
 ├── miniprogram/            ← 正式 v2 小程序
 ├── backend/                ← FastAPI
-├── frontend/               ← 仅参考，不导入
-└── cloudfunctions/         ← 第一版参考，不是 v2 主后端
+└── deploy/                 ← 学校服务器部署模板
 ```
 
-根目录 `project.config.json` 已配置 `"miniprogramRoot": "miniprogram/"`。不要导入 `frontend/dist/`，也不需要为正式 v2 编译 uni-app。
+根目录 `project.config.json` 已配置 `"miniprogramRoot": "miniprogram/"`。开发者工具只导入仓库根目录，不需要额外编译另一套前端。
 
 ## 本地模拟器联调
 
@@ -151,7 +150,7 @@ https://space-api.example.edu.cn
 - 接入学校已有短信服务，新增验证码发送、过期、频率限制和重置接口；
 - 保留人工核验重置，并制定管理员操作流程。
 
-在方案确认并实现前，不应把第一版云函数中的短信占位符当作可用功能。
+在方案确认并实现前，不应把短信找回当作可用功能。
 
 ## 学校服务器交接清单
 

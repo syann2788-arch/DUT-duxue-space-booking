@@ -6,18 +6,17 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 大连理工大学笃学书院（西山7舍）空间预约系统。支持师生预约书院空间。
 
-## 前端主线（务必先读）
+## 唯一正式运行链路（务必先读）
 
-- `miniprogram/` 是第一版原生微信小程序延续下来的正式产品主线，第二版必须在它的紫色视觉、空间导览和交互骨架上升级。
+- 微信前端只有 `miniprogram/`：原生微信小程序，延续紫色视觉、空间导览和交互骨架。
+- 业务后端只有 `backend/`：原生小程序通过 `miniprogram/utils/api.js` 接入 FastAPI REST API。
 - 微信开发者工具导入仓库根目录；根目录 `project.config.json` 的 `miniprogramRoot` 必须保持为 `miniprogram/`。
-- `frontend/` 是此前另行实现的 uni-app/H5 方案，仅作业务逻辑和管理页面参考，除非用户明确要求，不得把它当成最终微信端，也不得把 `miniprogram/` 标为废弃。
-- `cloudfunctions/` 是第一版微信云开发后端参考。第二版原生前端通过 `miniprogram/utils/api.js` 接入 FastAPI，不再以云函数作为主数据源。
+- 旧 uni-app 和微信云函数实现已从工作树移除，仍可从 Git 历史恢复。除非用户明确重新立项，不得重建第二套前端或后端。
 
 ## 技术栈
 
 - **后端**: FastAPI (Python 3.12+) + SQLAlchemy 2.0 async + PostgreSQL + JWT认证
-- **微信前端主线**: 原生微信小程序 (`miniprogram/`)，紫色主题
-- **参考前端**: uni-app (`frontend/`)，目前不是微信端交付主线
+- **微信前端**: 原生微信小程序 (`miniprogram/`)，紫色主题
 - **部署**: 校内服务器 nginx + docker
 
 ## 启动命令
@@ -26,7 +25,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 # 后端
 cd backend
 pip install -r requirements.txt
-python seed.py              # 初始化房间 + 管理员(admin001/admin123)
+python seed.py              # 初始化房间；管理员须通过环境变量显式创建
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 微信小程序
@@ -61,6 +60,29 @@ backend/app/
 - JWT payload: `{"sub": user_id_str, "student_id": str, "role": str}`; router层通过 `int(user["sub"])` 获取user_id
 - 原生小程序 `miniprogram/app.js` 管理登录态，token 存 `wx.storage`，`miniprogram/utils/api.js` 自动附加 Authorization
 
+## 不可破坏的安全与业务边界
+
+- 玉兰卡照片（`campus_card_photo_url`）、手机号和学号属于个人信息；列表和导出响应必须按角色白名单返回，新字段默认不可见。
+- 微信 `AppSecret` 只能保存在服务器环境变量中，不得进入 `miniprogram/`、截图、日志或 Git；`code2session` 只能由后端调用。
+- 违约记录是审计数据，只增不改不删；幂等键为 `(reservation_id, type)`。
+- 预约资格、权限、冲突、容量和时长必须由后端最终校验，不能依赖前端按钮是否显示。
+- PostgreSQL 生产分房必须按固定顺序锁定物理房间并在锁内复检，不能使用“先查后写”代替并发控制。
+
+## 工程约定
+
+- `ReservationStatus` 等领域枚举只在 `backend/app/models.py` 定义；`OCCUPYING_STATUSES` 和 `DAILY_LIMIT_STATUSES` 只在 `backend/app/services.py` 定义。
+- 业务逻辑中的当前时间统一使用 `backend/app/models.py::local_now()`；`services.py` 禁止裸 `datetime.now()`。
+- `backend/app/routers/` 只处理参数、认证和 HTTP 错误翻译；取消截止、签到宽限和违约判定在 `services.py` 的数据库事务中完成。
+- `miniprogram/app.wxss` 是品牌色唯一来源：主色 `#612276`、辅助底色 `#F8F6FA`、辅助紫 `#8C6498`；成功、危险、清扫、信息等语义色独立保留。
+- 昂贵约定应先补充 `backend/guards/test_conventions.py` 守护测试，再修改实现。
+
+守护测试：
+
+```bash
+cd backend
+python -m pytest guards/ -q
+```
+
 ## 业务规则 (config.py)
 
 | 参数 | 值 | 说明 |
@@ -77,13 +99,13 @@ backend/app/
 
 | 房间 | 预约规则 |
 |------|---------|
-| A101日新阁 | 学生可预约 |
-| A102格物居 | 公开，管理员标状态(free/busy/crowded) |
-| A103致知堂 | 学生可预约(最大空间) |
-| A104悠然亭 | 公开，管理员标状态(有冰箱) |
-| A105聚思轩 | 学生可预约 |
-| A106汇心驿 | 仅辅导员预约(who_can_reserve=counselor) |
-| B102韵音阁 | 学生可预约(有乐器) |
+| A101日新阁 | 自习、开会候选空间 |
+| A102格物居 | 自习、开会候选空间；同时公开展示管理员状态(free/busy/crowded) |
+| A103致知堂 | 大型活动专用；音乐练习在配置的钢琴时段可作为备选 |
+| A104悠然亭 | 公开生活空间，仅由管理员标状态(有冰箱) |
+| A105聚思轩 | 自习、开会候选空间 |
+| A106汇心驿 | 辅导员开会场景优先候选，学生不可分配(who_can_reserve=counselor) |
+| B102韵音阁 | 音乐练习首选空间(有乐器) |
 | B101/C101-C104 | 仅展示，不可互动 |
 
 ## 辅导员导入
@@ -97,4 +119,4 @@ CSV格式(Sheet_20250907.csv): 职务,姓名,负责班级,联系方式,...
 
 - SQLite 本地开发无法提供 PostgreSQL 等价的行锁语义；生产必须使用 PostgreSQL
 - 微信订阅消息必须在学校提供正式 AppID、AppSecret 和模板 ID 后才能真实发送
-- 无分页，所有列表接口全量返回
+- 预约、用户和清扫管理接口已有有界 `limit/offset`；尚无总数/页码元信息，部分小程序列表也未提供翻页 UI
