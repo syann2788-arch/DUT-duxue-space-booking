@@ -30,7 +30,7 @@ Set-Location backend
 1. 导入仓库根目录。
 2. 在“本地设置”中临时关闭合法域名校验。
 3. 编译小程序。
-4. 使用 `admin001 / admin123` 或测试学生账号联调。
+4. 使用通过 `BOOTSTRAP_ADMIN_STUDENT_ID` / `BOOTSTRAP_ADMIN_PASSWORD` 临时创建的虚构管理员，或虚构学生账号联调。
 
 `miniprogram/config.js` 的默认地址是：
 
@@ -46,7 +46,17 @@ http://127.0.0.1:8000/api
 wx.setStorageSync('apiBaseUrl', 'https://学校正式域名/api')
 ```
 
-这只是本机调试覆盖；发布版本仍应把 `miniprogram/config.js` 的默认地址改成学校 HTTPS API 地址。
+这只是 `develop` 环境的本机调试覆盖；`trial` 与 `release` 不读取 storage 覆盖。候选版和正式版应使用构建命令注入地址：
+
+```powershell
+$env:MINIPROGRAM_API_BASE_URL="https://学校正式域名/api"
+$env:MINIPROGRAM_APP_ID="学校正式小程序AppID"
+$env:RELEASE_VERSION="0.2.0-rc.1"
+$env:GIT_SHA=(git rev-parse --short HEAD)
+npm.cmd --prefix miniprogram run build:production
+```
+
+产物位于 `dist/wechat/`，包含环境、版本与提交 SHA。生产构建会拒绝 HTTP、本地/占位地址或空 AppID。
 
 ## 必须由用户或学校在微信公众平台完成的事项
 
@@ -165,10 +175,10 @@ https://space-api.example.edu.cn
 1. 学生注册、登录、退出和 token 失效处理。
 2. 空间导览、房间详情和公开空间状态。
 3. 四场景可用性、连续时段、自动分房和玉兰卡上传。
-4. 管理员审核、学生取消、签到与扫码签到。
+4. 管理员审核、学生取消，以及预约开始/结束后的自动状态推进。
 5. 使用结束、清扫照片上传、复核通过/退回和再次预约阻断。
 6. 违约累计、自动限制、人工限制与解除。
-7. Excel 下载、签到码内容和系统参数/分房规则修改。
+7. Excel 下载和系统参数/分房规则修改。
 8. 真机 OpenID 绑定、订阅授权和四类消息发送。
 9. 隐私提示、弱网、上传超限、服务器重启和备份恢复。
 

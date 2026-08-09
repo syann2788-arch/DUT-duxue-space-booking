@@ -4,11 +4,16 @@ Production deployments should use PostgreSQL and Alembic-style migrations.  The
 compatibility bridge only exists so the historical SQLite demo can be opened
 without deleting user data.
 """
+import logging
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_pre_ping=True)
@@ -28,6 +33,8 @@ async def init_db():
     # Import models before create_all so metadata is populated.
     from app import models  # noqa: F401
 
+    if settings.DATABASE_URL.startswith("sqlite"):
+        logger.warning("SQLite 不支持 PostgreSQL 行锁语义，仅限本地开发和自动化测试")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         if settings.DATABASE_URL.startswith("sqlite"):

@@ -15,9 +15,14 @@ frontend/.npm-cache/
 frontend/.uni-src/
 frontend/unpackage/
 frontend/dist/
+/dist/
 uploads/
 project.private.config.json
 .pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.pip-audit-cache/
 *.log
 *.docx
 Sheet_20250907.csv

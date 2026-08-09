@@ -2,11 +2,16 @@
   <view class="card" style="margin-top:0">
     <view style="font-size:32rpx;font-weight:700;color:#6b2d8e;text-align:center;margin-bottom:40rpx">注册</view>
 
-    <input class="inp" placeholder="学号" bindinput="onF" data-key="student_id"/>
-    <input class="inp" placeholder="姓名" bindinput="onF" data-key="name"/>
-    <input class="inp" placeholder="手机号" type="number" maxlength="11" bindinput="onF" data-key="phone"/>
-    <input class="inp" placeholder="班级（如：2502）" bindinput="onF" data-key="class_name"/>
-    <input class="inp" type="password" placeholder="密码（字母+数字，至少6位）" bindinput="onF" data-key="password"/>
+    <text class="field-label">学号</text>
+    <input class="inp" aria-label="学号" placeholder="请输入学号" bindinput="onF" data-key="student_id"/>
+    <text class="field-label">姓名</text>
+    <input class="inp" aria-label="姓名" placeholder="请输入姓名" bindinput="onF" data-key="name"/>
+    <text class="field-label">手机号</text>
+    <input class="inp" aria-label="手机号" placeholder="请输入手机号" type="number" maxlength="11" bindinput="onF" data-key="phone"/>
+    <text class="field-label">班级</text>
+    <input class="inp" aria-label="四位班级编号" placeholder="如：2502" bindinput="onF" data-key="class_name"/>
+    <text class="field-label">密码</text>
+    <input class="inp" aria-label="密码，字母加数字至少六位" type="password" placeholder="字母+数字，至少6位" bindinput="onF" data-key="password"/>
 
     <button class="btn-primary btn-full" bindtap="doRegister" loading="{{l}}">注册</button>
     <button class="btn-outline btn-full" style="margin-top:16rpx" bindtap="goBack">返回</button>

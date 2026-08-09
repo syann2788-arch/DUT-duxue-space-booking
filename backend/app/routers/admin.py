@@ -21,7 +21,7 @@ from app.schemas import (
     CleanupOut,
     CleanupReviewRequest,
     PublicStatusUpdate,
-    ReservationOut,
+    ReservationAdminOut,
     ReservationReviewRequest,
     RestrictionCreate,
     RestrictionOut,
@@ -58,17 +58,19 @@ async def stats(db: AsyncSession = Depends(get_db), _: dict = Depends(require_ad
     return {"total_users": total_users or 0, "pending": pending or 0, "cleanup_pending": cleanup_pending or 0, "today": today_count or 0}
 
 
-@router.get("/reservations", response_model=list[ReservationOut])
+@router.get("/reservations", response_model=list[ReservationAdminOut])
 async def reservations(
     date_value: date | None = Query(default=None, alias="date"),
     status_filter: ReservationStatus | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     scene: SceneType | None = None,
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_admin),
 ):
-    return await list_admin_reservations(db, date_value, status_filter, date_from, date_to, scene)
+    return await list_admin_reservations(db, date_value, status_filter, date_from, date_to, scene, limit, offset)
 
 
 @router.post("/reservations/review")
@@ -80,12 +82,19 @@ async def reservation_review(
     return await review_reservations(db, data, int(admin["sub"]))
 
 
-@router.get("/cleanup", response_model=list[ReservationOut])
-async def cleanup_queue(db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
+@router.get("/cleanup", response_model=list[ReservationAdminOut])
+async def cleanup_queue(
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
     from app.models import Room
     result = await db.execute(select(Reservation).join(CleanupVerification).options(
         joinedload(Reservation.room).selectinload(Room.scene_rules), joinedload(Reservation.user), joinedload(Reservation.cleanup)
-    ).where(CleanupVerification.status == CleanupStatus.pending).order_by(CleanupVerification.submitted_at))
+    ).where(CleanupVerification.status == CleanupStatus.pending).order_by(
+        CleanupVerification.submitted_at
+    ).limit(limit).offset(offset))
     return list(result.scalars().unique())
 
 
@@ -100,8 +109,14 @@ async def cleanup_review(
 
 
 @router.get("/users", response_model=list[UserOut])
-async def users(search: str | None = None, db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
-    return await get_all_users(db, search)
+async def users(
+    search: str | None = None,
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    return await get_all_users(db, search, limit, offset)
 
 
 @router.get("/users/{user_id}/violations", response_model=list[ViolationOut])

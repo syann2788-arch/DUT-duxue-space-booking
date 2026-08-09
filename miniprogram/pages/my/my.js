@@ -1,4 +1,5 @@
 const app = getApp()
+const { buildReservationFlow, buildCurrentTask } = require('../../utils/reservation-state')
 
 const STATUS_LABELS = {
   pending: '待审核',
@@ -24,8 +25,7 @@ const SCENE_LABELS = {
 const DEFAULT_CONFIG = {
   open_hour: 8,
   slot_minutes: 30,
-  cancel_deadline_minutes: 30,
-  checkin_grace_minutes: 15
+  cancel_deadline_minutes: 30
 }
 
 function pad(value) {
@@ -90,10 +90,18 @@ Page({
     raw: [],
     counselorCount: 0,
     loading: false,
+    loadState: 'idle',
+    loadError: '',
     actionId: null,
     cleanupSubmittingId: null,
     notificationLoading: false,
-    bookingConfig: DEFAULT_CONFIG
+    bookingConfig: DEFAULT_CONFIG,
+    currentTask: {
+      title: '暂无待办',
+      sub: '可按需预约书院空间',
+      filter: '',
+      action: 'reserve'
+    }
   },
 
   onShow() {
@@ -132,7 +140,7 @@ Page({
   refreshActionWindows() {
     if (!this.data.raw.length) return
     const raw = this.data.raw.map(item => this.formatReservation(item, this.data.bookingConfig))
-    this.setData({ raw }, () => this.applyFilter())
+    this.setData({ raw, currentTask: this.buildCurrentTask(raw) }, () => this.applyFilter())
   },
 
   loadData(showAttempt = this._showAttempt) {
@@ -142,7 +150,7 @@ Page({
       return Promise.resolve()
     }
 
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadState: 'loading', loadError: '' })
     const configRequest = app.request('/reservations/config').catch(() => this.data.bookingConfig)
     return Promise.all([
       app.request('/auth/me'),
@@ -170,6 +178,8 @@ Page({
         isAdmin: role === 'admin',
         isC: role === 'counselor' || role === 'admin',
         raw,
+        loadState: raw.length ? 'success' : 'empty',
+        currentTask: this.buildCurrentTask(raw),
         counselorCount: raw.filter(item => item.room_code === 'A106').length,
         bookingConfig
       }, () => this.applyFilter())
@@ -183,10 +193,18 @@ Page({
         return
       }
       if (currentToken !== tokenAtStart) return
+      this.setData({
+        loadState: 'error',
+        loadError: (error && error.message) || '加载预约记录失败'
+      })
       showError(error, '加载预约记录失败')
     }).finally(() => {
       if (showAttempt === this._showAttempt) this.setData({ loading: false })
     })
+  },
+
+  retryLoad() {
+    this.loadData()
   },
 
   formatReservation(item, config) {
@@ -203,13 +221,11 @@ Page({
     const start = reservationTime(item.date, startMinute)
     const now = Date.now()
     const cancelDeadline = start.getTime() - Number(config.cancel_deadline_minutes) * 60000
-    const checkinStart = start.getTime() - 15 * 60000
-    const checkinEnd = start.getTime() + Number(config.checkin_grace_minutes) * 60000
     const canCancel = ['pending', 'approved'].includes(status) && now < cancelDeadline
-    const canCheckin = status === 'approved' && now >= checkinStart && now <= checkinEnd
     const canCleanup = ['cleanup_pending', 'cleanup_rejected'].includes(status)
     const canRebook = ['rejected', 'cancelled', 'completed', 'missed'].includes(status)
     const room = item.room || {}
+    const flow = buildReservationFlow(status)
 
     return Object.assign({}, item, {
       id: item.id,
@@ -229,10 +245,24 @@ Page({
       cleanupNote: item.cleanup && item.cleanup.review_note ? item.cleanup.review_note : '',
       cleanupLabel: item.cleanup ? '重新上传清扫照片' : '上传清扫照片',
       canCancel,
-      canCheckin,
       canCleanup,
-      canRebook
+      canRebook,
+      flow: flow.items,
+      flowVisible: flow.visible
     })
+  },
+
+  buildCurrentTask(items) {
+    return buildCurrentTask(items)
+  },
+
+  goCurrentTask() {
+    const task = this.data.currentTask
+    if (task.action === 'filter') {
+      this.setData({ filter: task.filter || 'all' }, () => this.applyFilter())
+      return
+    }
+    wx.navigateTo({ url: '/pages/reserve/reserve' })
   },
 
   setFilter(e) {
@@ -250,24 +280,6 @@ Page({
     this.setData({ list })
   },
 
-  checkin(reservationId) {
-    if (this.data.actionId) return Promise.resolve()
-    this.setData({ actionId: reservationId })
-    return app.request('/reservations/checkin', {
-      method: 'POST',
-      data: { reservation_id: reservationId }
-    }).then(() => {
-      wx.showToast({ title: '签到成功', icon: 'success' })
-      return this.loadData()
-    }).catch(error => {
-      showError(error, '签到失败')
-    }).finally(() => this.setData({ actionId: null }))
-  },
-
-  doCheckin(e) {
-    this.checkin(e.currentTarget.dataset.id)
-  },
-
   doCancel(e) {
     const reservationId = e.currentTarget.dataset.id
     if (this.data.actionId) return
@@ -283,48 +295,6 @@ Page({
         }).catch(error => {
           showError(error, '取消失败')
         }).finally(() => this.setData({ actionId: null }))
-      }
-    })
-  },
-
-  scanCheckin() {
-    wx.scanCode({
-      onlyFromCamera: true,
-      success: result => {
-        let roomId = ''
-        try {
-          const payload = JSON.parse(result.result)
-          if (payload && typeof payload === 'object') {
-            roomId = payload.room_id != null ? payload.room_id : payload.roomId
-          } else {
-            roomId = payload
-          }
-        } catch (error) {
-          roomId = String(result.result || '').trim()
-        }
-
-        const normalizedRoomId = String(roomId == null ? '' : roomId).trim()
-        if (!normalizedRoomId) {
-          wx.showToast({ title: '无效的房间码', icon: 'none' })
-          return
-        }
-
-        const approved = this.data.raw.filter(item =>
-          item.status === 'approved' && String(item.room_id) === normalizedRoomId
-        )
-        if (!approved.length) {
-          wx.showToast({ title: '未找到本人该房间的已通过预约', icon: 'none' })
-          return
-        }
-        const match = approved.find(item => item.canCheckin)
-        if (!match) {
-          wx.showToast({ title: '当前不在签到时间内', icon: 'none' })
-          return
-        }
-        this.checkin(match.id)
-      },
-      fail: error => {
-        if (!String(error.errMsg || '').includes('cancel')) showError(error, '扫码失败')
       }
     })
   },

@@ -15,12 +15,12 @@
 .ban-state.normal { color: #39834d; background: #ebf7ee; }
 .ban-state.banned { color: #fff; background: #e0556a; }
 
-.quick-actions { display: flex; gap: 12rpx; margin: 20rpx; }
-.quick-card { flex: 1; min-width: 0; padding: 22rpx 10rpx; border-radius: 16rpx; background: #f5eef9; text-align: center; }
+.quick-actions { display: flex; flex-wrap: wrap; gap: 12rpx; margin: 20rpx; }
+.quick-card { flex: 1 1 calc(50% - 6rpx); min-width: 0; padding: 22rpx 16rpx; border-radius: 16rpx; box-sizing: border-box; background: #f5eef9; text-align: center; }
 .quick-card.primary { background: #6b2d8e; }
 .quick-card.admin { background: #fef4d9; }
 .quick-title { display: block; color: #6b2d8e; font-size: 25rpx; font-weight: 700; }
-.quick-sub { display: block; margin-top: 5rpx; color: #a89caf; font-size: 18rpx; }
+.quick-sub { display: block; margin-top: 5rpx; overflow: hidden; color: #a89caf; font-size: 19rpx; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
 .quick-card.primary .quick-title, .quick-card.primary .quick-sub { color: #fff; }
 .quick-card.primary .quick-sub { opacity: .72; }
 .quick-card.admin .quick-title { color: #a76900; }
@@ -55,12 +55,28 @@
 .note { display: block; margin-top: 12rpx; padding: 12rpx 14rpx; border-radius: 8rpx; color: #815e41; background: #faf4ec; font-size: 21rpx; }
 .warning-note { color: #aa3c50; background: #fff0f2; }
 
+.status-flow { display: flex; margin-top: 22rpx; padding-top: 18rpx; border-top: 1rpx solid #f1edf3; }
+.flow-item { position: relative; flex: 1; min-width: 0; color: #c1bac4; text-align: center; }
+.flow-item::before { content: ''; position: absolute; top: 8rpx; right: 50%; left: -50%; height: 2rpx; background: #e9e4ec; }
+.flow-item:first-child::before { display: none; }
+.flow-dot { position: relative; z-index: 1; width: 16rpx; height: 16rpx; margin: 0 auto 8rpx; border: 3rpx solid #e4dfe7; border-radius: 50%; box-sizing: border-box; background: #fff; }
+.flow-label { display: block; font-size: 18rpx; white-space: nowrap; }
+.flow-item.done::before, .flow-item.current::before { background: #b88bce; }
+.flow-item.done .flow-dot { border-color: #b88bce; background: #b88bce; }
+.flow-item.done { color: #897292; }
+.flow-item.current .flow-dot { border-color: #6b2d8e; background: #6b2d8e; box-shadow: 0 0 0 6rpx #f1e8f6; }
+.flow-item.current { color: #6b2d8e; font-weight: 700; }
+
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12rpx; margin-top: 18rpx; }
 .action-btn { width: auto; min-width: 118rpx; margin: 0; padding: 0 20rpx; border-radius: 10rpx; font-size: 22rpx; line-height: 58rpx; }
 .action-btn::after { border: none; }
-.action-btn.checkin { color: #fff; background: #6b2d8e; }
 .action-btn.cancel { color: #d04a61; background: #fff; border: 1rpx solid #e8a6b1; }
 .action-btn.cleanup { color: #fff; background: #d97828; }
 .action-btn.rebook { color: #6b2d8e; background: #f5eef9; }
 .action-btn[disabled] { opacity: .55; }
 .empty { padding: 100rpx 0; color: #c2bcc5; font-size: 27rpx; text-align: center; }
+.load-error { margin: 20rpx 24rpx; padding: 24rpx; border: 1rpx solid #efb7bf; border-radius: 16rpx; background: #fff5f6; text-align: center; }
+.load-error-title { display: block; color: #b52f49; font-size: 26rpx; font-weight: 700; }
+.load-error-message, .stale-note { display: block; margin-top: 8rpx; color: #755d64; font-size: 22rpx; }
+.retry-btn { width: 180rpx; margin: 18rpx auto 0; color: #fff; background: #6b2d8e; font-size: 24rpx; line-height: 64rpx; }
+.retry-btn::after { border: none; }

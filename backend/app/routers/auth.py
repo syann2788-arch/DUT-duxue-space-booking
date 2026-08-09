@@ -55,6 +55,11 @@ async def _code2session(code: str) -> str:
 
 @router.post("/register", response_model=Token)
 async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
+    if not settings.ALLOW_OPEN_REGISTRATION:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="开放注册已关闭，请使用学校统一身份或联系管理员导入账号",
+        )
     existing = await get_user_by_student_id(db, data.student_id)
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="该学号已注册")

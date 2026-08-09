@@ -1,0 +1,46 @@
+name: 缺陷报告
+description: 提交可复现、无个人信息的缺陷
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 安全漏洞和个人信息请按 SECURITY.md 私下报告，不要提交到公开 Issue。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题与影响
+      description: 发生了什么，影响哪个角色或流程？
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 最小复现步骤
+      placeholder: 使用虚构账号和脱敏数据描述。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: 入口
+      options:
+        - miniprogram（正式微信端）
+        - FastAPI
+        - 部署/CI
+        - 历史参考实现
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 隐私确认
+      options:
+        - label: 我没有附加真实学号、手机号、照片、令牌或密钥
+          required: true

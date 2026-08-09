@@ -1,0 +1,13 @@
+{
+  "name": "duxue-space-booking-miniprogram",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "lint": "node scripts/check-js.js",
+    "test": "node --test tests/*.test.js",
+    "check": "npm run lint && npm test",
+    "build:dev": "node scripts/build.js development",
+    "build:staging": "node scripts/build.js staging",
+    "build:production": "node scripts/build.js production"
+  }
+}

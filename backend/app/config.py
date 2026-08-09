@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    ENVIRONMENT: str = "development"
     DATABASE_URL: str = "sqlite+aiosqlite:///./shuyuan.db"
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
@@ -10,6 +11,9 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_MB: int = 8
     ENABLE_SCHEDULER: bool = True
+    ALLOW_OPEN_REGISTRATION: bool = True
+    BOOTSTRAP_ADMIN_STUDENT_ID: str = ""
+    BOOTSTRAP_ADMIN_PASSWORD: str = ""
     WECHAT_APP_ID: str = ""
     WECHAT_APP_SECRET: str = ""
     WECHAT_TEMPLATE_SUBMITTED: str = ""
@@ -22,6 +26,33 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [x.strip() for x in self.CORS_ORIGINS.split(",") if x.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.strip().lower() in {"production", "prod"}
+
+
+def validate_runtime_settings(current: Settings | None = None) -> None:
+    """Reject configurations that would make a non-demo deployment unsafe."""
+    current = current or settings
+    using_sqlite = current.DATABASE_URL.startswith("sqlite")
+    if not using_sqlite and not current.is_production and current.SECRET_KEY == "change-me-in-production":
+        raise RuntimeError("非 SQLite 环境禁止使用默认 SECRET_KEY")
+    if current.is_production:
+        errors: list[str] = []
+        if using_sqlite:
+            errors.append("生产环境必须使用 PostgreSQL")
+        if current.SECRET_KEY == "change-me-in-production" or len(current.SECRET_KEY) < 32:
+            errors.append("生产 SECRET_KEY 至少需要 32 个字符")
+        if current.ALLOW_OPEN_REGISTRATION:
+            errors.append("生产环境必须关闭开放注册并使用校内身份或预导入名册")
+        if any(
+            origin == "*" or "localhost" in origin or "127.0.0.1" in origin or "example." in origin
+            for origin in current.cors_origins
+        ):
+            errors.append("生产 CORS_ORIGINS 不得包含通配符、本地地址或占位域名")
+        if errors:
+            raise RuntimeError("；".join(errors))
 
 
 settings = Settings()
