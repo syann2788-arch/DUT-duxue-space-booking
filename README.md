@@ -24,7 +24,7 @@
 - 实际使用者空间留言板，支持文字、照片和隐私字段最小化
 - SQLite 历史表兼容升级、PostgreSQL/Docker/nginx 部署模板
 
-详细设计见 [系统架构](docs/ARCHITECTURE.md)，老师需求逐条验收见 [需求对照表](docs/REQUIREMENTS_TRACEABILITY.md)，需要你配合的微信平台步骤见 [微信联调清单](docs/WECHAT_SETUP.md)。
+详细设计见 [系统架构](docs/ARCHITECTURE.md)，老师需求逐条验收见 [需求对照表](docs/REQUIREMENTS_TRACEABILITY.md)，需要你配合的微信平台步骤见 [微信联调清单](docs/WECHAT_SETUP.md)，面向书院和学校信息化部门的正式对接材料见 [技术交接事宜](docs/交接事宜.md)。
 
 ## 本地启动（Windows）
 
