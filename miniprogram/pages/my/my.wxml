@@ -30,11 +30,6 @@
     <text class="counselor-sub">{{counselorCount}} 次预约记录</text>
   </view>
 
-  <view class="reservation-section-head">
-    <text class="reservation-section-title">我的预约</text>
-    <text wx:if="{{isAdmin}}" class="reservation-section-hint" bindtap="goAdmin">仅显示本人预约 · 学生审核请进管理后台 ›</text>
-  </view>
-
   <scroll-view scroll-x class="tabs-scroll" enhanced="true" show-scrollbar="false">
     <view class="tabs">
       <text wx:for="{{tabs}}" wx:key="value" class="tab {{filter===item.value?'active':''}}" bindtap="setFilter" data-f="{{item.value}}">{{item.label}}</text>
