@@ -16,6 +16,7 @@ frontend/.npm-cache/
 frontend/.uni-src/
 frontend/unpackage/
 frontend/dist/
+dist/
 uploads/
 project.private.config.json
 .pytest_cache/

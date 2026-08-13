@@ -112,7 +112,7 @@ https://space-api.example.edu.cn
 
 1. 使用受信任的 HTTPS 证书；不要以 `127.0.0.1`、`localhost`、裸 IP 或自签名证书作为正式地址。
 2. nginx 将 `/api/` 与公开留言图片的 `/uploads/` 转发到 FastAPI；私密媒体只允许通过 `/api/media/{media_id}` 鉴权下载。
-3. `miniprogram/config.js` 的 API 地址改为 `https://space-api.example.edu.cn/api`。
+3. 设置 `MINIPROGRAM_API_BASE_URL=https://space-api.example.edu.cn/api` 和正式 `MINIPROGRAM_APP_ID` 后执行 `npm run build:prod`，不要手工修改源码。
 4. 在微信公众平台把 `https://space-api.example.edu.cn` 加入：
    - request 合法域名；
    - uploadFile 合法域名；

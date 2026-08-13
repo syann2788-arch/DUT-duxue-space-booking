@@ -33,9 +33,18 @@ Set-Location backend
 ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
+如需验证 23:00 自动审批、状态推进、通知和媒体到期清理，请另开一个终端运行：
+
+```powershell
+Set-Location backend
+..\.venv\Scripts\python.exe -m app.worker
+```
+
+API 与 worker 是两个独立进程；只测试页面和手工接口时可以暂不启动 worker。
+
 访问 Swagger：`http://localhost:8000/docs`。演示管理员为 `admin001 / admin123`，首次登录后应立刻改成学校内部安全账号（当前版本可直接在数据库初始化脚本中替换）。
 
-微信开发者工具直接导入本仓库根目录，它会根据 `project.config.json` 加载 `miniprogram/`。本地模拟器默认请求 `http://127.0.0.1:8000/api`，需在“本地设置”中关闭合法域名校验。真机预览时必须把 `miniprogram/config.js` 的默认地址换成手机可访问的 HTTPS 后端。
+微信开发者工具直接导入本仓库根目录，它会根据 `project.config.json` 加载 `miniprogram/`。本地模拟器默认请求 `http://127.0.0.1:8000/api`，需在“本地设置”中关闭合法域名校验。真机/生产产物通过 `npm run build:staging` 或 `npm run build:prod` 注入手机可访问的 HTTPS 后端，无需手工修改源码。
 
 ## 测试
 
@@ -57,11 +66,13 @@ Set-Location backend
 
 ## 生产部署
 
-1. 将 `DATABASE_URL` 改为 `postgresql+asyncpg://...`，设置强随机 `SECRET_KEY`。
-2. 后端运行 `python seed.py` 后，以单 worker 启动（内置定时器要求单 worker）。如学校使用多实例，应关闭 `ENABLE_SCHEDULER`，改由一个独立任务实例或 cron 调用任务。
+1. 将 `DATABASE_URL` 改为 `postgresql+asyncpg://...`，设置 `APP_ENV=production` 和强随机 `SECRET_KEY`。
+2. 先执行 `alembic upgrade head`，再分别启动 API 与 `python -m app.worker`；API 不再隐式建表或运行定时任务。
 3. nginx 配置 HTTPS，把 `/api/` 和公开留言图片的 `/uploads/` 代理至 FastAPI；示例见 `deploy/nginx.conf`。
-4. 将 `miniprogram/config.js` 的 API 地址改为学校 HTTPS API 域名，并在微信公众平台配置 request/upload/download 合法域名。
-5. 按 [微信联调清单](docs/WECHAT_SETUP.md) 填写 AppID、AppSecret、订阅模板和合法域名。
+4. 使用 `MINIPROGRAM_API_BASE_URL`、`MINIPROGRAM_APP_ID`、`RELEASE_VERSION` 和 `GIT_COMMIT` 执行 `npm run build:prod`；生产门禁会拒绝 HTTP、本地/局域网地址、空或无效 AppID。
+5. 访问 `/api/ready` 验证数据库 revision、worker 心跳和 outbox，再按 [微信联调清单](docs/WECHAT_SETUP.md) 完成真机验收。
+
+完整发布、回滚、备份恢复和事故处理见 [生产运行手册](docs/OPERATIONS_RUNBOOK.md)。本地开发仍直接使用源码中的 `http://127.0.0.1:8000/api`，无需手工改动。
 
 留言图片存储在 `UPLOAD_DIR` 并通过受限的 `/uploads/message_*` 路由公开；玉兰卡和清扫照片存储在 `PRIVATE_UPLOAD_DIR`，业务只保存 `media_id`，仅管理员可鉴权下载且访问会记录审计日志。敏感媒体默认保留 90 天，由后台任务到期删除；正式环境应为两个目录配置独立的持久化存储或替换为校内对象存储。
 

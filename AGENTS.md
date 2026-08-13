@@ -28,6 +28,8 @@ cd backend
 pip install -r requirements.txt
 python seed.py              # 初始化房间 + 管理员(admin001/admin123)
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# 另开终端运行独立任务（自动审批/状态推进/通知/媒体清理）
+python -m app.worker
 
 # 微信小程序
 # 微信开发者工具直接导入仓库根目录；本地开发 API 默认：

@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     PRIVATE_UPLOAD_DIR: str = "./private_uploads"
     MEDIA_RETENTION_DAYS: int = 90
     MAX_UPLOAD_MB: int = 8
-    ENABLE_SCHEDULER: bool = True
+    REQUIRE_WORKER_HEARTBEAT: bool = False
+    WORKER_HEARTBEAT_MAX_AGE_SECONDS: int = 180
     WECHAT_APP_ID: str = ""
     WECHAT_APP_SECRET: str = ""
     WECHAT_TEMPLATE_SUBMITTED: str = ""
@@ -25,6 +26,10 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [x.strip() for x in self.CORS_ORIGINS.split(",") if x.strip()]
+
+    @property
+    def is_production(self) -> bool:
+        return self.APP_ENV.strip().lower() not in {"development", "test"}
 
 
 settings = Settings()

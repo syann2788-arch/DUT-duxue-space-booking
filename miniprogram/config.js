@@ -1,10 +1,12 @@
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000/api'
+const buildConfig = require('./build.config')
+const DEFAULT_API_BASE_URL = buildConfig.apiBaseUrl
 
 function normalizeBaseUrl(value) {
   return String(value || '').trim().replace(/\/+$/, '')
 }
 
 function getApiBaseUrl() {
+  if (!buildConfig.allowRuntimeOverride) return DEFAULT_API_BASE_URL
   return normalizeBaseUrl(wx.getStorageSync('apiBaseUrl')) || DEFAULT_API_BASE_URL
 }
 
@@ -18,6 +20,9 @@ function toServerUrl(path) {
 }
 
 const config = {
+  BUILD_ENV: buildConfig.environment,
+  BUILD_VERSION: buildConfig.version,
+  BUILD_COMMIT: buildConfig.commit,
   DEFAULT_API_BASE_URL,
   getApiBaseUrl,
   getServerUrl,

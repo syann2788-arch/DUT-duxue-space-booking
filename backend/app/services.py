@@ -173,7 +173,15 @@ async def refresh_reservation_states(db: AsyncSession, now: datetime | None = No
     """Advance time-derived states. Safe to run from requests and scheduler."""
     now = now or local_now()
     config = await get_runtime_config(db)
-    result = await db.execute(select(Reservation).where(Reservation.status.in_(OCCUPYING_STATUSES)))
+    result = await db.execute(
+        select(Reservation)
+        .where(
+            Reservation.status.in_(OCCUPYING_STATUSES),
+            Reservation.date >= now.date() - timedelta(days=1),
+            Reservation.date <= now.date(),
+        )
+        .with_for_update(skip_locked=True)
+    )
     changed = False
     for reservation in result.scalars():
         if reservation.start_slot is None or reservation.end_slot is None:
@@ -268,6 +276,9 @@ async def _record_violation(
     config: dict | None = None,
 ) -> bool:
     """Record one auditable violation and apply each 3-strike ban exactly once."""
+    # Serialize threshold counting per user so request-triggered refresh and the
+    # worker cannot both create the same N-strike restriction.
+    await db.execute(select(User.id).where(User.id == user_id).with_for_update())
     existing = await db.scalar(select(Violation.id).where(
         Violation.reservation_id == reservation_id,
         Violation.type == violation_type,

@@ -116,10 +116,11 @@ pending ──人工审核/自动审批──> approved ──签到──> in_u
 
 ## 定时任务与部署边界
 
-后端内置分钟任务用于推进超时状态、在配置时刻自动审批和投递消息。当前方案适合单个调度实例：
+独立 worker 的分钟任务用于推进超时状态、在配置时刻自动审批和投递消息：
 
-- 学校单实例部署可启用 `ENABLE_SCHEDULER=true`。
-- 多 worker/多实例部署不能让每个实例都运行调度器；应只保留一个任务实例，或迁移到学校 cron/任务平台。
+- API 生命周期不启动调度器；生产必须单独运行 `python -m app.worker`。
+- PostgreSQL advisory lock 保证多个 worker 只有一个执行当前 tick，任务结果和最后成功心跳写入 `system_settings`。
+- 生产 API 只检查 Alembic revision，不隐式创建或修改 schema；发布顺序必须为迁移、API/worker、readiness、流量切换。
 - SQLite 只用于本地演示，生产应使用 PostgreSQL；SQLite 不具备与 PostgreSQL 等价的并发锁语义。
 - 留言图片写入 `UPLOAD_DIR`；敏感图片写入独立的 `PRIVATE_UPLOAD_DIR`，默认 90 天后由任务删除。生产必须使用隔离的持久化磁盘或校内对象存储。
 
@@ -139,5 +140,5 @@ pending ──人工审核/自动审批──> approved ──签到──> in_u
 - 学校运维保管 `backend/.env`、数据库账号、AppSecret 和模板 ID，不写入 Git。
 - 生产数据库使用 PostgreSQL，并建立备份、恢复和容量策略。
 - `UPLOAD_DIR` 仅保存公开留言图片；`PRIVATE_UPLOAD_DIR` 单独持久化且不得由 nginx 静态暴露，保存期限由 `MEDIA_RETENTION_DAYS` 控制。
-- nginx 代理 `/api/` 与 `/uploads/`，后端进程和唯一调度实例具备开机启动、日志和监控。
+- nginx 代理 `/api/` 与 `/uploads/`，API 与独立 worker 具备开机启动、JSON 日志、request/job ID 和 readiness 监控。
 - 上线前替换默认 `SECRET_KEY`、默认管理员凭据，并完成学生/管理员真机全流程验收。

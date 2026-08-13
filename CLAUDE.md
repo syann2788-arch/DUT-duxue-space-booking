@@ -48,7 +48,7 @@
 
 ## 启动方式
 
-1. 后端：`cd backend` → `python seed.py` → `uvicorn app.main:app --reload`
+1. 后端：`cd backend` → `python seed.py` → `uvicorn app.main:app --reload`；需验证自动任务时另开终端运行 `python -m app.worker`
 2. 微信小程序：微信开发者工具导入仓库根目录（`project.config.json` 的 `miniprogramRoot: "miniprogram/"` 加载正式前端）
 3. 本地开发 API 默认：`http://127.0.0.1:8000/api`；真机预览前需在 `miniprogram/config.js` 配置手机可访问的 HTTPS 地址
 

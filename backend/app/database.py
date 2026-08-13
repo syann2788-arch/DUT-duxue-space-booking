@@ -4,11 +4,17 @@ Production deployments should use PostgreSQL and Alembic-style migrations.  The
 compatibility bridge only exists so the historical SQLite demo can be opened
 without deleting user data.
 """
+import logging
+
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
+
+
+SCHEMA_REVISION = "20260813_01"
 
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_pre_ping=True)
@@ -28,10 +34,38 @@ async def init_db():
     # Import models before create_all so metadata is populated.
     from app import models  # noqa: F401
 
+    if settings.is_production:
+        current = await current_schema_revision()
+        if current != SCHEMA_REVISION:
+            raise RuntimeError(
+                f"数据库版本不匹配：当前 {current or '未迁移'}，要求 {SCHEMA_REVISION}；"
+                "请先执行 alembic upgrade head"
+            )
+        return
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         if settings.DATABASE_URL.startswith("sqlite"):
+            logging.getLogger("duxue").warning(
+                '{"event":"sqlite_development_only","message":"SQLite 不支持生产行锁，仅限本地开发"}'
+            )
             await _upgrade_legacy_sqlite(conn)
+
+
+async def current_schema_revision() -> str | None:
+    try:
+        async with engine.connect() as conn:
+            return await conn.scalar(text("SELECT version_num FROM alembic_version"))
+    except SQLAlchemyError:
+        return None
+
+
+async def database_ready() -> tuple[bool, str | None]:
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return True, None
+    except SQLAlchemyError as exc:
+        return False, exc.__class__.__name__
 
 
 async def _upgrade_legacy_sqlite(conn) -> None:

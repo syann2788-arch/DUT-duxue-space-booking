@@ -13,7 +13,6 @@ _test_uploads = _test_root / "uploads"
 _test_private_uploads = _test_root / "private_uploads"
 
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_test_database}"
-os.environ["ENABLE_SCHEDULER"] = "false"
 os.environ["UPLOAD_DIR"] = str(_test_uploads)
 os.environ["PRIVATE_UPLOAD_DIR"] = str(_test_private_uploads)
 
