@@ -88,7 +88,7 @@
 
 - SMS 模板 ID 仍是占位符 `YOUR_SMS_TEMPLATE_ID`
 - `reservations` 表需要 `created_at` 降序索引（非唯一）
-- 签到二维码需外部生成（管理后台可复制 JSON），永久有效
+- 签到二维码由管理后台鉴权生成/预览（同时可复制 JSON），内容为房间编号，永久有效
 - 预约并发：SQLite 本地演示无 PostgreSQL 等价的 `WITH FOR UPDATE` 行锁语义，生产必须使用 PostgreSQL；行锁 + 锁内复检的并发模式见上方业务红线 #4
 - `miniprogram/` 已从旧紫 `#6b2d8e` 迁移到橙紫（橙 `#F25B15` + 紫 `#6B46C1`），色值变量集中在 `app.wxss`，旧紫复现由守护拦截【守护: backend/guards/test_conventions.py】
 

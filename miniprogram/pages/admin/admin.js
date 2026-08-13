@@ -1,6 +1,15 @@
 const app = getApp()
 const { getApiBaseUrl } = require('../../config')
 const { normalizePage } = require('../../utils/reservations')
+const {
+  EXPORT_SCENE_OPTIONS,
+  EXPORT_STATUS_OPTIONS,
+  buildAdminExportPath,
+  optionAt,
+  optionLabel,
+  roomCodePayload,
+  validateExportFilters
+} = require('../../utils/admin-tools')
 const PAGE_SIZE = 30
 
 const TABS = [
@@ -89,6 +98,13 @@ Page({
     activeTab: 'overview',
     stats: { total_users: 0, pending: 0, cleanup_pending: 0, today: 0 },
     qrRooms: [],
+    exportFilters: { dateFrom: '', dateTo: '', scene: '', status: '' },
+    exportSceneOptions: EXPORT_SCENE_OPTIONS,
+    exportStatusOptions: EXPORT_STATUS_OPTIONS,
+    exportSceneIndex: 0,
+    exportStatusIndex: 0,
+    exportSceneLabel: optionLabel(EXPORT_SCENE_OPTIONS, 0),
+    exportStatusLabel: optionLabel(EXPORT_STATUS_OPTIONS, 0),
 
     pendingReservations: [],
     selectedPendingIds: [],
@@ -779,9 +795,74 @@ Page({
   copyRoomCode(event) {
     const roomId = Number(event.currentTarget.dataset.id)
     wx.setClipboardData({
-      data: JSON.stringify({ room_id: roomId }),
+      data: roomCodePayload(roomId),
       success: () => wx.showToast({ title: '签到码内容已复制', icon: 'success' }),
       fail: error => toastError(error, '签到码复制失败')
+    })
+  },
+
+  previewRoomCode(event) {
+    const roomId = Number(event.currentTarget.dataset.id)
+    const token = (app.globalData && app.globalData.token) || wx.getStorageSync('token')
+    if (!token || !Number.isInteger(roomId)) {
+      wx.showToast({ title: '登录状态已失效', icon: 'none' })
+      return
+    }
+    wx.showLoading({ title: '生成签到码...' })
+    wx.downloadFile({
+      url: getApiBaseUrl() + '/admin/rooms/' + roomId + '/checkin-qr',
+      header: { Authorization: 'Bearer ' + token },
+      timeout: 30000,
+      success: result => {
+        if (result.statusCode !== 200) {
+          wx.showToast({ title: '签到码生成失败（' + result.statusCode + '）', icon: 'none' })
+          return
+        }
+        wx.previewImage({
+          current: result.tempFilePath,
+          urls: [result.tempFilePath],
+          showmenu: true,
+          fail: error => toastError(error, '签到码预览失败')
+        })
+      },
+      fail: error => toastError(error, '签到码下载失败'),
+      complete: () => wx.hideLoading()
+    })
+  },
+
+  onExportDateFromChange(event) {
+    this.setData({ 'exportFilters.dateFrom': event.detail.value || '' })
+  },
+
+  onExportDateToChange(event) {
+    this.setData({ 'exportFilters.dateTo': event.detail.value || '' })
+  },
+
+  onExportSceneChange(event) {
+    const index = Number(event.detail.value) || 0
+    this.setData({
+      exportSceneIndex: index,
+      exportSceneLabel: optionLabel(EXPORT_SCENE_OPTIONS, index),
+      'exportFilters.scene': optionAt(EXPORT_SCENE_OPTIONS, index).value
+    })
+  },
+
+  onExportStatusChange(event) {
+    const index = Number(event.detail.value) || 0
+    this.setData({
+      exportStatusIndex: index,
+      exportStatusLabel: optionLabel(EXPORT_STATUS_OPTIONS, index),
+      'exportFilters.status': optionAt(EXPORT_STATUS_OPTIONS, index).value
+    })
+  },
+
+  clearExportFilters() {
+    this.setData({
+      exportFilters: { dateFrom: '', dateTo: '', scene: '', status: '' },
+      exportSceneIndex: 0,
+      exportStatusIndex: 0,
+      exportSceneLabel: optionLabel(EXPORT_SCENE_OPTIONS, 0),
+      exportStatusLabel: optionLabel(EXPORT_STATUS_OPTIONS, 0)
     })
   },
 
@@ -791,9 +872,14 @@ Page({
       wx.showToast({ title: '登录状态已失效', icon: 'none' })
       return
     }
+    const validationError = validateExportFilters(this.data.exportFilters)
+    if (validationError) {
+      wx.showToast({ title: validationError, icon: 'none' })
+      return
+    }
     wx.showLoading({ title: '生成Excel...' })
     wx.downloadFile({
-      url: getApiBaseUrl() + '/admin/export.xlsx',
+      url: getApiBaseUrl() + buildAdminExportPath(this.data.exportFilters),
       header: { Authorization: 'Bearer ' + token },
       timeout: 30000,
       success: result => {

@@ -461,6 +461,33 @@ def test_allocation_review_limit_priority_and_export(client):
     assert "玉兰卡媒体编号" in headers
     assert "违规标记" in headers
 
+    filtered_export = client.get(
+        f"/api/admin/export.xlsx?date_from={day}&date_to={day}&scene=music&status_filter=pending",
+        headers=admin,
+    )
+    assert filtered_export.status_code == 200, filtered_export.text
+    filtered_workbook = load_workbook(io.BytesIO(filtered_export.content), read_only=True)
+    filtered_rows = list(filtered_workbook["预约记录"].iter_rows(values_only=True))
+    assert len(filtered_rows) == 3
+    assert all(row[1] == day and row[4] == "music" and row[12] == "pending" for row in filtered_rows[1:])
+
+    invalid_export = client.get(
+        "/api/admin/export.xlsx?date_from=2026-08-31&date_to=2026-08-01",
+        headers=admin,
+    )
+    assert invalid_export.status_code == 400
+
+    qr = client.get(
+        f"/api/admin/rooms/{first.json()['room']['id']}/checkin-qr",
+        headers=admin,
+    )
+    assert qr.status_code == 200, qr.text
+    assert qr.headers["content-type"] == "image/png"
+    assert qr.headers["cache-control"] == "private, no-store"
+    assert qr.content.startswith(b"\x89PNG\r\n\x1a\n")
+    assert client.get(f"/api/admin/rooms/{first.json()['room']['id']}/checkin-qr").status_code in {401, 403}
+    assert client.get("/api/admin/rooms/999999/checkin-qr", headers=admin).status_code == 404
+
     # Closed-loop cleanup: upload -> admin reject + timed restriction -> booking blocked.
     asyncio.run(force_finished(first.json()["id"]))
     photo = client.post(

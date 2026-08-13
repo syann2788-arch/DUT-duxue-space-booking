@@ -15,6 +15,7 @@
 - [ ] Alembic 从空库升级和生产快照升级均通过。
 - [ ] production 小程序产物的 `build-manifest.json` 记录正确版本与提交 SHA。
 - [ ] 依赖审计结果已评估；未修复项有责任人、影响、缓解措施和期限。
+- [ ] `docs/DEPENDENCY_LICENSE_INVENTORY.md` 与锁定依赖一致，素材和项目整体许可证已由权利人确认。
 
 ## 3. 外部配置与隐私
 

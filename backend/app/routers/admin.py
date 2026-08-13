@@ -2,20 +2,22 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import secrets
 import string
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from openpyxl import Workbook
+import qrcode
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.auth import hash_password, require_admin
 from app.database import get_db
-from app.models import BookingRestriction, CleanupStatus, CleanupVerification, Reservation, ReservationStatus, RoomSceneRule, SceneType, User, Violation, local_now
+from app.models import BookingRestriction, CleanupStatus, CleanupVerification, Reservation, ReservationStatus, Room, RoomSceneRule, SceneType, User, Violation, local_now
 from app.queries import get_all_users, list_admin_reservations, list_cleanup_queue
 from app.schemas import (
     BanUserRequest,
@@ -246,6 +248,36 @@ async def export_xlsx(
     output.seek(0)
     filename = f"reservations_{datetime.now():%Y%m%d_%H%M}.xlsx"
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@router.get("/rooms/{room_id}/checkin-qr")
+async def room_checkin_qr(
+    room_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    room = await db.get(Room, room_id)
+    if not room or not room.is_active or not room.can_reserve:
+        raise HTTPException(404, "可预约房间不存在")
+    payload = json.dumps({"room_id": room.id}, ensure_ascii=False, separators=(",", ":"))
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=12,
+        border=4,
+    )
+    qr.add_data(payload)
+    qr.make(fit=True)
+    output = io.BytesIO()
+    qr.make_image(fill_color="black", back_color="white").save(output, format="PNG")
+    return Response(
+        content=output.getvalue(),
+        media_type="image/png",
+        headers={
+            "Content-Disposition": f'inline; filename="checkin-{room.room_code}.png"',
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 def _minute_label(value: int | None) -> str:

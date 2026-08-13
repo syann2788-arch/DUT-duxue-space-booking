@@ -168,10 +168,9 @@ jobs:
           echo "GitHub Release must remain a pre-release until signed acceptance is complete." >> "$GITHUB_STEP_SUMMARY"
 
   dependency-audit:
-    name: Dependency audit (baseline)
+    name: Dependency audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
     defaults:
       run:
         working-directory: backend

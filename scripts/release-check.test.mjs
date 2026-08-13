@@ -34,3 +34,13 @@ test('demo and metrics artifacts prohibit real personal data', () => {
   assert.match(demo, /不得使用真实/)
   assert.match(metrics, /不得记录/)
 })
+
+test('local completion and direct dependency license inventory are auditable', () => {
+  const inventory = fs.readFileSync(path.join(root, 'docs/DEPENDENCY_LICENSE_INVENTORY.md'), 'utf8')
+  const report = fs.readFileSync(path.join(root, 'docs/LOCAL_COMPLETION_REPORT.md'), 'utf8')
+  const workflow = fs.readFileSync(path.join(root, '.github/workflows/quality.yml'), 'utf8')
+  assert.match(inventory, /PyJWT \| 2\.13\.0/)
+  assert.match(inventory, /项目自身采用何种许可证/)
+  assert.match(report, /未发现已知漏洞/)
+  assert.doesNotMatch(workflow, /dependency-audit:[\s\S]*?continue-on-error: true/)
+})

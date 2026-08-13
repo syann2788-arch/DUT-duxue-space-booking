@@ -19,7 +19,8 @@ function read(relative) {
 const required = [
   'CHANGELOG.md', 'ROADMAP.md', 'SECURITY.md', 'CONTRIBUTING.md', 'SUPPORT.md',
   'CODE_OF_CONDUCT.md', 'docs/PILOT_RELEASE_BASELINE.md', 'docs/RELEASE_CHECKLIST.md',
-  'docs/DEMO.md', 'docs/PILOT_METRICS.md', 'docs/GITHUB_ADMIN_SETUP.md', '.github/pull_request_template.md',
+  'docs/DEMO.md', 'docs/PILOT_METRICS.md', 'docs/GITHUB_ADMIN_SETUP.md',
+  'docs/DEPENDENCY_LICENSE_INVENTORY.md', 'docs/LOCAL_COMPLETION_REPORT.md', '.github/pull_request_template.md',
   '.github/ISSUE_TEMPLATE/bug_report.yml', '.github/ISSUE_TEMPLATE/feature_request.yml',
   '.github/ISSUE_TEMPLATE/pilot_acceptance.yml'
 ]

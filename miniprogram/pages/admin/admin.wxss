@@ -175,6 +175,56 @@
   gap: 22rpx;
 }
 
+.export-card-head,
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.export-card-head > view {
+  min-width: 0;
+  flex: 1;
+}
+
+.export-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+  margin-top: 22rpx;
+}
+
+.filter-control {
+  height: 68rpx;
+  padding: 0 18rpx;
+  overflow: hidden;
+  color: #667180;
+  font-size: 22rpx;
+  line-height: 68rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #F6F7F9;
+  border: 1rpx solid #ECEEF2;
+  border-radius: 12rpx;
+  box-sizing: border-box;
+}
+
+.full-export-button {
+  height: 72rpx;
+  margin: 18rpx 0 0;
+  color: #fff;
+  font-size: 24rpx;
+  line-height: 72rpx;
+  background: #F25B15;
+  border: 0;
+  border-radius: 12rpx;
+}
+
+.full-export-button::after {
+  border: 0;
+}
+
 .action-card > view,
 .placeholder-card > view,
 .selected-user-head > view,
@@ -256,9 +306,22 @@ button.full-purple-button::after {
 }
 
 .simple-main {
+  min-width: 0;
+  flex: 1;
   padding-right: 20rpx;
   color: #171C24;
   font-size: 24rpx;
+}
+
+.row-actions {
+  flex-shrink: 0;
+  gap: 14rpx;
+}
+
+.secondary-action {
+  padding: 12rpx 0;
+  color: #667180;
+  font-size: 22rpx;
 }
 
 .text-action,

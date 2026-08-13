@@ -35,7 +35,7 @@ def test_readiness_and_error_contract_include_trace_ids(client):
 
 def test_local_schema_revision_is_optional_but_migration_revision_is_known(client):
     assert asyncio.run(current_schema_revision()) is None
-    assert SCHEMA_REVISION == "20260813_01"
+    assert SCHEMA_REVISION == "20260813_02"
 
 
 def test_production_rejects_unmigrated_schema(client, monkeypatch):

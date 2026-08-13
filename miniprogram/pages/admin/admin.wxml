@@ -30,20 +30,40 @@
         <view class="stat-card green"><text class="stat-number">{{stats.today}}</text><text class="stat-label">今日预约</text></view>
       </view>
 
-      <view class="admin-card action-card">
-        <view>
-          <text class="card-title">预约记录 Excel</text>
-          <text class="card-desc">导出预约、清扫、违规与限制记录</text>
+      <view class="admin-card export-card">
+        <view class="export-card-head">
+          <view>
+            <text class="card-title">预约记录 Excel</text>
+            <text class="card-desc block">按日期、场景和状态导出；限制记录作为独立工作表保留。</text>
+          </view>
+          <text class="text-action" bindtap="clearExportFilters" aria-role="button" aria-label="清空 Excel 导出筛选条件">清空</text>
         </view>
-        <button class="compact-btn primary" bindtap="exportExcel" aria-label="导出完整预约记录 Excel">导出</button>
+        <view class="export-filter-grid">
+          <picker mode="date" value="{{exportFilters.dateFrom}}" bindchange="onExportDateFromChange">
+            <view class="filter-control" aria-role="button" aria-label="选择导出开始日期">{{exportFilters.dateFrom||'开始日期'}}</view>
+          </picker>
+          <picker mode="date" value="{{exportFilters.dateTo}}" bindchange="onExportDateToChange">
+            <view class="filter-control" aria-role="button" aria-label="选择导出结束日期">{{exportFilters.dateTo||'结束日期'}}</view>
+          </picker>
+          <picker value="{{exportSceneIndex}}" range="{{exportSceneOptions}}" range-key="label" bindchange="onExportSceneChange">
+            <view class="filter-control" aria-role="button" aria-label="选择导出场景">{{exportSceneLabel}}</view>
+          </picker>
+          <picker value="{{exportStatusIndex}}" range="{{exportStatusOptions}}" range-key="label" bindchange="onExportStatusChange">
+            <view class="filter-control" aria-role="button" aria-label="选择导出状态">{{exportStatusLabel}}</view>
+          </picker>
+        </view>
+        <button class="full-export-button" bindtap="exportExcel" aria-label="按当前筛选条件导出预约记录 Excel">导出 Excel</button>
       </view>
 
       <view class="admin-card">
         <text class="card-title">房间签到码</text>
-        <text class="card-desc block">复制房间 JSON 后生成二维码，张贴于对应空间。</text>
+        <text class="card-desc block">在页面内生成二维码并保存，张贴前请再核对房间。</text>
         <view wx:for="{{qrRooms}}" wx:key="id" class="simple-row">
           <text class="simple-main">{{item.code}} {{item.name}}</text>
-          <text class="text-action" data-id="{{item.id}}" bindtap="copyRoomCode">复制签到码</text>
+          <view class="row-actions">
+            <text class="secondary-action" data-id="{{item.id}}" bindtap="copyRoomCode" aria-role="button" aria-label="复制 {{item.code}} 签到码内容">复制内容</text>
+            <text class="text-action" data-id="{{item.id}}" bindtap="previewRoomCode" aria-role="button" aria-label="生成并预览 {{item.code}} 签到二维码">预览二维码</text>
+          </view>
         </view>
         <text wx:if="{{!qrRooms.length}}" class="empty-small">暂无可预约房间</text>
       </view>

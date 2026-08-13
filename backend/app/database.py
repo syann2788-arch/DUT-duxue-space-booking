@@ -14,7 +14,7 @@ from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
 
-SCHEMA_REVISION = "20260813_01"
+SCHEMA_REVISION = "20260813_02"
 
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_pre_ping=True)
@@ -130,4 +130,12 @@ async def _upgrade_legacy_sqlite(conn) -> None:
     await conn.execute(text(
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_violation_reservation_type "
         "ON violations (reservation_id, type)"
+    ))
+    await conn.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_reservations_status_date "
+        "ON reservations (status, date)"
+    ))
+    await conn.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_reservations_user_date "
+        "ON reservations (user_id, date)"
     ))
