@@ -18,7 +18,7 @@ from app.models import (
     SceneType,
     User,
 )
-from app.services import refresh_reservation_states
+from app.domain.reservations import refresh_reservation_states
 
 
 def _page(query, *, limit: int | None, offset: int):

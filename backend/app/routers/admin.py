@@ -35,18 +35,11 @@ from app.schemas import (
     UserPageOut,
     ViolationOut,
 )
-from app.services import (
-    add_restriction,
-    create_counselor_user,
-    get_counselors,
-    get_runtime_config,
-    review_cleanup,
-    review_reservations,
-    revoke_restriction,
-    set_counselor,
-    update_public_status,
-    update_runtime_config,
-)
+from app.domain.restrictions import add_restriction, revoke_restriction
+from app.domain.reviews import review_cleanup, review_reservations
+from app.domain.rooms import update_public_status
+from app.domain.settings import get_runtime_config, update_runtime_config
+from app.domain.users import create_counselor_user, get_counselors, set_counselor
 
 router = APIRouter(prefix="/api/admin", tags=["管理"])
 

@@ -49,7 +49,8 @@ backend/app/
 ├── models.py        # 用户、房间、预约、清扫、限制、配置、通知、违约等数据表
 ├── schemas.py       # Pydantic v2 请求/响应模型
 ├── auth.py          # JWT + bcrypt，get_current_user / require_admin
-├── services.py      # 全部业务逻辑(查询/校验/预约/违约)
+├── services.py      # 旧调用兼容入口（不再承载业务实现）
+├── domain/          # 按预约、审核、限制、媒体、房间、配置、用户拆分的业务模块
 └── routers/
     ├── auth.py      # POST /register, /login, GET /me
     ├── rooms.py     # 房间列表/详情/时段、使用者留言与留言照片
@@ -58,7 +59,7 @@ backend/app/
 ```
 
 **关键设计决策**:
-- 所有时间校验(取消截止、签到宽限)在 `services.py` 内完成，与DB操作在同一事务中，不在router层
+- 所有时间校验(取消截止、签到宽限)在 `domain/reservations.py` 内完成，与DB操作在同一事务中，不在router层
 - 违约检测由 `refresh_reservation_states()` 与后台分钟任务共同触发，并以预约号+违约类型保证幂等
 - JWT payload: `{"sub": user_id_str, "student_id": str, "role": str}`; router层通过 `int(user["sub"])` 获取user_id
 - 原生小程序 `miniprogram/app.js` 管理登录态，token 存 `wx.storage`，`miniprogram/utils/api.js` 自动附加 Authorization
@@ -99,4 +100,4 @@ CSV格式(Sheet_20250907.csv): 职务,姓名,负责班级,联系方式,...
 
 - SQLite 本地开发无法提供 PostgreSQL 等价的行锁语义；生产必须使用 PostgreSQL
 - 微信订阅消息必须在学校提供正式 AppID、AppSecret 和模板 ID 后才能真实发送
-- 无分页，所有列表接口全量返回
+- 管理员和“我的预约”列表已经服务端分页；新增列表接口也必须提供 `limit/offset/total/has_more`

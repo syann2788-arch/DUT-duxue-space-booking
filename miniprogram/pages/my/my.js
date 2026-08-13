@@ -1,4 +1,5 @@
 const app = getApp()
+const { cleanupPayload } = require('../../utils/booking-flow')
 const {
   DEFAULT_CONFIG,
   formatReservation,
@@ -335,7 +336,7 @@ Page({
       }
       await app.request(`/reservations/${reservationId}/cleanup`, {
         method: 'POST',
-        data: { media_ids: mediaIds }
+        data: cleanupPayload(mediaIds)
       })
       wx.showToast({ title: '已提交复核', icon: 'success' })
       await this.loadData()

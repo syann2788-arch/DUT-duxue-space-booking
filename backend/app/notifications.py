@@ -42,6 +42,7 @@ async def _access_token(client: httpx.AsyncClient) -> str:
             "appid": settings.WECHAT_APP_ID,
             "secret": settings.WECHAT_APP_SECRET,
         })
+        response.raise_for_status()
         payload = response.json()
         if "access_token" not in payload:
             raise RuntimeError(payload.get("errmsg", "获取access_token失败"))
@@ -93,7 +94,13 @@ async def deliver_due_notifications(db: AsyncSession, limit: int = 100) -> int:
         await db.commit()
         return len(notifications)
     async with httpx.AsyncClient(timeout=10) as client:
-        token = await _access_token(client)
+        try:
+            token = await _access_token(client)
+        except Exception as exc:
+            for notification, _, _ in deliverable:
+                _record_delivery_failure(notification, exc)
+            await db.commit()
+            return len(notifications)
         for notification, user, template_id in deliverable:
             notification.attempts += 1
             try:
@@ -108,8 +115,17 @@ async def deliver_due_notifications(db: AsyncSession, limit: int = 100) -> int:
                 notification.sent_at = local_now()
                 notification.error = None
             except Exception as exc:  # provider errors are captured in the outbox
-                notification.error = str(exc)[:500]
-                if notification.attempts >= 5:
-                    notification.status = NotificationStatus.failed
+                _record_delivery_failure(notification, exc, increment=False)
     await db.commit()
     return len(notifications)
+
+
+def _record_delivery_failure(notification: Notification, exc: Exception, increment: bool = True) -> None:
+    if increment:
+        notification.attempts += 1
+    notification.error = str(exc)[:500]
+    if notification.attempts >= 5:
+        notification.status = NotificationStatus.failed
+        return
+    # Keep transient failures pending, but avoid hammering the provider every tick.
+    notification.scheduled_at = local_now() + timedelta(minutes=min(2 ** notification.attempts, 60))

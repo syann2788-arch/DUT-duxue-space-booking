@@ -36,8 +36,16 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效的认证令牌")
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> dict:
-    return decode_token(credentials.credentials)
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Validate both the JWT and the account's current server-side state."""
+    payload = decode_token(credentials.credentials)
+    current = await db.get(User, int(payload["sub"]))
+    if not current or not current.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号不存在或已停用")
+    return payload
 
 
 async def require_admin(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> dict:

@@ -113,7 +113,11 @@ class FakeTokenClient:
 
     async def get(self, *args, **kwargs):
         self.calls += 1
-        return httpx.Response(200, json={"access_token": "cached-token", "expires_in": 7200})
+        return httpx.Response(
+            200,
+            json={"access_token": "cached-token", "expires_in": 7200},
+            request=httpx.Request("GET", "https://api.weixin.qq.com/cgi-bin/token"),
+        )
 
 
 def test_wechat_access_token_is_cached(monkeypatch):

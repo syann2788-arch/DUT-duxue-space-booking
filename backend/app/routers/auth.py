@@ -7,7 +7,8 @@ from app.config import settings
 from app.database import get_db
 from app.models import User
 from app.schemas import UserProfileOut, UserRegister, UserLogin, Token, UserOut, WechatBindRequest, WechatLoginRequest
-from app.services import create_user, get_active_restriction, get_user_by_id, get_user_by_student_id
+from app.domain.restrictions import get_active_restriction
+from app.domain.users import create_user, get_user_by_id, get_user_by_student_id
 from app.auth import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["认证"])

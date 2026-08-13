@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 
 pytestmark = pytest.mark.skipif(
@@ -15,21 +15,23 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-async def scenario():
+async def booking_scenario():
     from app.auth import hash_password
     from app.database import async_session
     from app.models import MediaPurpose, PrivateMedia, Reservation, User, local_now
     from app.schemas import ReservationCreate
-    from app.services import create_reservation
+    from app.domain.reservations import create_reservation
     from seed import seed
 
     await seed()
     async with async_session() as db:
+        await db.execute(delete(Reservation))
+        await db.commit()
         users = []
         media_ids = []
         for index in range(2):
             user = User(
-                student_id=f"2099000{index}", name=f"并发用户{index}",
+                student_id=f"{int(uuid4().hex[:10], 16):010d}{index}"[-20:], name=f"并发用户{index}",
                 phone=f"1399999999{index}", class_name="9901",
                 password_hash=hash_password("Test1234"),
             )
@@ -73,6 +75,31 @@ async def scenario():
 
 
 def test_postgresql_room_lock_prevents_double_booking():
-    outcomes, count = asyncio.run(scenario())
+    outcomes, count = asyncio.run(booking_scenario())
     assert count == 1
     assert sum(isinstance(item, int) and item == 409 for item in outcomes) == 1
+
+
+async def leader_scenario():
+    from app.tasks import leader_lock
+
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def hold_lock():
+        async with leader_lock() as acquired:
+            assert acquired is True
+            entered.set()
+            await release.wait()
+
+    first = asyncio.create_task(hold_lock())
+    await entered.wait()
+    async with leader_lock() as second_acquired:
+        second = second_acquired
+    release.set()
+    await first
+    return second
+
+
+def test_postgresql_advisory_lock_allows_only_one_worker_leader():
+    assert asyncio.run(leader_scenario()) is False

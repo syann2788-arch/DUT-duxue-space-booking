@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from app.config import Settings, settings, validate_runtime_security
 from app.database import async_session
 from app.models import MediaAccessLog, PrivateMedia, local_now
-from app.services import purge_expired_private_media
+from app.domain.media import purge_expired_private_media
 from conftest import auth_header
 
 

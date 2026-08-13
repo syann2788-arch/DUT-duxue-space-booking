@@ -1,4 +1,5 @@
 const app = getApp()
+const { reservationPayload } = require('../../utils/booking-flow')
 
 const SCENE_LABELS = {
   study: '自习',
@@ -139,15 +140,15 @@ Page({
       loadingShown = true
       reservation = await app.request('/reservations', {
         method: 'POST',
-        data: {
+        data: reservationPayload({
           scene: this.data.scene,
           date: this.data.date,
-          start_slot: this.data.startSlot,
-          end_slot: this.data.endSlot,
-          people_count: isStudy ? 1 : this.data.people,
+          startSlot: this.data.startSlot,
+          endSlot: this.data.endSlot,
+          peopleCount: isStudy ? 1 : this.data.people,
           purpose,
-          campus_card_media_id: this.data.campusCardMediaId
-        }
+          campusCardMediaId: this.data.campusCardMediaId
+        })
       })
     } catch (err) {
       wx.showToast({ title: err.message || '预约提交失败', icon: 'none', duration: 2500 })

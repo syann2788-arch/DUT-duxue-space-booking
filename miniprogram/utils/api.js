@@ -6,17 +6,17 @@ function buildUrl(path) {
 }
 
 function getToken() {
-  const app = getApp()
-  return (app.globalData && app.globalData.token) || wx.getStorageSync('token') || ''
+  const app = typeof getApp === 'function' ? getApp() : null
+  return (app && app.globalData && app.globalData.token) || wx.getStorageSync('token') || ''
 }
 
 function clearLogin() {
-  const app = getApp()
+  const app = typeof getApp === 'function' ? getApp() : null
   if (app && typeof app.clearLogin === 'function') {
     app.clearLogin()
     return
   }
-  if (app.globalData) {
+  if (app && app.globalData) {
     app.globalData.token = ''
     app.globalData.user = null
   }

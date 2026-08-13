@@ -1,4 +1,15 @@
 const app = getApp()
+const { adminReviewPayload } = require('../../utils/booking-flow')
+const {
+  cleanupReviewPayload,
+  overviewData,
+  restrictionPayload,
+  roomRulePayload,
+  roomRules,
+  settingFields,
+  settingPayload,
+  updateRoomRule
+} = require('../../utils/admin-config')
 const { getApiBaseUrl } = require('../../config')
 const { normalizePage } = require('../../utils/reservations')
 const {
@@ -10,57 +21,22 @@ const {
   roomCodePayload,
   validateExportFilters
 } = require('../../utils/admin-tools')
-const PAGE_SIZE = 30
-
-const TABS = [
-  { key: 'overview', label: '概览' },
-  { key: 'review', label: '预约审核' },
-  { key: 'cleanup', label: '清扫复核' },
-  { key: 'users', label: '用户' },
-  { key: 'rules', label: '分房规则' },
-  { key: 'settings', label: '系统配置' }
-]
-
-const ROLE_LABELS = { student: '学生', counselor: '辅导员', admin: '管理员' }
-const SCENE_LABELS = { study: '自习', meeting: '开会', event: '大型活动', music: '音乐练习' }
-const MODE_LABELS = { shared: '共享', exclusive: '独占' }
-const VIOLATION_LABELS = { no_show: '未签到', cleanup_failed: '清扫不合格' }
-const RESTRICTION_LABELS = { temporary: '临时限制', timed: '限时限制', permanent: '永久限制' }
-const USAGE_MODES = ['shared', 'exclusive']
-
-const SETTING_META = [
-  { key: 'open_hour', label: '开放开始（时）', inputType: 'number' },
-  { key: 'close_hour', label: '开放结束（时）', inputType: 'number' },
-  { key: 'slot_minutes', label: '预约粒度（分钟）', inputType: 'number' },
-  { key: 'max_minutes_per_day', label: '每日预约上限（分钟）', inputType: 'number' },
-  { key: 'advance_days', label: '可提前预约天数', inputType: 'number' },
-  { key: 'cancel_deadline_minutes', label: '取消截止（开始前分钟）', inputType: 'number' },
-  { key: 'checkin_grace_minutes', label: '签到宽限（分钟）', inputType: 'number' },
-  { key: 'auto_approval_time', label: '每日自动审批时间', inputType: 'text', placeholder: 'HH:MM' },
-  { key: 'reminder_minutes', label: '开始前提醒（分钟）', inputType: 'number' },
-  { key: 'temporary_ban_days', label: '临时限制默认天数', inputType: 'number' },
-  { key: 'violation_threshold', label: '自动限制违约阈值', inputType: 'number' },
-  { key: 'violation_ban_days', label: '自动限制天数', inputType: 'number' },
-  { key: 'music_a103_start_hour', label: 'A103 钢琴开放开始（时）', inputType: 'number' },
-  { key: 'music_a103_end_hour', label: 'A103 钢琴开放结束（时）', inputType: 'number' }
-]
-
-const RESTRICTION_OPTIONS = [
-  { level: 'temporary', label: '临时限制', defaultDays: '1' },
-  { level: 'timed', label: '限时限制', defaultDays: '7' },
-  { level: 'permanent', label: '永久限制', defaultDays: '' }
-]
-
-function clock(minutes) {
-  if (minutes === null || minutes === undefined) return '--:--'
-  const value = Number(minutes)
-  return String(Math.floor(value / 60)).padStart(2, '0') + ':' + String(value % 60).padStart(2, '0')
-}
-
-function dateTime(value) {
-  if (!value) return '—'
-  return String(value).replace('T', ' ').slice(0, 16)
-}
+const {
+  PAGE_SIZE,
+  RESTRICTION_OPTIONS,
+  SETTING_META,
+  TABS,
+  buildUserQuery,
+  loaderForTab,
+  toggleSelection
+} = require('../../utils/admin-state')
+const {
+  presentCleanup,
+  presentReservation,
+  presentRestriction,
+  presentUser,
+  presentViolation
+} = require('../../utils/admin-presenters')
 
 function toastError(error, fallback) {
   const message = error && error.message ? error.message : fallback
@@ -191,15 +167,7 @@ Page({
 
   loadActiveTab() {
     if (!this._authorized) return
-    const loaders = {
-      overview: 'loadOverview',
-      review: 'loadPendingReservations',
-      cleanup: 'loadCleanupQueue',
-      users: 'loadUsers',
-      rules: 'loadRoomRules',
-      settings: 'loadSettings'
-    }
-    const method = loaders[this.data.activeTab]
+    const method = loaderForTab(this.data.activeTab)
     if (method && typeof this[method] === 'function') this[method]()
   },
 
@@ -214,21 +182,7 @@ Page({
         app.request('/admin/stats'),
         app.request('/rooms')
       ])
-      const stats = result[0] || {}
-      const rooms = Array.isArray(result[1]) ? result[1] : []
-      this.setData({
-        stats: {
-          total_users: stats.total_users || 0,
-          pending: stats.pending || 0,
-          cleanup_pending: stats.cleanup_pending || 0,
-          today: stats.today || 0
-        },
-        qrRooms: rooms.filter(room => room.can_reserve).map(room => ({
-          id: room.id,
-          code: room.room_code,
-          name: room.name
-        }))
-      })
+      this.setData(overviewData(result[0], result[1]))
     } catch (error) {
       this.setData({ loadError: (error && error.message) || '概览加载失败' })
       toastError(error, '概览加载失败')
@@ -241,14 +195,7 @@ Page({
     this.setData({ loading: true, loadError: '' })
     try {
       const page = normalizePage(await app.request(`/admin/reservations?status_filter=pending&limit=${PAGE_SIZE}&offset=0`))
-      const items = page.items.map(item => ({
-        ...item,
-        selected: false,
-        sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
-        modeLabel: MODE_LABELS[item.usage_mode] || '—',
-        timeLabel: clock(item.start_minute) + '-' + clock(item.end_minute),
-        cardMediaId: item.campus_card_media_id || ''
-      }))
+      const items = page.items.map(item => presentReservation(item))
       this.setData({ pendingReservations: items, selectedPendingIds: [], pendingTotal: page.total, pendingHasMore: page.hasMore })
     } catch (error) {
       this.setData({ loadError: (error && error.message) || '待审核预约加载失败' })
@@ -264,14 +211,7 @@ Page({
     try {
       const offset = this.data.pendingReservations.length
       const page = normalizePage(await app.request(`/admin/reservations?status_filter=pending&limit=${PAGE_SIZE}&offset=${offset}`))
-      const items = page.items.map(item => ({
-        ...item,
-        selected: false,
-        sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
-        modeLabel: MODE_LABELS[item.usage_mode] || '—',
-        timeLabel: clock(item.start_minute) + '-' + clock(item.end_minute),
-        cardMediaId: item.campus_card_media_id || ''
-      }))
+      const items = page.items.map(item => presentReservation(item))
       this.setData({ pendingReservations: this.data.pendingReservations.concat(items), pendingTotal: page.total, pendingHasMore: page.hasMore })
     } catch (error) {
       this.setData({ loadError: (error && error.message) || '更多待审核预约加载失败' })
@@ -282,16 +222,12 @@ Page({
 
   togglePending(event) {
     const id = Number(event.currentTarget.dataset.id)
-    const selected = this.data.selectedPendingIds.slice()
-    const index = selected.indexOf(id)
-    if (index >= 0) selected.splice(index, 1)
-    else {
-      if (selected.length >= 200) {
-        wx.showToast({ title: '每批最多选择200笔', icon: 'none' })
-        return
-      }
-      selected.push(id)
+    const result = toggleSelection(this.data.selectedPendingIds, id)
+    if (result.limitReached) {
+      wx.showToast({ title: '每批最多选择200笔', icon: 'none' })
+      return
     }
+    const selected = result.selected
     this.setData({
       selectedPendingIds: selected,
       pendingReservations: this.data.pendingReservations.map(item => ({
@@ -342,11 +278,7 @@ Page({
     try {
       const result = await app.request('/admin/reservations/review', {
         method: 'POST',
-        data: {
-          reservation_ids: ids.map(Number),
-          decision: approved ? 'approved' : 'rejected',
-          note: String(modal.content || '').trim()
-        }
+        data: adminReviewPayload(ids, approved ? 'approved' : 'rejected', modal.content)
       })
       const processed = Number(result.processed) || 0
       const requested = Number(result.requested) || ids.length
@@ -381,14 +313,7 @@ Page({
     this.setData({ loading: true, loadError: '' })
     try {
       const page = normalizePage(await app.request(`/admin/cleanup?limit=${PAGE_SIZE}&offset=0`))
-      const items = page.items.map(item => ({
-        ...item,
-        sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
-        timeLabel: clock(item.start_minute) + '-' + clock(item.end_minute),
-        mediaIds: item.cleanup && Array.isArray(item.cleanup.media_ids)
-          ? item.cleanup.media_ids
-          : []
-      }))
+      const items = page.items.map(presentCleanup)
       this.setData({ cleanupItems: items, cleanupTotal: page.total, cleanupHasMore: page.hasMore })
     } catch (error) {
       this.setData({ loadError: (error && error.message) || '清扫复核队列加载失败' })
@@ -403,12 +328,7 @@ Page({
     this.setData({ loading: true, loadError: '' })
     try {
       const page = normalizePage(await app.request(`/admin/cleanup?limit=${PAGE_SIZE}&offset=${this.data.cleanupItems.length}`))
-      const items = page.items.map(item => ({
-        ...item,
-        sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
-        timeLabel: clock(item.start_minute) + '-' + clock(item.end_minute),
-        mediaIds: item.cleanup && Array.isArray(item.cleanup.media_ids) ? item.cleanup.media_ids : []
-      }))
+      const items = page.items.map(presentCleanup)
       this.setData({ cleanupItems: this.data.cleanupItems.concat(items), cleanupTotal: page.total, cleanupHasMore: page.hasMore })
     } catch (error) {
       this.setData({ loadError: (error && error.message) || '更多清扫记录加载失败' })
@@ -438,15 +358,12 @@ Page({
     const modal = await editableModal(approved ? '确认清扫合格' : '清扫复核不通过', approved ? '复核备注（可选）' : '请输入不通过原因')
     if (!modal.confirm) return
 
-    const note = String(modal.content || '').trim() || (approved ? '' : '清扫照片核验不合格，请重新上传')
-    let body = { decision: approved ? 'approved' : 'rejected', note, restrict_user: false }
+    let action = null
     if (!approved) {
-      const action = await actionSheet(['仅退回重传', '退回并临时限制1天', '退回并限时限制7天', '退回并永久限制'])
+      action = await actionSheet(['仅退回重传', '退回并临时限制1天', '退回并限时限制7天', '退回并永久限制'])
       if (action === null) return
-      if (action === 1) body = { ...body, restrict_user: true, restriction_level: 'temporary', restriction_days: 1 }
-      if (action === 2) body = { ...body, restrict_user: true, restriction_level: 'timed', restriction_days: 7 }
-      if (action === 3) body = { ...body, restrict_user: true, restriction_level: 'permanent' }
     }
+    const body = cleanupReviewPayload(decision, modal.content, action)
 
     wx.showLoading({ title: '处理中...' })
     try {
@@ -473,17 +390,9 @@ Page({
     this.setData({ loading: true, loadError: '' })
     try {
       // FastAPI router names this query parameter "search".
-      const keyword = String(this.data.userSearch || '').trim()
       const offset = append ? this.data.users.length : 0
-      const query = [`limit=${PAGE_SIZE}`, `offset=${offset}`]
-      if (keyword) query.push('search=' + encodeURIComponent(keyword))
-      const page = normalizePage(await app.request('/admin/users?' + query.join('&')))
-      const users = page.items.map(user => ({
-        ...user,
-        initial: String(user.name || '?').slice(0, 1),
-        roleLabel: ROLE_LABELS[user.role] || user.role,
-        bannedLabel: user.banned_until ? dateTime(user.banned_until) : ''
-      }))
+      const page = normalizePage(await app.request(buildUserQuery(this.data.userSearch, offset)))
+      const users = page.items.map(presentUser)
       this.setData({ users: append ? this.data.users.concat(users) : users, usersTotal: page.total, usersHasMore: page.hasMore })
     } catch (error) {
       this.setData({ loadError: (error && error.message) || '用户列表加载失败' })
@@ -530,18 +439,8 @@ Page({
         app.request('/admin/users/' + userId + '/violations'),
         app.request('/admin/users/' + userId + '/restrictions')
       ])
-      const violations = (Array.isArray(result[0]) ? result[0] : []).map(item => ({
-        ...item,
-        typeLabel: VIOLATION_LABELS[item.type] || item.type,
-        createdLabel: dateTime(item.created_at)
-      }))
-      const restrictions = (Array.isArray(result[1]) ? result[1] : []).map(item => ({
-        ...item,
-        levelLabel: RESTRICTION_LABELS[item.level] || item.level,
-        startsLabel: dateTime(item.starts_at),
-        endsLabel: item.ends_at ? dateTime(item.ends_at) : '永久',
-        createdLabel: dateTime(item.created_at)
-      }))
+      const violations = (Array.isArray(result[0]) ? result[0] : []).map(presentViolation)
+      const restrictions = (Array.isArray(result[1]) ? result[1] : []).map(presentRestriction)
       this.setData({ violations, restrictions })
     } catch (error) {
       toastError(error, '用户记录加载失败')
@@ -576,20 +475,12 @@ Page({
       wx.showToast({ title: '请先选择用户', icon: 'none' })
       return
     }
-    const form = this.data.restrictionForm
-    const reason = String(form.reason || '').trim()
-    if (reason.length < 2) {
-      wx.showToast({ title: '限制原因至少填写2个字', icon: 'none' })
+    let body
+    try {
+      body = restrictionPayload(this.data.restrictionForm)
+    } catch (error) {
+      wx.showToast({ title: error.message, icon: 'none' })
       return
-    }
-    const body = { level: form.level, reason }
-    if (form.level !== 'permanent') {
-      const days = Number(form.days)
-      if (!Number.isInteger(days) || days < 1 || days > 3650) {
-        wx.showToast({ title: '限制天数应为1至3650', icon: 'none' })
-        return
-      }
-      body.days = days
     }
 
     wx.showLoading({ title: '提交中...' })
@@ -626,13 +517,7 @@ Page({
   async loadSettings() {
     this.setData({ loading: true, loadError: '' })
     try {
-      const settings = await app.request('/admin/settings')
-      const fields = SETTING_META.map(meta => ({
-        ...meta,
-        placeholder: meta.placeholder || '',
-        value: settings[meta.key] === undefined || settings[meta.key] === null ? '' : String(settings[meta.key])
-      }))
-      this.setData({ settingFields: fields })
+      this.setData({ settingFields: settingFields(await app.request('/admin/settings'), SETTING_META) })
     } catch (error) {
       this.setData({ loadError: (error && error.message) || '系统配置加载失败' })
       toastError(error, '系统配置加载失败')
@@ -650,32 +535,17 @@ Page({
   },
 
   async saveSettings() {
-    const values = {}
-    for (const field of this.data.settingFields) {
-      if (field.inputType === 'number') {
-        if (String(field.value).trim() === '') {
-          wx.showToast({ title: field.label + '不能为空', icon: 'none' })
-          return
-        }
-        const value = Number(field.value)
-        if (!Number.isInteger(value)) {
-          wx.showToast({ title: field.label + '必须为整数', icon: 'none' })
-          return
-        }
-        values[field.key] = value
-      } else {
-        const value = String(field.value || '').trim()
-        if (!value) {
-          wx.showToast({ title: field.label + '不能为空', icon: 'none' })
-          return
-        }
-        values[field.key] = value
-      }
+    let data
+    try {
+      data = settingPayload(this.data.settingFields)
+    } catch (error) {
+      wx.showToast({ title: error.message, icon: 'none' })
+      return
     }
 
     wx.showLoading({ title: '保存中...' })
     try {
-      await app.request('/admin/settings', { method: 'PUT', data: { values } })
+      await app.request('/admin/settings', { method: 'PUT', data })
       wx.showToast({ title: '系统配置已保存', icon: 'success' })
       await this.loadSettings()
     } catch (error) {
@@ -688,28 +558,7 @@ Page({
   async loadRoomRules() {
     this.setData({ loading: true, loadError: '' })
     try {
-      const rooms = await app.request('/rooms')
-      const rules = []
-      ;(Array.isArray(rooms) ? rooms : []).forEach(room => {
-        ;(Array.isArray(room.scene_rules) ? room.scene_rules : []).forEach(rule => {
-          rules.push({
-            id: rule.id,
-            roomId: room.id,
-            roomCode: room.room_code,
-            roomName: room.name,
-            scene: rule.scene,
-            sceneLabel: SCENE_LABELS[rule.scene] || rule.scene,
-            priority: String(rule.priority),
-            capacity: String(rule.capacity),
-            usage_mode: rule.usage_mode,
-            modeIndex: Math.max(0, USAGE_MODES.indexOf(rule.usage_mode)),
-            modeLabel: MODE_LABELS[rule.usage_mode] || rule.usage_mode,
-            is_enabled: Boolean(rule.is_enabled)
-          })
-        })
-      })
-      rules.sort((left, right) => left.scene.localeCompare(right.scene) || Number(left.priority) - Number(right.priority))
-      this.setData({ roomRules: rules })
+      this.setData({ roomRules: roomRules(await app.request('/rooms')) })
     } catch (error) {
       this.setData({ loadError: (error && error.message) || '分房规则加载失败' })
       toastError(error, '分房规则加载失败')
@@ -723,7 +572,7 @@ Page({
     const field = event.currentTarget.dataset.field
     const value = event.detail.value
     this.setData({
-      roomRules: this.data.roomRules.map(rule => rule.id === id ? { ...rule, [field]: value } : rule)
+      roomRules: updateRoomRule(this.data.roomRules, id, { [field]: value })
     })
   },
 
@@ -731,14 +580,7 @@ Page({
     const id = Number(event.currentTarget.dataset.id)
     const modeIndex = Number(event.detail.value)
     this.setData({
-      roomRules: this.data.roomRules.map(rule => rule.id === id
-        ? {
-            ...rule,
-            modeIndex,
-            usage_mode: USAGE_MODES[modeIndex],
-            modeLabel: MODE_LABELS[USAGE_MODES[modeIndex]] || ''
-          }
-        : rule)
+      roomRules: updateRoomRule(this.data.roomRules, id, { modeIndex })
     })
   },
 
@@ -746,29 +588,17 @@ Page({
     const id = Number(event.currentTarget.dataset.id)
     const isEnabled = Boolean(event.detail.value)
     this.setData({
-      roomRules: this.data.roomRules.map(rule => rule.id === id ? { ...rule, is_enabled: isEnabled } : rule)
+      roomRules: updateRoomRule(this.data.roomRules, id, { is_enabled: isEnabled })
     })
   },
 
   async saveRoomRule(event) {
     const id = Number(event.currentTarget.dataset.id)
-    const rule = this.data.roomRules.find(item => item.id === id)
-    if (!rule) {
-      wx.showToast({ title: '分房规则不存在', icon: 'none' })
-      return
-    }
-    const priority = Number(rule.priority)
-    const capacity = Number(rule.capacity)
-    if (!Number.isInteger(priority) || priority < 1 || priority > 999) {
-      wx.showToast({ title: '优先级应为1至999', icon: 'none' })
-      return
-    }
-    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 500) {
-      wx.showToast({ title: '容量应为1至500', icon: 'none' })
-      return
-    }
-    if (!USAGE_MODES.includes(rule.usage_mode)) {
-      wx.showToast({ title: '使用模式无效', icon: 'none' })
+    let data
+    try {
+      data = roomRulePayload(this.data.roomRules.find(item => item.id === id))
+    } catch (error) {
+      wx.showToast({ title: error.message, icon: 'none' })
       return
     }
 
@@ -776,12 +606,7 @@ Page({
     try {
       await app.request('/admin/room-rules/' + id, {
         method: 'PUT',
-        data: {
-          priority,
-          capacity,
-          usage_mode: rule.usage_mode,
-          is_enabled: Boolean(rule.is_enabled)
-        }
+        data
       })
       wx.showToast({ title: '分房规则已保存', icon: 'success' })
       await this.loadRoomRules()

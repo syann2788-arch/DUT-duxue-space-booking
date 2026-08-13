@@ -9,14 +9,14 @@ from app.models import ReservationStatus, SceneType, User
 from app.queries import get_user_reservations
 from app.schemas import CheckinRequest, CleanupSubmit, ReservationCreate, ReservationOut, ReservationPageOut
 from app.uploads import store_private_image
-from app.services import (
+from app.domain.media import submit_cleanup
+from app.domain.reservations import (
     cancel_reservation,
     checkin_reservation,
     create_reservation,
     get_scene_availability,
-    get_runtime_config,
-    submit_cleanup,
 )
+from app.domain.settings import get_runtime_config
 
 router = APIRouter(prefix="/api/reservations", tags=["预约"])
 
