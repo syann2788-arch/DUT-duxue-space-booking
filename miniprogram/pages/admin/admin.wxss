@@ -415,15 +415,8 @@ button.full-purple-button::after {
   border-top: 1rpx solid #F6F7F9;
 }
 
-.campus-card-photo {
-  flex-shrink: 0;
-  width: 128rpx;
-  height: 88rpx;
-  background: #FEF1EA;
-  border-radius: 10rpx;
-}
-
 .photo-note {
+  flex: 1;
   color: #A9B1BD;
   font-size: 20rpx;
   line-height: 1.5;
@@ -488,8 +481,14 @@ button.full-purple-button::after {
 }
 
 .cleanup-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  height: 182rpx;
+  height: 88rpx;
+  color: #F25B15;
+  font-size: 22rpx;
+  font-weight: 600;
   background: #FEF1EA;
   border-radius: 12rpx;
 }

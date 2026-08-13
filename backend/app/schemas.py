@@ -77,8 +77,6 @@ class UserOut(BaseModel):
     role: UserRole
     is_active: bool
     banned_until: datetime | None = None
-    wechat_openid: str | None = None
-
     model_config = {"from_attributes": True}
 
 
@@ -162,14 +160,12 @@ class ReservationCreate(BaseModel):
     end_slot: int = Field(gt=0)
     people_count: int = Field(ge=1, le=500)
     purpose: str = Field(default="", max_length=300)
-    campus_card_photo_url: str = Field(min_length=1, max_length=500)
+    campus_card_media_id: str = Field(min_length=36, max_length=36)
 
     @model_validator(mode="after")
     def validate_range(self):
         if self.end_slot <= self.start_slot:
             raise ValueError("结束时间必须晚于开始时间")
-        if not self.campus_card_photo_url.startswith(("/uploads/campus_card_", "https://")):
-            raise ValueError("玉兰卡照片地址无效")
         if self.scene == SceneType.study:
             if self.people_count != 1:
                 raise ValueError("自习实行一人一约，预约人数必须为1")
@@ -182,13 +178,16 @@ class ReservationCreate(BaseModel):
 class CleanupOut(BaseModel):
     id: int
     reservation_id: int
-    photo_urls: list[str]
     status: CleanupStatus
     submitted_at: datetime
     reviewed_at: datetime | None
     review_note: str | None
 
     model_config = {"from_attributes": True}
+
+
+class CleanupAdminOut(CleanupOut):
+    media_ids: list[str] = Field(default_factory=list)
 
 
 class ReservationOut(BaseModel):
@@ -204,18 +203,22 @@ class ReservationOut(BaseModel):
     usage_mode: UsageMode | None
     people_count: int
     purpose: str
-    campus_card_photo_url: str | None
     status: ReservationStatus
     review_note: str | None
     auto_approved: bool
     created_at: datetime
     cancelled_at: datetime | None
     checked_in_at: datetime | None
-    user: UserOut | None = None
     room: RoomOut | None = None
     cleanup: CleanupOut | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ReservationAdminOut(ReservationOut):
+    campus_card_media_id: str | None = None
+    user: UserOut | None = None
+    cleanup: CleanupAdminOut | None = None
 
 
 class CheckinRequest(BaseModel):
@@ -223,13 +226,15 @@ class CheckinRequest(BaseModel):
 
 
 class CleanupSubmit(BaseModel):
-    photo_urls: list[str] = Field(min_length=1, max_length=6)
+    media_ids: list[str] = Field(min_length=1, max_length=6)
 
-    @field_validator("photo_urls")
+    @field_validator("media_ids")
     @classmethod
-    def validate_urls(cls, values: list[str]) -> list[str]:
-        if any(not value.startswith(("/uploads/", "https://")) for value in values):
-            raise ValueError("照片地址无效")
+    def validate_media_ids(cls, values: list[str]) -> list[str]:
+        if any(not re.fullmatch(r"[0-9a-fA-F-]{36}", value) for value in values):
+            raise ValueError("照片凭证无效")
+        if len(set(values)) != len(values):
+            raise ValueError("照片凭证不能重复")
         return values
 
 

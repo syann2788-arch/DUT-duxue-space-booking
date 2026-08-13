@@ -5,7 +5,13 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.database import async_session
 from app.models import SystemSetting, local_now
 from app.notifications import deliver_due_notifications
-from app.services import auto_approve_pending, expire_restrictions, get_runtime_config, refresh_reservation_states
+from app.services import (
+    auto_approve_pending,
+    expire_restrictions,
+    get_runtime_config,
+    purge_expired_private_media,
+    refresh_reservation_states,
+)
 
 
 scheduler = AsyncIOScheduler(timezone="Asia/Shanghai")
@@ -15,6 +21,7 @@ async def minute_tick() -> None:
     async with async_session() as db:
         await refresh_reservation_states(db)
         await expire_restrictions(db)
+        await purge_expired_private_media(db)
         config = await get_runtime_config(db)
         now = local_now()
         last = await db.get(SystemSetting, "last_auto_approval_date")

@@ -348,14 +348,15 @@ Page({
     this.setData({ cleanupSubmittingId: reservationId })
     wx.showLoading({ title: '上传中', mask: true })
     try {
-      const photoUrls = []
+      const mediaIds = []
       for (const filePath of filePaths) {
         const response = await app.upload('/reservations/photos', filePath, { name: 'file' })
-        photoUrls.push(response.url)
+        if (!response || !response.media_id) throw new Error('服务器未返回照片凭证')
+        mediaIds.push(response.media_id)
       }
       await app.request(`/reservations/${reservationId}/cleanup`, {
         method: 'POST',
-        data: { photo_urls: photoUrls }
+        data: { media_ids: mediaIds }
       })
       wx.showToast({ title: '已提交复核', icon: 'success' })
       await this.loadData()

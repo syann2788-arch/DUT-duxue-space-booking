@@ -59,11 +59,11 @@ Set-Location backend
 
 1. 将 `DATABASE_URL` 改为 `postgresql+asyncpg://...`，设置强随机 `SECRET_KEY`。
 2. 后端运行 `python seed.py` 后，以单 worker 启动（内置定时器要求单 worker）。如学校使用多实例，应关闭 `ENABLE_SCHEDULER`，改由一个独立任务实例或 cron 调用任务。
-3. nginx 配置 HTTPS，把 `/api/` 和 `/uploads/` 代理至 FastAPI；示例见 `deploy/nginx.conf`。
+3. nginx 配置 HTTPS，把 `/api/` 和公开留言图片的 `/uploads/` 代理至 FastAPI；示例见 `deploy/nginx.conf`。
 4. 将 `miniprogram/config.js` 的 API 地址改为学校 HTTPS API 域名，并在微信公众平台配置 request/upload/download 合法域名。
 5. 按 [微信联调清单](docs/WECHAT_SETUP.md) 填写 AppID、AppSecret、订阅模板和合法域名。
 
-照片当前存储在 `UPLOAD_DIR`。正式环境应挂载持久化磁盘；如果学校已有对象存储，可只替换上传服务，业务表继续保存 URL。
+留言图片存储在 `UPLOAD_DIR` 并通过受限的 `/uploads/message_*` 路由公开；玉兰卡和清扫照片存储在 `PRIVATE_UPLOAD_DIR`，业务只保存 `media_id`，仅管理员可鉴权下载且访问会记录审计日志。敏感媒体默认保留 90 天，由后台任务到期删除；正式环境应为两个目录配置独立的持久化存储或替换为校内对象存储。
 
 ## 辅导员数据安全
 

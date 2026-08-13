@@ -7,7 +7,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import ReservationStatus, SceneType, User
 from app.schemas import CheckinRequest, CleanupSubmit, ReservationCreate, ReservationOut
-from app.uploads import store_image
+from app.uploads import store_private_image
 from app.services import (
     cancel_reservation,
     checkin_reservation,
@@ -78,13 +78,21 @@ async def checkin(data: CheckinRequest, db: AsyncSession = Depends(get_db), toke
 
 
 @router.post("/photos", status_code=201)
-async def upload_cleanup_photo(file: UploadFile = File(...), token: dict = Depends(get_current_user)):
-    return await store_image(file, int(token["sub"]), "cleanup")
+async def upload_cleanup_photo(
+    file: UploadFile = File(...),
+    token: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await store_private_image(file, int(token["sub"]), "cleanup", db)
 
 
 @router.post("/campus-card-photo", status_code=201)
-async def upload_campus_card_photo(file: UploadFile = File(...), token: dict = Depends(get_current_user)):
-    return await store_image(file, int(token["sub"]), "campus_card")
+async def upload_campus_card_photo(
+    file: UploadFile = File(...),
+    token: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await store_private_image(file, int(token["sub"]), "campus_card", db)
 
 
 @router.post("/{reservation_id}/cleanup", response_model=ReservationOut)
@@ -94,4 +102,4 @@ async def cleanup(
     db: AsyncSession = Depends(get_db),
     token: dict = Depends(get_current_user),
 ):
-    return await submit_cleanup(db, reservation_id, int(token["sub"]), data.photo_urls)
+    return await submit_cleanup(db, reservation_id, int(token["sub"]), data.media_ids)

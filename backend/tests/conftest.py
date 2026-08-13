@@ -10,10 +10,12 @@ _test_root = Path(tempfile.gettempdir()) / f"duxue-pytest-{_test_run_id}"
 _test_root.mkdir(parents=True, exist_ok=False)
 _test_database = _test_root / "test.db"
 _test_uploads = _test_root / "uploads"
+_test_private_uploads = _test_root / "private_uploads"
 
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_test_database}"
 os.environ["ENABLE_SCHEDULER"] = "false"
 os.environ["UPLOAD_DIR"] = str(_test_uploads)
+os.environ["PRIVATE_UPLOAD_DIR"] = str(_test_private_uploads)
 
 import pytest
 from fastapi.testclient import TestClient

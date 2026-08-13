@@ -6,7 +6,7 @@
 
 ## 不可破坏的业务红线
 
-1. 玉兰卡照片（`campus_card_photo_url`）、手机号、学号属个人隐私，仅管理员可见；列表/导出接口须按角色白名单脱敏，新字段默认不可见。
+1. 玉兰卡照片（私密 `media_id`）、手机号、学号属个人隐私，仅管理员可见；列表/导出接口须按角色白名单脱敏，新字段默认不可见。
 2. 违约记录是审计数据，只增不改不删；幂等键为 `(reservation_id, type)`（见 `models.py` 的 `uq_violation_reservation_type` 唯一约束）。
 3. 微信 `AppSecret` 永不下发前端/小程序；`code2session` 仅在服务端 `backend/app/routers/auth.py::_code2session` 调用。
 4. 预约并发靠数据库行锁（`SELECT ... WITH FOR UPDATE`）+ 锁内复检，不能靠"先查后写"。

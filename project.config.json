@@ -1,6 +1,5 @@
 {
   "miniprogramRoot": "miniprogram/",
-  "cloudfunctionRoot": "cloudfunctions/",
   "setting": {
     "urlCheck": false,
     "es6": true,
@@ -8,8 +7,6 @@
     "minified": true
   },
   "appid": "",
-  "cloud": true,
   "projectname": "笃学书院空间预约",
-  "condition": {},
-  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
+  "condition": {}
 }

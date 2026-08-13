@@ -75,9 +75,9 @@
         <text class="detail-line">{{item.user.phone}} · {{item.people_count}}人</text>
         <text class="detail-line strong">{{item.date}}　{{item.timeLabel}}</text>
         <text class="purpose-box">{{item.purpose}}</text>
-        <view wx:if="{{item.cardUrl}}" class="photo-line">
-          <image class="campus-card-photo" src="{{item.cardUrl}}" mode="aspectFill" data-index="{{pendingIndex}}" bindtap="previewCampusCard" />
-          <text class="photo-note">玉兰卡照片仅用于本次身份核验，点击查看大图</text>
+        <view wx:if="{{item.cardMediaId}}" class="photo-line" data-index="{{pendingIndex}}" bindtap="previewCampusCard">
+          <text class="text-action">安全查看玉兰卡照片</text>
+          <text class="photo-note">仅管理员可鉴权下载，查看操作会被记录</text>
         </view>
         <view class="inline-actions">
           <button class="compact-btn reject" data-id="{{item.id}}" data-decision="rejected" catchtap="reviewOne">驳回</button>
@@ -104,9 +104,9 @@
         <text class="detail-line">{{item.user.name}} · {{item.user.student_id}} · {{item.sceneLabel}}</text>
         <text class="detail-line strong">{{item.date}}　{{item.timeLabel}}</text>
         <view class="photo-grid">
-          <image wx:for="{{item.photoUrls}}" wx:key="*this" wx:for-item="photo" wx:for-index="photoIndex" class="cleanup-photo" src="{{photo}}" mode="aspectFill" data-item-index="{{cleanupIndex}}" data-photo-index="{{photoIndex}}" bindtap="previewCleanupPhoto" />
+          <view wx:for="{{item.mediaIds}}" wx:key="*this" wx:for-index="photoIndex" class="cleanup-photo" data-item-index="{{cleanupIndex}}" data-photo-index="{{photoIndex}}" bindtap="previewCleanupPhoto">查看照片 {{photoIndex+1}}</view>
         </view>
-        <text wx:if="{{!item.photoUrls.length}}" class="empty-small">该记录没有可查看的照片</text>
+        <text wx:if="{{!item.mediaIds.length}}" class="empty-small">该记录没有可查看的照片</text>
         <view class="inline-actions">
           <button class="compact-btn reject" data-id="{{item.cleanup.id}}" data-decision="rejected" bindtap="reviewCleanup">不通过/限制</button>
           <button class="compact-btn approve" data-id="{{item.cleanup.id}}" data-decision="approved" bindtap="reviewCleanup">通过</button>

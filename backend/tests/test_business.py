@@ -137,6 +137,17 @@ def register(client, suffix: int) -> str:
     return response.json()["access_token"]
 
 
+def upload_campus_card(client, token: str) -> str:
+    response = client.post(
+        "/api/reservations/campus-card-photo",
+        headers=auth_header(token),
+        files={"file": ("campus-card.jpg", b"\xff\xd8\xff\xe0test-campus-card", "image/jpeg")},
+    )
+    assert response.status_code == 201, response.text
+    assert set(response.json()) == {"media_id"}
+    return response.json()["media_id"]
+
+
 def test_health_and_config(client):
     assert client.get("/api/health").json()["version"] == "2.0.0"
     config = client.get("/api/reservations/config").json()
@@ -188,13 +199,16 @@ def test_permission_scoped_a106_and_continuous_room_availability(client):
         "end_slot": 23,
         "people_count": 2,
         "purpose": "开展师生交流与工作沟通会议",
-        "campus_card_photo_url": "/uploads/campus_card_test.jpg",
     }
-    student_booking = client.post("/api/reservations", headers=auth_header(student_token), json=meeting)
+    student_booking = client.post("/api/reservations", headers=auth_header(student_token), json={
+        **meeting, "campus_card_media_id": upload_campus_card(client, student_token),
+    })
     assert student_booking.status_code == 201, student_booking.text
     assert student_booking.json()["room"]["room_code"] == "A105"
 
-    counselor_booking = client.post("/api/reservations", headers=auth_header(counselor_token), json=meeting)
+    counselor_booking = client.post("/api/reservations", headers=auth_header(counselor_token), json={
+        **meeting, "campus_card_media_id": upload_campus_card(client, counselor_token),
+    })
     assert counselor_booking.status_code == 201, counselor_booking.text
     assert counselor_booking.json()["room"]["room_code"] == "A106"
 
@@ -228,7 +242,7 @@ def test_permission_scoped_a106_and_continuous_room_availability(client):
         "end_slot": 2,
         "people_count": 1,
         "purpose": "个人自习",
-        "campus_card_photo_url": "/uploads/campus_card_test.jpg",
+        "campus_card_media_id": upload_campus_card(client, student_token),
     })
     assert full_range.status_code == 409
 
@@ -242,7 +256,7 @@ def test_permission_scoped_a106_and_continuous_room_availability(client):
         "end_slot": 12,
         "people_count": 1,
         "purpose": "个人自习",
-        "campus_card_photo_url": "/uploads/campus_card_test.jpg",
+        "campus_card_media_id": upload_campus_card(client, capacity_token),
     })
     assert peak_capacity.status_code == 201, peak_capacity.text
     assert peak_capacity.json()["room"]["room_code"] == "A102"
@@ -256,7 +270,7 @@ def test_permission_scoped_a106_and_continuous_room_availability(client):
         "end_slot": 15,
         "people_count": 1,
         "purpose": "个人自习",
-        "campus_card_photo_url": "/uploads/campus_card_test.jpg",
+        "campus_card_media_id": upload_campus_card(client, legacy_token),
     })
     assert legacy_conflict.status_code == 201, legacy_conflict.text
     assert legacy_conflict.json()["room"]["room_code"] == "A101"
@@ -330,7 +344,7 @@ def test_space_messages_require_usage_and_only_expose_display_name(client):
         "end_slot": 25,
         "people_count": 1,
         "purpose": "个人自习",
-        "campus_card_photo_url": "/uploads/campus_card_test.jpg",
+        "campus_card_media_id": upload_campus_card(client, user_token),
     })
     assert created.status_code == 201, created.text
     used_room_id = created.json()["room_id"]
@@ -377,20 +391,27 @@ def test_allocation_review_limit_priority_and_export(client):
     student3 = register(client, 3)
     student4 = register(client, 4)
 
-    booking = {"scene": "study", "date": day, "start_slot": 2, "end_slot": 4, "people_count": 1, "purpose": "个人自习", "campus_card_photo_url": "/uploads/campus_card_test.jpg"}
-    first = client.post("/api/reservations", json=booking, headers=auth_header(student1))
+    booking = {"scene": "study", "date": day, "start_slot": 2, "end_slot": 4, "people_count": 1, "purpose": "个人自习"}
+    first = client.post("/api/reservations", json={
+        **booking, "campus_card_media_id": upload_campus_card(client, student1),
+    }, headers=auth_header(student1))
     assert first.status_code == 201, first.text
     assert first.json()["room"]["room_code"] == "A102"
     assert first.json()["start_minute"] == 9 * 60
     assert first.json()["status"] == "pending"
 
     # Shared study capacity permits another one-person reservation in A102.
-    second = client.post("/api/reservations", json=booking, headers=auth_header(student2))
+    second = client.post("/api/reservations", json={
+        **booking, "campus_card_media_id": upload_campus_card(client, student2),
+    }, headers=auth_header(student2))
     assert second.status_code == 201, second.text
     assert second.json()["room"]["room_code"] == "A102"
 
     # Existing 1h + another 3.5h exceeds the configurable 4-hour daily sum.
-    over_limit = client.post("/api/reservations", json={**booking, "start_slot": 8, "end_slot": 15}, headers=auth_header(student1))
+    over_limit = client.post("/api/reservations", json={
+        **booking, "start_slot": 8, "end_slot": 15,
+        "campus_card_media_id": upload_campus_card(client, student1),
+    }, headers=auth_header(student1))
     assert over_limit.status_code == 400
 
     oversized_meeting = client.post("/api/reservations", headers=auth_header(student4), json={
@@ -398,6 +419,7 @@ def test_allocation_review_limit_priority_and_export(client):
         "scene": "meeting",
         "people_count": 500,
         "purpose": "召开书院学生工作协调会议",
+        "campus_card_media_id": upload_campus_card(client, student4),
     })
     assert oversized_meeting.status_code == 409
 
@@ -414,19 +436,19 @@ def test_allocation_review_limit_priority_and_export(client):
 
     music = client.post("/api/reservations", headers=auth_header(student2), json={
         "scene": "music", "date": day, "start_slot": 18, "end_slot": 20, "people_count": 1,
-        "purpose": "进行个人钢琴练习训练", "campus_card_photo_url": "/uploads/campus_card_test.jpg",
+        "purpose": "进行个人钢琴练习训练", "campus_card_media_id": upload_campus_card(client, student2),
     })
     assert music.status_code == 201, music.text
     assert music.json()["room"]["room_code"] == "B102"
     piano = client.post("/api/reservations", headers=auth_header(student3), json={
         "scene": "music", "date": day, "start_slot": 18, "end_slot": 20, "people_count": 1,
-        "purpose": "进行声乐与钢琴联合训练", "campus_card_photo_url": "/uploads/campus_card_test.jpg",
+        "purpose": "进行声乐与钢琴联合训练", "campus_card_media_id": upload_campus_card(client, student3),
     })
     assert piano.status_code == 201, piano.text
     assert piano.json()["room"]["room_code"] == "A103"
     event = client.post("/api/reservations", headers=auth_header(student4), json={
         "scene": "event", "date": day, "start_slot": 18, "end_slot": 20, "people_count": 40,
-        "purpose": "举办书院大型主题宣讲活动", "campus_card_photo_url": "/uploads/campus_card_test.jpg",
+        "purpose": "举办书院大型主题宣讲活动", "campus_card_media_id": upload_campus_card(client, student4),
     })
     assert event.status_code == 409
 
@@ -436,7 +458,7 @@ def test_allocation_review_limit_priority_and_export(client):
     workbook = load_workbook(io.BytesIO(export.content), read_only=True)
     assert workbook.sheetnames == ["预约记录", "预约限制记录"]
     headers = [cell.value for cell in next(workbook["预约记录"].iter_rows())]
-    assert "玉兰卡照片" in headers
+    assert "玉兰卡媒体编号" in headers
     assert "违规标记" in headers
 
     # Closed-loop cleanup: upload -> admin reject + timed restriction -> booking blocked.
@@ -448,12 +470,16 @@ def test_allocation_review_limit_priority_and_export(client):
     assert photo.status_code == 201, photo.text
     submitted = client.post(
         f"/api/reservations/{first.json()['id']}/cleanup",
-        headers=auth_header(student1), json={"photo_urls": [photo.json()["url"]]},
+        headers=auth_header(student1), json={"media_ids": [photo.json()["media_id"]]},
     )
     assert submitted.status_code == 200, submitted.text
     # Requirement: submitting the cleanup photo immediately unlocks booking;
     # the administrator reviews it asynchronously afterwards.
-    unlocked = client.post("/api/reservations", json={**booking, "date": (date.today() + timedelta(days=2)).isoformat()}, headers=auth_header(student1))
+    unlocked = client.post("/api/reservations", json={
+        **booking,
+        "date": (date.today() + timedelta(days=2)).isoformat(),
+        "campus_card_media_id": upload_campus_card(client, student1),
+    }, headers=auth_header(student1))
     assert unlocked.status_code == 201, unlocked.text
     queue = client.get("/api/admin/cleanup", headers=admin).json()
     cleanup_id = next(item["cleanup"]["id"] for item in queue if item["id"] == first.json()["id"])
@@ -462,7 +488,11 @@ def test_allocation_review_limit_priority_and_export(client):
         "restriction_level": "timed", "restriction_days": 7,
     })
     assert rejected.status_code == 200, rejected.text
-    blocked = client.post("/api/reservations", json={**booking, "date": (date.today() + timedelta(days=2)).isoformat()}, headers=auth_header(student1))
+    blocked = client.post("/api/reservations", json={
+        **booking,
+        "date": (date.today() + timedelta(days=2)).isoformat(),
+        "campus_card_media_id": upload_campus_card(client, student1),
+    }, headers=auth_header(student1))
     assert blocked.status_code == 403
     profile = client.get("/api/auth/me", headers=auth_header(student1)).json()
     assert profile["booking_restricted"] is True
@@ -483,7 +513,7 @@ def test_three_violations_trigger_thirty_day_ban(client):
             "end_slot": 5,
             "people_count": 1,
             "purpose": "个人自习",
-            "campus_card_photo_url": "/uploads/campus_card_test.jpg",
+            "campus_card_media_id": upload_campus_card(client, token),
         }
         created = client.post("/api/reservations", json=payload, headers=auth_header(token))
         assert created.status_code == 201, created.text
@@ -510,7 +540,8 @@ def test_three_violations_trigger_thirty_day_ban(client):
 
     blocked = client.post("/api/reservations", json={
         "scene": "study", "date": (date.today() + timedelta(days=4)).isoformat(), "start_slot": 6, "end_slot": 7,
-        "people_count": 1, "purpose": "个人自习", "campus_card_photo_url": "/uploads/campus_card_test.jpg",
+        "people_count": 1, "purpose": "个人自习",
+        "campus_card_media_id": upload_campus_card(client, token),
     }, headers=auth_header(token))
     assert blocked.status_code == 403
     assert "自动禁约30天" in blocked.text

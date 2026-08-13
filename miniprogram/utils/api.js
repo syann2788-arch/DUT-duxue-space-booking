@@ -128,8 +128,31 @@ function uploadFile(path, filePath, options = {}) {
   })
 }
 
+function downloadFile(path, options = {}) {
+  const tokenAtStart = getToken()
+  return new Promise((resolve, reject) => {
+    wx.downloadFile({
+      url: buildUrl(path),
+      header: authHeaders(options.header, tokenAtStart),
+      timeout: options.timeout || 30000,
+      success(res) {
+        if (res.statusCode >= 200 && res.statusCode < 300 && res.tempFilePath) {
+          resolve(res.tempFilePath)
+          return
+        }
+        if (res.statusCode === 401 && tokenAtStart && getToken() === tokenAtStart) clearLogin()
+        reject(createError(null, res.statusCode, `下载失败（${res.statusCode}）`))
+      },
+      fail(err) {
+        reject(createError(err, 0, '下载失败，请检查网络连接'))
+      }
+    })
+  })
+}
+
 module.exports = {
   request,
   uploadFile,
+  downloadFile,
   extractError
 }

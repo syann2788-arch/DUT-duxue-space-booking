@@ -111,7 +111,7 @@ https://space-api.example.edu.cn
 要求和配置点：
 
 1. 使用受信任的 HTTPS 证书；不要以 `127.0.0.1`、`localhost`、裸 IP 或自签名证书作为正式地址。
-2. nginx 将 `/api/` 与 `/uploads/` 转发到 FastAPI/持久化照片服务。
+2. nginx 将 `/api/` 与公开留言图片的 `/uploads/` 转发到 FastAPI；私密媒体只允许通过 `/api/media/{media_id}` 鉴权下载。
 3. `miniprogram/config.js` 的 API 地址改为 `https://space-api.example.edu.cn/api`。
 4. 在微信公众平台把 `https://space-api.example.edu.cn` 加入：
    - request 合法域名；
@@ -150,7 +150,7 @@ https://space-api.example.edu.cn
 - Linux/容器运行环境、正式 DNS、HTTPS 证书和端口策略；
 - PostgreSQL 地址、最小权限账号、备份频率和恢复演练；
 - 强随机 `SECRET_KEY`、微信 AppSecret、模板 ID 的安全注入方式；
-- `/uploads/` 持久化、备份、访问控制和照片清理策略；
+- `UPLOAD_DIR`（留言图）与 `PRIVATE_UPLOAD_DIR`（敏感图）的隔离持久化、备份和到期清理策略；
 - nginx 对 `/api/`、`/uploads/` 的代理与上传大小限制；
 - FastAPI 服务的开机启动、健康检查、日志轮转和告警；
 - 只运行一个定时调度实例，避免多实例重复审批/发送；

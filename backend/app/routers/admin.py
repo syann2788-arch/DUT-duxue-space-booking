@@ -21,7 +21,7 @@ from app.schemas import (
     CleanupOut,
     CleanupReviewRequest,
     PublicStatusUpdate,
-    ReservationOut,
+    ReservationAdminOut,
     ReservationReviewRequest,
     RestrictionCreate,
     RestrictionOut,
@@ -58,7 +58,7 @@ async def stats(db: AsyncSession = Depends(get_db), _: dict = Depends(require_ad
     return {"total_users": total_users or 0, "pending": pending or 0, "cleanup_pending": cleanup_pending or 0, "today": today_count or 0}
 
 
-@router.get("/reservations", response_model=list[ReservationOut])
+@router.get("/reservations", response_model=list[ReservationAdminOut])
 async def reservations(
     date_value: date | None = Query(default=None, alias="date"),
     status_filter: ReservationStatus | None = None,
@@ -80,7 +80,7 @@ async def reservation_review(
     return await review_reservations(db, data, int(admin["sub"]))
 
 
-@router.get("/cleanup", response_model=list[ReservationOut])
+@router.get("/cleanup", response_model=list[ReservationAdminOut])
 async def cleanup_queue(db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
     from app.models import Room
     result = await db.execute(select(Reservation).join(CleanupVerification).options(
@@ -200,15 +200,15 @@ async def export_xlsx(
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "预约记录"
-    sheet.append(["预约号", "日期", "开始时间", "结束时间", "场景", "房间", "姓名", "学号", "联系方式", "人数", "申请理由", "玉兰卡照片", "状态", "审核时间", "审核/驳回原因", "清扫结果", "清扫照片", "违规标记", "创建时间"])
+    sheet.append(["预约号", "日期", "开始时间", "结束时间", "场景", "房间", "姓名", "学号", "联系方式", "人数", "申请理由", "玉兰卡媒体编号", "状态", "审核时间", "审核/驳回原因", "清扫结果", "清扫媒体编号", "违规标记", "创建时间"])
     for item in records:
         sheet.append([
             item.id, item.date.isoformat(), _minute_label(item.start_minute), _minute_label(item.end_minute),
             item.scene.value if item.scene else "", f"{item.room.room_code} {item.room.name}",
             item.user.name, item.user.student_id, item.user.phone, item.people_count, item.purpose,
-            item.campus_card_photo_url or "", item.status.value,
+            item.campus_card_media_id or "", item.status.value,
             item.reviewed_at.strftime("%Y-%m-%d %H:%M:%S") if item.reviewed_at else "", item.review_note or "",
-            item.cleanup.status.value if item.cleanup else "未提交", ", ".join(item.cleanup.photo_urls) if item.cleanup else "",
+            item.cleanup.status.value if item.cleanup else "未提交", ", ".join(item.cleanup.media_ids or []) if item.cleanup else "",
             ", ".join(violation_map.get(item.id, [])), item.created_at.strftime("%Y-%m-%d %H:%M:%S"),
         ])
     _format_sheet(sheet)

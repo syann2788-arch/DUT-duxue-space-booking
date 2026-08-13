@@ -73,8 +73,19 @@ def test_occupying_statuses_defined_only_in_services():
 DOMAIN_ENUMS = {
     "UserRole", "SceneType", "UsageMode", "ReservationStatus", "ReviewDecision",
     "CleanupStatus", "RestrictionLevel", "NotificationType", "NotificationStatus",
-    "PublicStatus", "ViolationType",
+    "PublicStatus", "ViolationType", "MediaPurpose",
 }
+
+
+def test_wechat_project_cannot_deploy_legacy_cloudfunctions():
+    """The formal WeChat project may only expose the miniprogram entry."""
+    import json
+
+    config = json.loads(_read(PROJECT_ROOT / "project.config.json"))
+    assert config.get("miniprogramRoot") == "miniprogram/"
+    forbidden = {"cloudfunctionRoot", "cloudfunctionTemplateRoot", "cloud"}
+    offenders = sorted(forbidden.intersection(config))
+    assert not offenders, "正式微信项目配置不得暴露旧云函数入口: " + ", ".join(offenders)
 
 
 def test_domain_enums_defined_only_in_models():

@@ -18,7 +18,7 @@ Page({
     people: 1,
     purpose: '',
     campusCardLocal: '',
-    campusCardUrl: '',
+    campusCardMediaId: '',
     uploading: false,
     submitting: false
   },
@@ -64,17 +64,17 @@ Page({
 
   async uploadCampusCard(path) {
     const previousLocal = this.data.campusCardLocal
-    const previousUrl = this.data.campusCardUrl
-    this.setData({ campusCardLocal: path, campusCardUrl: '', uploading: true })
+    const previousMediaId = this.data.campusCardMediaId
+    this.setData({ campusCardLocal: path, campusCardMediaId: '', uploading: true })
     wx.showLoading({ title: '上传玉兰卡...' })
     try {
       const result = await app.upload('/reservations/campus-card-photo', path)
-      if (!result || !result.url) throw new Error('服务器未返回照片地址')
-      this.setData({ campusCardUrl: result.url })
+      if (!result || !result.media_id) throw new Error('服务器未返回照片凭证')
+      this.setData({ campusCardMediaId: result.media_id })
       wx.hideLoading()
       wx.showToast({ title: '玉兰卡已上传', icon: 'success' })
     } catch (err) {
-      this.setData({ campusCardLocal: previousLocal, campusCardUrl: previousUrl })
+      this.setData({ campusCardLocal: previousLocal, campusCardMediaId: previousMediaId })
       wx.hideLoading()
       wx.showToast({ title: err.message || '玉兰卡上传失败', icon: 'none' })
     } finally {
@@ -125,7 +125,7 @@ Page({
       wx.showToast({ title: '申请用途至少填写10个字', icon: 'none' })
       return
     }
-    if (!this.data.campusCardUrl) {
+    if (!this.data.campusCardMediaId) {
       wx.showToast({ title: '请先上传本人玉兰卡照片', icon: 'none' })
       return
     }
@@ -146,7 +146,7 @@ Page({
           end_slot: this.data.endSlot,
           people_count: isStudy ? 1 : this.data.people,
           purpose,
-          campus_card_photo_url: this.data.campusCardUrl
+          campus_card_media_id: this.data.campusCardMediaId
         }
       })
     } catch (err) {

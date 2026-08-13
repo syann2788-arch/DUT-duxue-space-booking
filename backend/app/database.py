@@ -48,6 +48,7 @@ async def _upgrade_legacy_sqlite(conn) -> None:
         "people_count": "INTEGER NOT NULL DEFAULT 1",
         "purpose": "VARCHAR(300) NOT NULL DEFAULT ''",
         "campus_card_photo_url": "VARCHAR(500)",
+        "campus_card_media_id": "VARCHAR(36)",
         "review_note": "VARCHAR(500)",
         "reviewed_by": "INTEGER",
         "reviewed_at": "DATETIME",
@@ -80,6 +81,16 @@ async def _upgrade_legacy_sqlite(conn) -> None:
     user_columns = {row[1] for row in result.fetchall()}
     if user_columns and "wechat_openid" not in user_columns:
         await conn.execute(text("ALTER TABLE users ADD COLUMN wechat_openid VARCHAR(64)"))
+
+    result = await conn.execute(text("PRAGMA table_info(cleanup_verifications)"))
+    cleanup_columns = {row[1] for row in result.fetchall()}
+    if cleanup_columns and "media_ids" not in cleanup_columns:
+        await conn.execute(text("ALTER TABLE cleanup_verifications ADD COLUMN media_ids JSON NOT NULL DEFAULT '[]'"))
+
+    result = await conn.execute(text("PRAGMA table_info(private_media)"))
+    media_columns = {row[1] for row in result.fetchall()}
+    if media_columns and "deleted_at" not in media_columns:
+        await conn.execute(text("ALTER TABLE private_media ADD COLUMN deleted_at DATETIME"))
 
     # Existing SQLite databases predate the ORM uniqueness rule.
     await conn.execute(text(

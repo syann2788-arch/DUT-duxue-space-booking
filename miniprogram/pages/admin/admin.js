@@ -1,5 +1,5 @@
 const app = getApp()
-const { getApiBaseUrl, toServerUrl } = require('../../config')
+const { getApiBaseUrl } = require('../../config')
 
 const TABS = [
   { key: 'overview', label: '概览' },
@@ -217,7 +217,7 @@ Page({
         sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
         modeLabel: MODE_LABELS[item.usage_mode] || '—',
         timeLabel: clock(item.start_minute) + '-' + clock(item.end_minute),
-        cardUrl: toServerUrl(item.campus_card_photo_url)
+        cardMediaId: item.campus_card_media_id || ''
       }))
       this.setData({ pendingReservations: items, selectedPendingIds: [] })
     } catch (error) {
@@ -314,15 +314,14 @@ Page({
 
   previewCampusCard(event) {
     const item = this.data.pendingReservations[Number(event.currentTarget.dataset.index)]
-    if (!item || !item.cardUrl) {
+    if (!item || !item.cardMediaId) {
       wx.showToast({ title: '没有可查看的玉兰卡照片', icon: 'none' })
       return
     }
-    wx.previewImage({
-      urls: [item.cardUrl],
-      current: item.cardUrl,
-      fail: error => toastError(error, '照片预览失败')
-    })
+    wx.showLoading({ title: '安全加载中' })
+    app.download('/media/' + item.cardMediaId).then(path => {
+      wx.previewImage({ urls: [path], current: path, fail: error => toastError(error, '照片预览失败') })
+    }).catch(error => toastError(error, '照片加载失败')).finally(() => wx.hideLoading())
   },
 
   async loadCleanupQueue() {
@@ -333,8 +332,8 @@ Page({
         ...item,
         sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
         timeLabel: clock(item.start_minute) + '-' + clock(item.end_minute),
-        photoUrls: item.cleanup && Array.isArray(item.cleanup.photo_urls)
-          ? item.cleanup.photo_urls.map(toServerUrl)
+        mediaIds: item.cleanup && Array.isArray(item.cleanup.media_ids)
+          ? item.cleanup.media_ids
           : []
       }))
       this.setData({ cleanupItems: items })
@@ -348,15 +347,15 @@ Page({
   previewCleanupPhoto(event) {
     const item = this.data.cleanupItems[Number(event.currentTarget.dataset.itemIndex)]
     const photoIndex = Number(event.currentTarget.dataset.photoIndex)
-    if (!item || !item.photoUrls.length) {
+    if (!item || !item.mediaIds.length) {
       wx.showToast({ title: '没有可查看的清扫照片', icon: 'none' })
       return
     }
-    wx.previewImage({
-      urls: item.photoUrls,
-      current: item.photoUrls[photoIndex] || item.photoUrls[0],
-      fail: error => toastError(error, '照片预览失败')
-    })
+    const mediaId = item.mediaIds[photoIndex] || item.mediaIds[0]
+    wx.showLoading({ title: '安全加载中' })
+    app.download('/media/' + mediaId).then(path => {
+      wx.previewImage({ urls: [path], current: path, fail: error => toastError(error, '照片预览失败') })
+    }).catch(error => toastError(error, '照片加载失败')).finally(() => wx.hideLoading())
   },
 
   async reviewCleanup(event) {

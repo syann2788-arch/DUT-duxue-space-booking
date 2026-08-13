@@ -21,6 +21,8 @@ from app.models import (
     Notification,
     NotificationStatus,
     NotificationType,
+    MediaPurpose,
+    PrivateMedia,
     PublicStatus,
     Reservation,
     ReservationStatus,
@@ -442,6 +444,9 @@ async def create_reservation(db: AsyncSession, user_id: int, data: ReservationCr
     if not user:
         raise HTTPException(404, "用户不存在")
     await _ensure_user_can_book(db, user, now)
+    campus_card = await _claim_private_media(
+        db, [data.campus_card_media_id], user_id, MediaPurpose.campus_card
+    )
 
     total_slots = (config["close_hour"] - config["open_hour"]) * 60 // config["slot_minutes"]
     if data.end_slot > total_slots:
@@ -513,11 +518,13 @@ async def create_reservation(db: AsyncSession, user_id: int, data: ReservationCr
         usage_mode=selected_rule.usage_mode,
         people_count=data.people_count,
         purpose=data.purpose.strip(),
-        campus_card_photo_url=data.campus_card_photo_url,
+        campus_card_photo_url=None,
+        campus_card_media_id=campus_card[0].id,
         status=ReservationStatus.pending,
     )
     db.add(reservation)
     await db.flush()
+    campus_card[0].reservation_id = reservation.id
     _queue_notification(db, user_id, reservation.id, NotificationType.submitted, {
         "room": f"{selected_rule.room.room_code} {selected_rule.room.name}",
         "date": data.date.isoformat(),
@@ -582,7 +589,58 @@ async def checkin_reservation(db: AsyncSession, reservation_id: int, user_id: in
     return reservation
 
 
-async def submit_cleanup(db: AsyncSession, reservation_id: int, user_id: int, photo_urls: list[str]) -> Reservation:
+async def _claim_private_media(
+    db: AsyncSession,
+    media_ids: list[str],
+    owner_id: int,
+    purpose: MediaPurpose,
+    reservation_id: int | None = None,
+) -> list[PrivateMedia]:
+    result = await db.execute(
+        select(PrivateMedia)
+        .where(PrivateMedia.id.in_(media_ids))
+        .order_by(PrivateMedia.id)
+        .with_for_update()
+    )
+    media = list(result.scalars())
+    found = {item.id for item in media}
+    if len(found) != len(set(media_ids)):
+        raise HTTPException(400, "照片凭证不存在")
+    now = local_now()
+    for item in media:
+        if item.owner_id != owner_id or item.purpose != purpose or not item.is_active:
+            raise HTTPException(403, "照片凭证不属于当前用户或用途不匹配")
+        if item.expires_at <= now:
+            raise HTTPException(410, "照片凭证已超过保留期限")
+        if item.reservation_id is not None and item.reservation_id != reservation_id:
+            raise HTTPException(409, "照片凭证已用于其他预约")
+    return media
+
+
+async def purge_expired_private_media(db: AsyncSession) -> int:
+    """Delete expired sensitive files and retain an inactive audit record."""
+    from pathlib import Path
+
+    from app.config import settings
+
+    expired = list((await db.scalars(
+        select(PrivateMedia)
+        .where(PrivateMedia.deleted_at.is_(None), PrivateMedia.expires_at <= local_now())
+        .with_for_update()
+    )).all())
+    private_root = Path(settings.PRIVATE_UPLOAD_DIR)
+    deleted_at = local_now()
+    for item in expired:
+        if Path(item.storage_key).name == item.storage_key:
+            (private_root / item.storage_key).unlink(missing_ok=True)
+        item.is_active = False
+        item.deleted_at = deleted_at
+    if expired:
+        await db.commit()
+    return len(expired)
+
+
+async def submit_cleanup(db: AsyncSession, reservation_id: int, user_id: int, media_ids: list[str]) -> Reservation:
     reservation = (await db.execute(select(Reservation).options(joinedload(Reservation.cleanup)).where(
         Reservation.id == reservation_id
     ).with_for_update())).scalar_one_or_none()
@@ -593,15 +651,30 @@ async def submit_cleanup(db: AsyncSession, reservation_id: int, user_id: int, ph
         raise HTTPException(400, "预约结束后才能提交清扫照片")
     if reservation.status not in (ReservationStatus.in_use, ReservationStatus.checked_in, ReservationStatus.cleanup_pending, ReservationStatus.cleanup_rejected):
         raise HTTPException(409, "当前预约状态不能提交清扫照片")
+    media = await _claim_private_media(
+        db, media_ids, user_id, MediaPurpose.cleanup, reservation.id
+    )
     cleanup = reservation.cleanup
     if cleanup:
-        cleanup.photo_urls = photo_urls
+        previous_ids = set(cleanup.media_ids or [])
+        cleanup.photo_urls = []
+        cleanup.media_ids = media_ids
         cleanup.status = CleanupStatus.pending
         cleanup.submitted_at = local_now()
         cleanup.review_note = None
     else:
-        cleanup = CleanupVerification(reservation_id=reservation.id, photo_urls=photo_urls)
+        previous_ids = set()
+        cleanup = CleanupVerification(reservation_id=reservation.id, photo_urls=[], media_ids=media_ids)
         db.add(cleanup)
+    for item in media:
+        item.reservation_id = reservation.id
+    retired_ids = previous_ids - set(media_ids)
+    if retired_ids:
+        retired = list((await db.scalars(select(PrivateMedia).where(
+            PrivateMedia.id.in_(retired_ids), PrivateMedia.owner_id == user_id
+        ))).all())
+        for item in retired:
+            item.is_active = False
     reservation.status = ReservationStatus.cleanup_pending
     await db.commit()
     return await get_reservation(db, reservation.id)

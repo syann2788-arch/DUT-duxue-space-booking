@@ -98,6 +98,11 @@ class ViolationType(str, enum.Enum):
     cleanup_failed = "cleanup_failed"
 
 
+class MediaPurpose(str, enum.Enum):
+    campus_card = "campus_card"
+    cleanup = "cleanup"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -116,6 +121,32 @@ class User(Base):
     reservations: Mapped[list["Reservation"]] = relationship(back_populates="user", foreign_keys="Reservation.user_id")
     restrictions: Mapped[list["BookingRestriction"]] = relationship(back_populates="user", foreign_keys="BookingRestriction.user_id")
     space_messages: Mapped[list["SpaceMessage"]] = relationship(back_populates="user")
+
+
+class PrivateMedia(Base):
+    __tablename__ = "private_media"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    reservation_id: Mapped[int | None] = mapped_column(ForeignKey("reservations.id"), nullable=True, index=True)
+    purpose: Mapped[MediaPurpose] = mapped_column(SAEnum(MediaPurpose), index=True)
+    storage_key: Mapped[str] = mapped_column(String(200), unique=True)
+    content_type: Mapped[str] = mapped_column(String(100))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now)
+
+
+class MediaAccessLog(Base):
+    __tablename__ = "media_access_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    media_id: Mapped[str] = mapped_column(ForeignKey("private_media.id"), index=True)
+    actor_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    action: Mapped[str] = mapped_column(String(50), default="download")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now, index=True)
 
 
 class Room(Base):
@@ -179,6 +210,7 @@ class Reservation(Base):
     people_count: Mapped[int] = mapped_column(Integer, default=1)
     purpose: Mapped[str] = mapped_column(String(300), default="")
     campus_card_photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    campus_card_media_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     status: Mapped[ReservationStatus] = mapped_column(SAEnum(ReservationStatus), default=ReservationStatus.pending, index=True)
     review_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
@@ -199,6 +231,7 @@ class CleanupVerification(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     reservation_id: Mapped[int] = mapped_column(ForeignKey("reservations.id"), unique=True, index=True)
     photo_urls: Mapped[list[str]] = mapped_column(JSON)
+    media_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
     status: Mapped[CleanupStatus] = mapped_column(SAEnum(CleanupStatus), default=CleanupStatus.pending, index=True)
     submitted_at: Mapped[datetime] = mapped_column(DateTime, default=local_now)
     reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
