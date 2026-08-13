@@ -11,11 +11,15 @@
 
     <scroll-view scroll-x class="tabs" enhanced show-scrollbar="{{false}}">
       <view class="tabs-inner">
-        <text wx:for="{{tabs}}" wx:key="key" class="tab {{activeTab===item.key?'active':''}}" data-key="{{item.key}}" bindtap="switchTab">{{item.label}}</text>
+        <text wx:for="{{tabs}}" wx:key="key" class="tab {{activeTab===item.key?'active':''}}" data-key="{{item.key}}" bindtap="switchTab" aria-role="tab" aria-selected="{{activeTab===item.key}}" aria-label="切换到{{item.label}}">{{item.label}}</text>
       </view>
     </scroll-view>
 
-    <view wx:if="{{loading}}" class="loading-bar">正在加载...</view>
+    <view wx:if="{{loading}}" class="loading-bar" aria-role="status">正在加载...</view>
+    <view wx:if="{{loadError&&!loading}}" class="load-error-card" aria-role="alert">
+      <text>{{loadError}}</text>
+      <button bindtap="retryActiveTab" aria-label="重新加载当前管理页面">重新加载</button>
+    </view>
 
     <!-- 概览 -->
     <block wx:if="{{activeTab==='overview'}}">
@@ -31,7 +35,7 @@
           <text class="card-title">预约记录 Excel</text>
           <text class="card-desc">导出预约、清扫、违规与限制记录</text>
         </view>
-        <button class="compact-btn primary" bindtap="exportExcel">导出</button>
+        <button class="compact-btn primary" bindtap="exportExcel" aria-label="导出完整预约记录 Excel">导出</button>
       </view>
 
       <view class="admin-card">
@@ -56,7 +60,7 @@
     <!-- 预约审核 -->
     <block wx:if="{{activeTab==='review'}}">
       <view class="section-toolbar">
-        <text>待审核 {{pendingReservations.length}} 条</text>
+        <text>待审核 {{pendingTotal}} 条，已加载 {{pendingReservations.length}} 条</text>
         <view class="toolbar-actions">
           <text class="text-action" bindtap="toggleAllPending">{{selectedPendingIds.length===pendingReservations.length&&pendingReservations.length?'取消全选':'全选'}}</text>
           <text class="text-action" bindtap="loadPendingReservations">刷新</text>
@@ -69,7 +73,7 @@
             <text class="reservation-room">{{item.room.room_code}} {{item.room.name}}</text>
             <text class="reservation-scene">{{item.sceneLabel}} · {{item.modeLabel}}</text>
           </view>
-          <text class="select-pill {{item.selected?'selected':''}}" data-id="{{item.id}}" bindtap="togglePending">{{item.selected?'已选':'选择'}}</text>
+          <text class="select-pill {{item.selected?'selected':''}}" data-id="{{item.id}}" bindtap="togglePending" aria-role="checkbox" aria-checked="{{item.selected}}" aria-label="选择预约，{{item.room.room_code}}，{{item.user.name}}">{{item.selected?'已选':'选择'}}</text>
         </view>
         <text class="detail-line">{{item.user.name}} · {{item.user.student_id}} · 笃学{{item.user.class_name}}</text>
         <text class="detail-line">{{item.user.phone}} · {{item.people_count}}人</text>
@@ -85,6 +89,7 @@
         </view>
       </view>
       <view wx:if="{{!pendingReservations.length&&!loading}}" class="empty-state">暂无待审核预约</view>
+      <button wx:if="{{pendingHasMore&&!loading}}" class="load-more-button" bindtap="loadMorePending" aria-label="加载更多待审核预约">加载更多</button>
 
       <view wx:if="{{selectedPendingIds.length}}" class="batch-bar">
         <text class="batch-count">已选 {{selectedPendingIds.length}} 条</text>
@@ -96,7 +101,7 @@
     <!-- 清扫复核 -->
     <block wx:if="{{activeTab==='cleanup'}}">
       <view class="section-toolbar">
-        <text>待复核 {{cleanupItems.length}} 条</text>
+        <text>待复核 {{cleanupTotal}} 条，已加载 {{cleanupItems.length}} 条</text>
         <text class="text-action" bindtap="loadCleanupQueue">刷新</text>
       </view>
       <view wx:for="{{cleanupItems}}" wx:key="id" wx:for-index="cleanupIndex" class="admin-card cleanup-card">
@@ -113,13 +118,14 @@
         </view>
       </view>
       <view wx:if="{{!cleanupItems.length&&!loading}}" class="empty-state">暂无待复核清扫照片</view>
+      <button wx:if="{{cleanupHasMore&&!loading}}" class="load-more-button" bindtap="loadMoreCleanup" aria-label="加载更多清扫复核记录">加载更多</button>
     </block>
 
     <!-- 用户管理 -->
     <block wx:if="{{activeTab==='users'}}">
       <view class="search-card">
-        <input class="search-input" value="{{userSearch}}" placeholder="姓名、学号、手机号或班级" confirm-type="search" bindinput="onUserSearchInput" bindconfirm="searchUsers" />
-        <button class="search-button" bindtap="searchUsers">搜索</button>
+        <input class="search-input" value="{{userSearch}}" placeholder="姓名、学号、手机号或班级" aria-label="搜索用户，支持姓名学号手机号或班级" confirm-type="search" bindinput="onUserSearchInput" bindconfirm="searchUsers" />
+        <button class="search-button" bindtap="searchUsers" aria-label="搜索用户">搜索</button>
       </view>
 
       <view wx:if="{{selectedUser}}" class="admin-card selected-user-card">
@@ -168,8 +174,8 @@
         </view>
       </view>
 
-      <view class="section-toolbar"><text>用户列表（{{users.length}}）</text></view>
-      <view wx:for="{{users}}" wx:key="id" wx:for-index="userIndex" class="user-list-row" data-index="{{userIndex}}" bindtap="selectUser">
+      <view class="section-toolbar"><text>用户共 {{usersTotal}} 人，已加载 {{users.length}} 人</text></view>
+      <view wx:for="{{users}}" wx:key="id" wx:for-index="userIndex" class="user-list-row" data-index="{{userIndex}}" bindtap="selectUser" aria-role="button" aria-label="查看用户{{item.name}}，学号{{item.student_id}}">
         <view class="user-avatar">{{item.initial}}</view>
         <view class="user-list-copy">
           <view><text class="user-name small">{{item.name}}</text><text class="role-tag">{{item.roleLabel}}</text></view>
@@ -179,6 +185,7 @@
         <text class="row-arrow">›</text>
       </view>
       <view wx:if="{{!users.length&&!loading}}" class="empty-state">没有匹配的用户</view>
+      <button wx:if="{{usersHasMore&&!loading}}" class="load-more-button" bindtap="loadMoreUsers" aria-label="加载更多用户">加载更多</button>
     </block>
 
     <!-- 分房规则 -->

@@ -221,6 +221,30 @@ class ReservationAdminOut(ReservationOut):
     cleanup: CleanupAdminOut | None = None
 
 
+class ReservationPageOut(BaseModel):
+    items: list[ReservationOut]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    offset: int = Field(ge=0)
+    has_more: bool
+
+
+class ReservationAdminPageOut(BaseModel):
+    items: list[ReservationAdminOut]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    offset: int = Field(ge=0)
+    has_more: bool
+
+
+class UserPageOut(BaseModel):
+    items: list[UserOut]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1, le=100)
+    offset: int = Field(ge=0)
+    has_more: bool
+
+
 class CheckinRequest(BaseModel):
     reservation_id: int
 

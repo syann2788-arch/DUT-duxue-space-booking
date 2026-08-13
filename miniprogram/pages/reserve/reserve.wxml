@@ -10,7 +10,7 @@
       <text class="section-title">选择使用场景</text>
     </view>
     <view class="scene-grid">
-      <view wx:for="{{scenes}}" wx:key="value" class="scene-card {{scene===item.value?'selected':''}}" data-scene="{{item.value}}" bindtap="selectScene">
+      <view wx:for="{{scenes}}" wx:key="value" class="scene-card {{scene===item.value?'selected':''}}" data-scene="{{item.value}}" bindtap="selectScene" aria-role="radio" aria-checked="{{scene===item.value}}" aria-label="{{item.label}}，{{item.mode}}">
         <view class="scene-icon">{{item.icon}}</view>
         <text class="scene-name">{{item.label}}</text>
         <text class="scene-mode">{{item.mode}}</text>
@@ -27,7 +27,7 @@
         <text class="people-hint">人数会影响可分配的房间</text>
       </view>
       <view class="people-input-wrap">
-        <input class="people-input" type="number" maxlength="3" value="{{peopleInput}}" bindinput="onPeopleInput" bindblur="onPeopleBlur"/>
+        <input class="people-input" type="number" maxlength="3" value="{{peopleInput}}" aria-label="使用人数" bindinput="onPeopleInput" bindblur="onPeopleBlur"/>
         <text class="people-unit">人</text>
       </view>
     </view>
@@ -41,12 +41,12 @@
     </view>
 
     <view class="date-nav">
-      <view class="arr-btn {{dateOffset===0?'disabled':''}}" data-delta="-1" bindtap="changeDate">‹ 前一天</view>
+      <view class="arr-btn {{dateOffset===0?'disabled':''}}" data-delta="-1" bindtap="changeDate" aria-role="button" aria-disabled="{{dateOffset===0}}" aria-label="前一天">‹ 前一天</view>
       <view class="date-center">
         <text class="date-text">{{dateStr}}</text>
         <text class="date-label">{{dateLabel}}</text>
       </view>
-      <view class="arr-btn {{dateOffset===config.advance_days?'disabled':''}}" data-delta="1" bindtap="changeDate">下一天 ›</view>
+      <view class="arr-btn {{dateOffset===config.advance_days?'disabled':''}}" data-delta="1" bindtap="changeDate" aria-role="button" aria-disabled="{{dateOffset===config.advance_days}}" aria-label="下一天">下一天 ›</view>
     </view>
 
     <view class="slot-legend">
@@ -55,10 +55,10 @@
       <view><text class="legend-dot busy-dot"></text><text>暂无空间</text></view>
     </view>
 
-    <view class="loading" wx:if="{{loading}}">正在查询可分配空间...</view>
-    <view class="load-error" wx:elif="{{loadFailed}}" bindtap="retryAvailability">加载失败，点击重试</view>
+    <view class="loading" wx:if="{{loading}}" aria-role="status">正在查询可分配空间...</view>
+    <view class="load-error" wx:elif="{{loadFailed}}" bindtap="retryAvailability" aria-role="button" aria-label="时段加载失败，点击重试">加载失败，点击重试</view>
     <view class="slots" wx:else>
-      <view wx:for="{{slots}}" wx:key="slot" class="slot {{item.selected?'selected':item.available?'open':'busy'}}" data-slot="{{item.slot}}" bindtap="toggleSlot">
+      <view wx:for="{{slots}}" wx:key="slot" class="slot {{item.selected?'selected':item.available?'open':'busy'}}" data-slot="{{item.slot}}" bindtap="toggleSlot" aria-role="checkbox" aria-checked="{{item.selected}}" aria-disabled="{{!item.available}}" aria-label="{{item.label}}，{{item.selected?'已选':item.available?'可预约':'暂无空间'}}">
         <text class="slot-time">{{item.label}}</text>
         <text class="slot-state">{{item.selected?'已选':item.available?'可约':'暂无'}}</text>
       </view>

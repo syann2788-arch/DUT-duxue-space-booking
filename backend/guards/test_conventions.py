@@ -88,6 +88,21 @@ def test_wechat_project_cannot_deploy_legacy_cloudfunctions():
     assert not offenders, "正式微信项目配置不得暴露旧云函数入口: " + ", ".join(offenders)
 
 
+def test_large_list_routes_are_bounded():
+    """Formal clients must not reintroduce unbounded history reads."""
+    reservation_router = _read(ROUTER_DIR / "reservations.py")
+    admin_router = _read(ROUTER_DIR / "admin.py")
+    assert '@router.get("/my", response_model=ReservationPageOut)' in reservation_router
+    for route, response_model in (
+        ('/reservations', 'ReservationAdminPageOut'),
+        ('/cleanup', 'ReservationAdminPageOut'),
+        ('/users', 'UserPageOut'),
+    ):
+        assert f'@router.get("{route}", response_model={response_model})' in admin_router
+    for text in (reservation_router, admin_router):
+        assert "le=100" in text, "长列表分页必须保留每页 100 条上限"
+
+
 def test_domain_enums_defined_only_in_models():
     """State-machine enums have one source (models.py). A second definition
     silently splits the state space and breaks every .value comparison, every

@@ -1,46 +1,20 @@
 const app = getApp()
+const {
+  DEFAULT_CONFIG,
+  formatReservation,
+  normalizePage
+} = require('../../utils/reservations')
+const PAGE_SIZE = 30
 
-const STATUS_LABELS = {
-  pending: '待审核',
-  approved: '待使用',
-  rejected: '未通过',
-  cancelled: '已取消',
-  in_use: '使用中',
-  cleanup_pending: '待清扫复核',
-  cleanup_rejected: '清扫未通过',
-  completed: '已完成',
-  missed: '未签到',
-  active: '待使用',
-  checked_in: '使用中'
-}
-
-const SCENE_LABELS = {
-  study: '自习',
-  meeting: '开会',
-  event: '大型活动',
-  music: '音乐练习'
-}
-
-const DEFAULT_CONFIG = {
-  open_hour: 8,
-  slot_minutes: 30,
-  cancel_deadline_minutes: 30,
-  checkin_grace_minutes: 15
+const FILTER_STATUSES = {
+  pending: ['pending'],
+  approved: ['approved', 'active'],
+  cleanup: ['cleanup_pending', 'cleanup_rejected'],
+  completed: ['completed']
 }
 
 function pad(value) {
   return String(value).padStart(2, '0')
-}
-
-function minuteLabel(value) {
-  const minutes = Number(value) || 0
-  return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`
-}
-
-function reservationTime(dateValue, minutes) {
-  const parts = String(dateValue || '').split('-').map(Number)
-  if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(NaN)
-  return new Date(parts[0], parts[1] - 1, parts[2], 0, Number(minutes) || 0, 0, 0)
 }
 
 function displayClass(className) {
@@ -90,6 +64,11 @@ Page({
     raw: [],
     counselorCount: 0,
     loading: false,
+    loadingMore: false,
+    loadState: 'idle',
+    loadError: '',
+    hasMore: false,
+    total: 0,
     actionId: null,
     cleanupSubmittingId: null,
     notificationLoading: false,
@@ -118,6 +97,14 @@ Page({
     this.stopActionTimer()
   },
 
+  onReachBottom() {
+    this.loadMore()
+  },
+
+  retryLoadData() {
+    return this.loadData(this._showAttempt)
+  },
+
   startActionTimer() {
     this.stopActionTimer()
     this._actionTimer = setInterval(() => this.refreshActionWindows(), 30000)
@@ -131,7 +118,7 @@ Page({
 
   refreshActionWindows() {
     if (!this.data.raw.length) return
-    const raw = this.data.raw.map(item => this.formatReservation(item, this.data.bookingConfig))
+    const raw = this.data.raw.map(item => formatReservation(item, this.data.bookingConfig))
     this.setData({ raw }, () => this.applyFilter())
   },
 
@@ -142,17 +129,18 @@ Page({
       return Promise.resolve()
     }
 
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadState: 'loading', loadError: '' })
     const configRequest = app.request('/reservations/config').catch(() => this.data.bookingConfig)
     return Promise.all([
       app.request('/auth/me'),
-      app.request('/reservations/my'),
+      app.request(this.reservationPath(0)),
       configRequest
     ]).then(([user, reservations, config]) => {
       if (showAttempt !== this._showAttempt || wx.getStorageSync('token') !== tokenAtStart) return
       app.setLogin(tokenAtStart, user)
       const bookingConfig = Object.assign({}, DEFAULT_CONFIG, config || {})
-      const raw = (reservations || []).map(item => this.formatReservation(item, bookingConfig))
+      const page = normalizePage(reservations)
+      const raw = page.items.map(item => formatReservation(item, bookingConfig))
       const restrictionEnd = user.restriction_ends_at || user.banned_until
       const bannedUntil = restrictionEnd ? new Date(restrictionEnd) : null
       const legacyBan = Boolean(bannedUntil && !Number.isNaN(bannedUntil.getTime()) && bannedUntil.getTime() > Date.now())
@@ -170,8 +158,14 @@ Page({
         isAdmin: role === 'admin',
         isC: role === 'counselor' || role === 'admin',
         raw,
-        counselorCount: raw.filter(item => item.room_code === 'A106').length,
-        bookingConfig
+        counselorCount: this.data.filter === 'all'
+          ? raw.filter(item => item.room_code === 'A106').length
+          : this.data.counselorCount,
+        bookingConfig,
+        hasMore: page.hasMore,
+        total: page.total,
+        loadState: raw.length ? 'success' : 'empty',
+        loadError: ''
       }, () => this.applyFilter())
     }).catch(error => {
       if (showAttempt !== this._showAttempt) return
@@ -183,71 +177,56 @@ Page({
         return
       }
       if (currentToken !== tokenAtStart) return
+      this.setData({ loadState: this.data.raw.length ? 'success' : 'error', loadError: (error && error.message) || '加载预约记录失败' })
       showError(error, '加载预约记录失败')
     }).finally(() => {
       if (showAttempt === this._showAttempt) this.setData({ loading: false })
     })
   },
 
-  formatReservation(item, config) {
-    // Preserve operability for reservations created by the v1 status model.
-    const status = item.status === 'active'
-      ? 'approved'
-      : (item.status === 'checked_in' ? 'in_use' : item.status)
-    const startMinute = item.start_minute != null
-      ? Number(item.start_minute)
-      : Number(config.open_hour) * 60 + Number(item.start_slot || 0) * Number(config.slot_minutes)
-    const endMinute = item.end_minute != null
-      ? Number(item.end_minute)
-      : Number(config.open_hour) * 60 + Number(item.end_slot || 0) * Number(config.slot_minutes)
-    const start = reservationTime(item.date, startMinute)
-    const now = Date.now()
-    const cancelDeadline = start.getTime() - Number(config.cancel_deadline_minutes) * 60000
-    const checkinStart = start.getTime() - 15 * 60000
-    const checkinEnd = start.getTime() + Number(config.checkin_grace_minutes) * 60000
-    const canCancel = ['pending', 'approved'].includes(status) && now < cancelDeadline
-    const canCheckin = status === 'approved' && now >= checkinStart && now <= checkinEnd
-    const canCleanup = ['cleanup_pending', 'cleanup_rejected'].includes(status)
-    const canRebook = ['rejected', 'cancelled', 'completed', 'missed'].includes(status)
-    const room = item.room || {}
-
-    return Object.assign({}, item, {
-      id: item.id,
-      status,
-      room_code: room.room_code || '?',
-      room_name: room.name || '',
-      sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
-      usageLabel: item.usage_mode === 'shared' ? '共享' : '独占',
-      timeLabel: `${minuteLabel(startMinute)}-${minuteLabel(endMinute)}`,
-      statLabel: status === 'cleanup_pending' && !item.cleanup
-        ? '待清扫'
-        : (STATUS_LABELS[status] || status),
-      statusClass: `s-${status}`,
-      people: item.people_count || 1,
-      purpose: item.purpose || '',
-      reviewNote: item.review_note || '',
-      cleanupNote: item.cleanup && item.cleanup.review_note ? item.cleanup.review_note : '',
-      cleanupLabel: item.cleanup ? '重新上传清扫照片' : '上传清扫照片',
-      canCancel,
-      canCheckin,
-      canCleanup,
-      canRebook
+  loadMore() {
+    if (this.data.loading || this.data.loadingMore || !this.data.hasMore) return Promise.resolve()
+    const showAttempt = this._showAttempt
+    this.setData({ loadingMore: true, loadError: '' })
+    return app.request(this.reservationPath(this.data.raw.length)).then(payload => {
+      if (showAttempt !== this._showAttempt) return
+      const page = normalizePage(payload)
+      const raw = this.data.raw.concat(page.items.map(item => formatReservation(item, this.data.bookingConfig)))
+      this.setData({
+        raw,
+        hasMore: page.hasMore,
+        total: page.total,
+        counselorCount: this.data.filter === 'all'
+          ? raw.filter(item => item.room_code === 'A106').length
+          : this.data.counselorCount,
+        loadState: raw.length ? 'success' : 'empty'
+      }, () => this.applyFilter())
+    }).catch(error => {
+      if (showAttempt !== this._showAttempt) return
+      this.setData({ loadError: (error && error.message) || '更多记录加载失败' })
+    }).finally(() => {
+      if (showAttempt === this._showAttempt) {
+        this.setData({ loadingMore: false }, () => {
+          if (!this.data.list.length && this.data.hasMore) this.loadMore()
+        })
+      }
     })
   },
 
   setFilter(e) {
-    this.setData({ filter: e.currentTarget.dataset.f }, () => this.applyFilter())
+    const filter = e.currentTarget.dataset.f
+    if (!filter || filter === this.data.filter) return
+    this.setData({ filter, raw: [], list: [], total: 0, hasMore: false }, () => this.loadData(this._showAttempt))
   },
 
   applyFilter() {
-    const filter = this.data.filter
-    let list = this.data.raw
-    if (filter === 'cleanup') {
-      list = list.filter(item => ['cleanup_pending', 'cleanup_rejected'].includes(item.status))
-    } else if (filter !== 'all') {
-      list = list.filter(item => item.status === filter)
-    }
-    this.setData({ list })
+    this.setData({ list: this.data.raw })
+  },
+
+  reservationPath(offset) {
+    const params = [`limit=${PAGE_SIZE}`, `offset=${offset}`]
+    ;(FILTER_STATUSES[this.data.filter] || []).forEach(status => params.push(`status_filter=${encodeURIComponent(status)}`))
+    return '/reservations/my?' + params.join('&')
   },
 
   checkin(reservationId) {

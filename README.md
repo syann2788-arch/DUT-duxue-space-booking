@@ -13,6 +13,7 @@
 - 不设信用分；每累计 3 次有效违约自动禁约 30 天
 - 临时/限时/永久预约限制
 - 预约数据 Excel 导出
+- 历史预约、审核、清扫和用户列表服务端分页及失败重试
 - 时段、时长、自动审批时间、提醒时间、房间优先级/容量/共享方式后台配置
 - 微信账号绑定、订阅消息授权与可靠消息队列
 - 实际使用者空间留言板，支持文字、照片和隐私字段最小化
@@ -53,7 +54,13 @@ Set-Location backend
 ..\.venv\Scripts\python.exe -m pytest -q
 ```
 
-测试使用独立 `test_pytest.db`，不会修改现有 `backend/shuyuan.db`。
+小程序纯业务逻辑与构建门禁：
+
+```powershell
+npm test
+```
+
+后端测试使用隔离临时目录，不会修改现有 `backend/shuyuan.db`。GitHub Actions 会同时运行后端、PostgreSQL 并发和小程序逻辑/构建检查。
 
 ## 目录说明
 

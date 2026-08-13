@@ -481,7 +481,7 @@ def test_allocation_review_limit_priority_and_export(client):
         "campus_card_media_id": upload_campus_card(client, student1),
     }, headers=auth_header(student1))
     assert unlocked.status_code == 201, unlocked.text
-    queue = client.get("/api/admin/cleanup", headers=admin).json()
+    queue = client.get("/api/admin/cleanup", headers=admin).json()["items"]
     cleanup_id = next(item["cleanup"]["id"] for item in queue if item["id"] == first.json()["id"])
     rejected = client.post(f"/api/admin/cleanup/{cleanup_id}/review", headers=admin, json={
         "decision": "rejected", "note": "照片无法确认清扫完成", "restrict_user": True,
@@ -526,7 +526,7 @@ def test_three_violations_trigger_thirty_day_ban(client):
     client.get("/api/reservations/my", headers=auth_header(token))
 
     # Use the admin API instead of relying on database-assigned user ids.
-    users = client.get("/api/admin/users?search=20260011", headers=admin).json()
+    users = client.get("/api/admin/users?search=20260011", headers=admin).json()["items"]
     user_id = users[0]["id"]
     violations = client.get(f"/api/admin/users/{user_id}/violations", headers=admin).json()
     restrictions = client.get(f"/api/admin/users/{user_id}/restrictions", headers=admin).json()

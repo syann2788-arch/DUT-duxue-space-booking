@@ -816,3 +816,9 @@ button.full-purple-button::after {
 .page-spacer {
   height: 150rpx;
 }
+
+.load-error-card { margin: 20rpx; padding: 24rpx; color: #b83b50; text-align: center; background: #fff1f2; border-radius: 14rpx; }
+.load-error-card text { display: block; }
+.load-error-card button, .load-more-button { width: 240rpx; margin: 18rpx auto; color: #fff; background: #F25B15; font-size: 23rpx; line-height: 68rpx; }
+.load-error-card button::after, .load-more-button::after { border: 0; }
+.load-more-button { display: block; background: #667180; }

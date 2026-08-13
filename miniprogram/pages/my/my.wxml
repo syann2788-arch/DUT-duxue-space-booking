@@ -11,15 +11,15 @@
   </view>
 
   <view class="quick-actions">
-    <view class="quick-card" bindtap="enableNotifications">
+    <view class="quick-card" bindtap="enableNotifications" aria-role="button" aria-label="通知设置，预约进度提醒">
       <text class="quick-title">{{notificationLoading?'设置中…':'通知设置'}}</text>
       <text class="quick-sub">预约进度提醒</text>
     </view>
-    <view class="quick-card primary" bindtap="scanCheckin">
+    <view class="quick-card primary" bindtap="scanCheckin" aria-role="button" aria-label="扫码签到，扫描房间二维码">
       <text class="quick-title">扫码签到</text>
       <text class="quick-sub">扫描房间二维码</text>
     </view>
-    <view wx:if="{{isAdmin}}" class="quick-card admin" bindtap="goAdmin">
+    <view wx:if="{{isAdmin}}" class="quick-card admin" bindtap="goAdmin" aria-role="button" aria-label="进入管理后台">
       <text class="quick-title">管理后台</text>
       <text class="quick-sub">审核与管理</text>
     </view>
@@ -32,11 +32,15 @@
 
   <scroll-view scroll-x class="tabs-scroll" enhanced="true" show-scrollbar="false">
     <view class="tabs">
-      <text wx:for="{{tabs}}" wx:key="value" class="tab {{filter===item.value?'active':''}}" bindtap="setFilter" data-f="{{item.value}}">{{item.label}}</text>
+      <text wx:for="{{tabs}}" wx:key="value" class="tab {{filter===item.value?'active':''}}" bindtap="setFilter" data-f="{{item.value}}" aria-role="tab" aria-selected="{{filter===item.value}}" aria-label="筛选{{item.label}}预约">{{item.label}}</text>
     </view>
   </scroll-view>
 
-  <view wx:if="{{loading&&!list.length}}" class="empty">加载中…</view>
+  <view wx:if="{{loading&&!list.length}}" class="empty" aria-role="status">正在加载预约记录…</view>
+  <view wx:elif="{{loadState==='error'&&!list.length}}" class="empty error-state" aria-role="alert">
+    <text>{{loadError||'预约记录加载失败'}}</text>
+    <button class="retry-btn" bindtap="retryLoadData" aria-label="重新加载预约记录">重新加载</button>
+  </view>
 
   <view class="reservation-list">
     <view wx:for="{{list}}" wx:key="id" class="reservation-card">
@@ -54,14 +58,18 @@
       <text wx:if="{{item.cleanupNote}}" class="note warning-note">清扫备注：{{item.cleanupNote}}</text>
 
       <view wx:if="{{item.canCheckin||item.canCancel||item.canCleanup||item.canRebook}}" class="actions">
-        <button wx:if="{{item.canCheckin}}" class="action-btn checkin" bindtap="doCheckin" data-id="{{item.id}}" loading="{{actionId===item.id}}" disabled="{{actionId}}">签到</button>
-        <button wx:if="{{item.canCancel}}" class="action-btn cancel" bindtap="doCancel" data-id="{{item.id}}" loading="{{actionId===item.id}}" disabled="{{actionId}}">取消</button>
-        <button wx:if="{{item.canCleanup}}" class="action-btn cleanup" bindtap="uploadCleanup" data-id="{{item.id}}" loading="{{cleanupSubmittingId===item.id}}" disabled="{{cleanupSubmittingId}}">{{item.cleanupLabel}}</button>
-        <button wx:if="{{item.canRebook}}" class="action-btn rebook" bindtap="rebook" data-scene="{{item.scene}}">再次预约</button>
+        <button wx:if="{{item.canCheckin}}" class="action-btn checkin" bindtap="doCheckin" data-id="{{item.id}}" loading="{{actionId===item.id}}" disabled="{{actionId}}" aria-label="签到，{{item.room_code}} {{item.date}} {{item.timeLabel}}">签到</button>
+        <button wx:if="{{item.canCancel}}" class="action-btn cancel" bindtap="doCancel" data-id="{{item.id}}" loading="{{actionId===item.id}}" disabled="{{actionId}}" aria-label="取消预约，{{item.room_code}} {{item.date}} {{item.timeLabel}}">取消</button>
+        <button wx:if="{{item.canCleanup}}" class="action-btn cleanup" bindtap="uploadCleanup" data-id="{{item.id}}" loading="{{cleanupSubmittingId===item.id}}" disabled="{{cleanupSubmittingId}}" aria-label="{{item.cleanupLabel}}，{{item.room_code}}">{{item.cleanupLabel}}</button>
+        <button wx:if="{{item.canRebook}}" class="action-btn rebook" bindtap="rebook" data-scene="{{item.scene}}" aria-label="再次预约{{item.sceneLabel}}空间">再次预约</button>
       </view>
     </view>
   </view>
 
-  <view wx:if="{{!loading&&!list.length}}" class="empty">暂无记录</view>
-  <view class="reserve-fab" bindtap="goReserve">＋ 发起预约</view>
+  <view wx:if="{{!loading&&loadState!=='error'&&!list.length}}" class="empty" aria-role="status">当前筛选下暂无记录</view>
+  <view wx:if="{{loadingMore}}" class="load-more" aria-role="status">正在加载更多…</view>
+  <view wx:elif="{{loadError&&list.length}}" class="load-more error-link" bindtap="loadMore" aria-role="button" aria-label="更多记录加载失败，点击重试">{{loadError}}，点击重试</view>
+  <view wx:elif="{{hasMore}}" class="load-more" bindtap="loadMore" aria-role="button" aria-label="加载更多预约记录">加载更多</view>
+  <view wx:elif="{{raw.length}}" class="load-more" aria-role="status">已显示全部 {{total}} 条记录</view>
+  <view class="reserve-fab" bindtap="goReserve" aria-role="button" aria-label="发起新的空间预约">＋ 发起预约</view>
 </view>

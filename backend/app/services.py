@@ -558,19 +558,6 @@ async def get_reservation(db: AsyncSession, reservation_id: int) -> Reservation 
     return result.unique().scalar_one_or_none()
 
 
-async def get_user_reservations(db: AsyncSession, user_id: int, status_filter: ReservationStatus | None = None) -> list[Reservation]:
-    await refresh_reservation_states(db)
-    query = select(Reservation).options(
-        joinedload(Reservation.room).selectinload(Room.scene_rules),
-        joinedload(Reservation.user),
-        joinedload(Reservation.cleanup),
-    ).where(Reservation.user_id == user_id)
-    if status_filter:
-        query = query.where(Reservation.status == status_filter)
-    result = await db.execute(query.order_by(Reservation.date.desc(), Reservation.start_slot.desc()))
-    return list(result.scalars().unique())
-
-
 async def cancel_reservation(db: AsyncSession, reservation_id: int, user_id: int) -> Reservation | None:
     reservation = await db.get(Reservation, reservation_id, with_for_update=True)
     if not reservation or reservation.user_id != user_id or reservation.status not in (ReservationStatus.pending, ReservationStatus.approved, ReservationStatus.active):
@@ -808,49 +795,6 @@ async def review_cleanup(db: AsyncSession, cleanup_id: int, request: CleanupRevi
     await db.commit()
     await db.refresh(cleanup)
     return cleanup
-
-
-async def list_admin_reservations(
-    db: AsyncSession,
-    day: date | None = None,
-    reservation_status: ReservationStatus | None = None,
-    date_from: date | None = None,
-    date_to: date | None = None,
-    scene: SceneType | None = None,
-) -> list[Reservation]:
-    await refresh_reservation_states(db)
-    if date_from and date_to and date_from > date_to:
-        raise HTTPException(400, "开始日期不能晚于结束日期")
-    query = select(Reservation).options(
-        joinedload(Reservation.room).selectinload(Room.scene_rules),
-        joinedload(Reservation.user),
-        joinedload(Reservation.cleanup),
-    )
-    if day:
-        query = query.where(Reservation.date == day)
-    if reservation_status:
-        query = query.where(Reservation.status == reservation_status)
-    if date_from:
-        query = query.where(Reservation.date >= date_from)
-    if date_to:
-        query = query.where(Reservation.date <= date_to)
-    if scene:
-        query = query.where(Reservation.scene == scene)
-    result = await db.execute(query.order_by(Reservation.created_at.desc()))
-    return list(result.scalars().unique())
-
-
-async def get_all_users(db: AsyncSession, search: str | None = None) -> list[User]:
-    query = select(User)
-    if search and search.strip():
-        keyword = f"%{search.strip()}%"
-        query = query.where(or_(
-            User.student_id.ilike(keyword),
-            User.name.ilike(keyword),
-            User.phone.ilike(keyword),
-            User.class_name.ilike(keyword),
-        ))
-    return list((await db.scalars(query.order_by(User.student_id))).all())
 
 
 async def set_counselor(db: AsyncSession, student_ids: list[str]) -> int:

@@ -1,5 +1,7 @@
 const app = getApp()
 const { getApiBaseUrl } = require('../../config')
+const { normalizePage } = require('../../utils/reservations')
+const PAGE_SIZE = 30
 
 const TABS = [
   { key: 'overview', label: '概览' },
@@ -82,6 +84,7 @@ Page({
   data: {
     authorized: false,
     loading: false,
+    loadError: '',
     tabs: TABS,
     activeTab: 'overview',
     stats: { total_users: 0, pending: 0, cleanup_pending: 0, today: 0 },
@@ -89,11 +92,17 @@ Page({
 
     pendingReservations: [],
     selectedPendingIds: [],
+    pendingTotal: 0,
+    pendingHasMore: false,
 
     cleanupItems: [],
+    cleanupTotal: 0,
+    cleanupHasMore: false,
 
     userSearch: '',
     users: [],
+    usersTotal: 0,
+    usersHasMore: false,
     selectedUser: null,
     violations: [],
     restrictions: [],
@@ -178,8 +187,12 @@ Page({
     if (method && typeof this[method] === 'function') this[method]()
   },
 
+  retryActiveTab() {
+    this.loadActiveTab()
+  },
+
   async loadOverview() {
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadError: '' })
     try {
       const result = await Promise.all([
         app.request('/admin/stats'),
@@ -201,6 +214,7 @@ Page({
         }))
       })
     } catch (error) {
+      this.setData({ loadError: (error && error.message) || '概览加载失败' })
       toastError(error, '概览加载失败')
     } finally {
       this.setData({ loading: false })
@@ -208,10 +222,10 @@ Page({
   },
 
   async loadPendingReservations() {
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadError: '' })
     try {
-      const data = await app.request('/admin/reservations?status_filter=pending')
-      const items = (Array.isArray(data) ? data : []).map(item => ({
+      const page = normalizePage(await app.request(`/admin/reservations?status_filter=pending&limit=${PAGE_SIZE}&offset=0`))
+      const items = page.items.map(item => ({
         ...item,
         selected: false,
         sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
@@ -219,9 +233,32 @@ Page({
         timeLabel: clock(item.start_minute) + '-' + clock(item.end_minute),
         cardMediaId: item.campus_card_media_id || ''
       }))
-      this.setData({ pendingReservations: items, selectedPendingIds: [] })
+      this.setData({ pendingReservations: items, selectedPendingIds: [], pendingTotal: page.total, pendingHasMore: page.hasMore })
     } catch (error) {
+      this.setData({ loadError: (error && error.message) || '待审核预约加载失败' })
       toastError(error, '待审核预约加载失败')
+    } finally {
+      this.setData({ loading: false })
+    }
+  },
+
+  async loadMorePending() {
+    if (this.data.loading || !this.data.pendingHasMore) return
+    this.setData({ loading: true, loadError: '' })
+    try {
+      const offset = this.data.pendingReservations.length
+      const page = normalizePage(await app.request(`/admin/reservations?status_filter=pending&limit=${PAGE_SIZE}&offset=${offset}`))
+      const items = page.items.map(item => ({
+        ...item,
+        selected: false,
+        sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
+        modeLabel: MODE_LABELS[item.usage_mode] || '—',
+        timeLabel: clock(item.start_minute) + '-' + clock(item.end_minute),
+        cardMediaId: item.campus_card_media_id || ''
+      }))
+      this.setData({ pendingReservations: this.data.pendingReservations.concat(items), pendingTotal: page.total, pendingHasMore: page.hasMore })
+    } catch (error) {
+      this.setData({ loadError: (error && error.message) || '更多待审核预约加载失败' })
     } finally {
       this.setData({ loading: false })
     }
@@ -325,10 +362,10 @@ Page({
   },
 
   async loadCleanupQueue() {
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadError: '' })
     try {
-      const data = await app.request('/admin/cleanup')
-      const items = (Array.isArray(data) ? data : []).map(item => ({
+      const page = normalizePage(await app.request(`/admin/cleanup?limit=${PAGE_SIZE}&offset=0`))
+      const items = page.items.map(item => ({
         ...item,
         sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
         timeLabel: clock(item.start_minute) + '-' + clock(item.end_minute),
@@ -336,9 +373,29 @@ Page({
           ? item.cleanup.media_ids
           : []
       }))
-      this.setData({ cleanupItems: items })
+      this.setData({ cleanupItems: items, cleanupTotal: page.total, cleanupHasMore: page.hasMore })
     } catch (error) {
+      this.setData({ loadError: (error && error.message) || '清扫复核队列加载失败' })
       toastError(error, '清扫复核队列加载失败')
+    } finally {
+      this.setData({ loading: false })
+    }
+  },
+
+  async loadMoreCleanup() {
+    if (this.data.loading || !this.data.cleanupHasMore) return
+    this.setData({ loading: true, loadError: '' })
+    try {
+      const page = normalizePage(await app.request(`/admin/cleanup?limit=${PAGE_SIZE}&offset=${this.data.cleanupItems.length}`))
+      const items = page.items.map(item => ({
+        ...item,
+        sceneLabel: SCENE_LABELS[item.scene] || '历史预约',
+        timeLabel: clock(item.start_minute) + '-' + clock(item.end_minute),
+        mediaIds: item.cleanup && Array.isArray(item.cleanup.media_ids) ? item.cleanup.media_ids : []
+      }))
+      this.setData({ cleanupItems: this.data.cleanupItems.concat(items), cleanupTotal: page.total, cleanupHasMore: page.hasMore })
+    } catch (error) {
+      this.setData({ loadError: (error && error.message) || '更多清扫记录加载失败' })
     } finally {
       this.setData({ loading: false })
     }
@@ -392,28 +449,36 @@ Page({
   },
 
   searchUsers() {
-    this.loadUsers()
+    this.loadUsers(false)
   },
 
-  async loadUsers() {
-    this.setData({ loading: true })
+  async loadUsers(append = false) {
+    if (this.data.loading) return
+    this.setData({ loading: true, loadError: '' })
     try {
       // FastAPI router names this query parameter "search".
       const keyword = String(this.data.userSearch || '').trim()
-      const path = '/admin/users' + (keyword ? '?search=' + encodeURIComponent(keyword) : '')
-      const data = await app.request(path)
-      const users = (Array.isArray(data) ? data : []).map(user => ({
+      const offset = append ? this.data.users.length : 0
+      const query = [`limit=${PAGE_SIZE}`, `offset=${offset}`]
+      if (keyword) query.push('search=' + encodeURIComponent(keyword))
+      const page = normalizePage(await app.request('/admin/users?' + query.join('&')))
+      const users = page.items.map(user => ({
         ...user,
         initial: String(user.name || '?').slice(0, 1),
         roleLabel: ROLE_LABELS[user.role] || user.role,
         bannedLabel: user.banned_until ? dateTime(user.banned_until) : ''
       }))
-      this.setData({ users })
+      this.setData({ users: append ? this.data.users.concat(users) : users, usersTotal: page.total, usersHasMore: page.hasMore })
     } catch (error) {
+      this.setData({ loadError: (error && error.message) || '用户列表加载失败' })
       toastError(error, '用户列表加载失败')
     } finally {
       this.setData({ loading: false })
     }
+  },
+
+  loadMoreUsers() {
+    if (this.data.usersHasMore) this.loadUsers(true)
   },
 
   selectUser(event) {
@@ -543,7 +608,7 @@ Page({
   },
 
   async loadSettings() {
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadError: '' })
     try {
       const settings = await app.request('/admin/settings')
       const fields = SETTING_META.map(meta => ({
@@ -553,6 +618,7 @@ Page({
       }))
       this.setData({ settingFields: fields })
     } catch (error) {
+      this.setData({ loadError: (error && error.message) || '系统配置加载失败' })
       toastError(error, '系统配置加载失败')
     } finally {
       this.setData({ loading: false })
@@ -604,7 +670,7 @@ Page({
   },
 
   async loadRoomRules() {
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadError: '' })
     try {
       const rooms = await app.request('/rooms')
       const rules = []
@@ -629,6 +695,7 @@ Page({
       rules.sort((left, right) => left.scene.localeCompare(right.scene) || Number(left.priority) - Number(right.priority))
       this.setData({ roomRules: rules })
     } catch (error) {
+      this.setData({ loadError: (error && error.message) || '分房规则加载失败' })
       toastError(error, '分房规则加载失败')
     } finally {
       this.setData({ loading: false })

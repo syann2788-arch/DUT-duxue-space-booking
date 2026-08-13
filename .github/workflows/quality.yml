@@ -75,7 +75,7 @@ jobs:
           node-version: "22"
 
       - name: Test build policy
-        run: npm run test:build
+        run: npm test
 
       - name: Build reproducible development artifact
         env:

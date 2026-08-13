@@ -1,19 +1,21 @@
 <view class="page">
   <view class="card-login">
-    <image class="logo" src="/static/logo.png" mode="aspectFit" />
+    <image class="logo" src="/static/logo.png" mode="aspectFit" aria-label="笃学书院标志" />
     <view class="brand">笃学书院</view>
     <view class="sub">空间预约系统</view>
 
     <view class="fields">
-      <input class="inp" placeholder="学号" placeholder-style="font-size:26rpx;color:#A9B1BD" bindinput="onId" value="{{id}}"/>
-      <input class="inp" type="password" placeholder="密码" placeholder-style="font-size:26rpx;color:#A9B1BD" bindinput="onPass" value="{{pw}}"/>
+      <text class="field-label">学号</text>
+      <input class="inp" placeholder="请输入学号" aria-label="学号" placeholder-style="font-size:26rpx;color:#A9B1BD" bindinput="onId" value="{{id}}"/>
+      <text class="field-label">密码</text>
+      <input class="inp" type="password" placeholder="请输入密码" aria-label="密码" placeholder-style="font-size:26rpx;color:#A9B1BD" bindinput="onPass" value="{{pw}}"/>
     </view>
 
-    <button class="btn btn-full" bindtap="doLogin" loading="{{loading}}">登录</button>
+    <button class="btn btn-full" bindtap="doLogin" loading="{{loading}}" disabled="{{loading}}" aria-label="登录笃学书院空间预约系统">登录</button>
     <view class="links">
-      <text bindtap="goRegister">注册账号</text>
+      <text bindtap="goRegister" aria-role="button" aria-label="注册账号">注册账号</text>
       <text class="sep">|</text>
-      <text bindtap="goForgot">忘记密码</text>
+      <text bindtap="goForgot" aria-role="button" aria-label="找回密码">忘记密码</text>
     </view>
   </view>
 </view>

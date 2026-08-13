@@ -65,6 +65,11 @@
 .action-btn.rebook { color: #F25B15; background: #FEF1EA; }
 .action-btn[disabled] { opacity: .55; }
 .empty { padding: 100rpx 0; color: #A9B1BD; font-size: 27rpx; text-align: center; }
+.error-state text { display: block; color: #b83b50; }
+.retry-btn { width: 220rpx; margin: 24rpx auto 0; color: #fff; background: #F25B15; font-size: 24rpx; line-height: 68rpx; }
+.retry-btn::after { border: 0; }
+.load-more { padding: 28rpx 20rpx; color: #A9B1BD; font-size: 23rpx; text-align: center; }
+.error-link { color: #b83b50; }
 .reserve-fab {
   position: fixed;
   right: 28rpx;

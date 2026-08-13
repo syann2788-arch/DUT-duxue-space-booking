@@ -112,7 +112,7 @@ def test_sensitive_media_is_private_owned_audited_and_expirable(client):
     assert asyncio.run(media_audit_count(media_id)) == 1
 
     pending = client.get("/api/admin/reservations?status_filter=pending", headers=admin)
-    admin_record = next(item for item in pending.json() if item["id"] == created.json()["id"])
+    admin_record = next(item for item in pending.json()["items"] if item["id"] == created.json()["id"])
     assert admin_record["campus_card_media_id"] == media_id
     assert admin_record["user"]["student_id"] == "20260170"
     assert "wechat_openid" not in admin_record["user"]

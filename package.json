@@ -5,6 +5,8 @@
     "build:dev": "node scripts/build-miniprogram.mjs development",
     "build:staging": "node scripts/build-miniprogram.mjs staging",
     "build:prod": "node scripts/build-miniprogram.mjs production",
-    "test:build": "node --test scripts/build-miniprogram.test.mjs"
+    "test:build": "node --test scripts/build-miniprogram.test.mjs",
+    "test:miniprogram": "node --test scripts/miniprogram-domain.test.cjs",
+    "test": "npm run test:build && npm run test:miniprogram"
   }
 }

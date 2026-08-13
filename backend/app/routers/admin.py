@@ -16,27 +16,28 @@ from sqlalchemy.orm import joinedload
 from app.auth import hash_password, require_admin
 from app.database import get_db
 from app.models import BookingRestriction, CleanupStatus, CleanupVerification, Reservation, ReservationStatus, RoomSceneRule, SceneType, User, Violation, local_now
+from app.queries import get_all_users, list_admin_reservations, list_cleanup_queue
 from app.schemas import (
     BanUserRequest,
     CleanupOut,
     CleanupReviewRequest,
     PublicStatusUpdate,
     ReservationAdminOut,
+    ReservationAdminPageOut,
     ReservationReviewRequest,
     RestrictionCreate,
     RestrictionOut,
     RoomRuleUpdate,
     SettingsUpdate,
     UserOut,
+    UserPageOut,
     ViolationOut,
 )
 from app.services import (
     add_restriction,
     create_counselor_user,
-    get_all_users,
     get_counselors,
     get_runtime_config,
-    list_admin_reservations,
     review_cleanup,
     review_reservations,
     revoke_restriction,
@@ -58,17 +59,22 @@ async def stats(db: AsyncSession = Depends(get_db), _: dict = Depends(require_ad
     return {"total_users": total_users or 0, "pending": pending or 0, "cleanup_pending": cleanup_pending or 0, "today": today_count or 0}
 
 
-@router.get("/reservations", response_model=list[ReservationAdminOut])
+@router.get("/reservations", response_model=ReservationAdminPageOut)
 async def reservations(
     date_value: date | None = Query(default=None, alias="date"),
     status_filter: ReservationStatus | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     scene: SceneType | None = None,
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_admin),
 ):
-    return await list_admin_reservations(db, date_value, status_filter, date_from, date_to, scene)
+    items, total = await list_admin_reservations(
+        db, date_value, status_filter, date_from, date_to, scene, limit=limit, offset=offset
+    )
+    return {"items": items, "total": total, "limit": limit, "offset": offset, "has_more": offset + len(items) < total}
 
 
 @router.post("/reservations/review")
@@ -80,13 +86,15 @@ async def reservation_review(
     return await review_reservations(db, data, int(admin["sub"]))
 
 
-@router.get("/cleanup", response_model=list[ReservationAdminOut])
-async def cleanup_queue(db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
-    from app.models import Room
-    result = await db.execute(select(Reservation).join(CleanupVerification).options(
-        joinedload(Reservation.room).selectinload(Room.scene_rules), joinedload(Reservation.user), joinedload(Reservation.cleanup)
-    ).where(CleanupVerification.status == CleanupStatus.pending).order_by(CleanupVerification.submitted_at))
-    return list(result.scalars().unique())
+@router.get("/cleanup", response_model=ReservationAdminPageOut)
+async def cleanup_queue(
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    items, total = await list_cleanup_queue(db, limit=limit, offset=offset)
+    return {"items": items, "total": total, "limit": limit, "offset": offset, "has_more": offset + len(items) < total}
 
 
 @router.post("/cleanup/{cleanup_id}/review", response_model=CleanupOut)
@@ -99,9 +107,16 @@ async def cleanup_review(
     return await review_cleanup(db, cleanup_id, data, int(admin["sub"]))
 
 
-@router.get("/users", response_model=list[UserOut])
-async def users(search: str | None = None, db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
-    return await get_all_users(db, search)
+@router.get("/users", response_model=UserPageOut)
+async def users(
+    search: str | None = None,
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_admin),
+):
+    items, total = await get_all_users(db, search, limit=limit, offset=offset)
+    return {"items": items, "total": total, "limit": limit, "offset": offset, "has_more": offset + len(items) < total}
 
 
 @router.get("/users/{user_id}/violations", response_model=list[ViolationOut])
@@ -191,7 +206,9 @@ async def export_xlsx(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_admin),
 ):
-    records = await list_admin_reservations(db, reservation_status=status_filter, date_from=date_from, date_to=date_to, scene=scene)
+    records, _ = await list_admin_reservations(
+        db, reservation_status=status_filter, date_from=date_from, date_to=date_to, scene=scene
+    )
     reservation_ids = [item.id for item in records]
     violations = list((await db.scalars(select(Violation).where(Violation.reservation_id.in_(reservation_ids)))).all()) if reservation_ids else []
     violation_map: dict[int, list[str]] = {}
