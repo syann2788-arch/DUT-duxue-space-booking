@@ -2,7 +2,13 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 的结构。在创建第一个不可变版本标签前，所有变更记录在“未发布”章节。
 
-## 未发布
+## [未发布]
+
+后续开发变更记录在此；不得把未验收能力写入已发布版本。
+
+## [0.1.0-rc.1] - 待发布
+
+这是校内试点候选说明，不代表已经创建 Git 标签或 GitHub Release。只有发布基线全部签字通过后才能把日期改为实际发布日期并创建不可变标签。
 
 ### 新增
 
@@ -12,6 +18,8 @@
 - 玉兰卡与清扫照片的私有媒体模型、管理员鉴权下载、访问审计及到期清理。
 - Alembic schema 基线、独立调度 worker、readiness、请求/任务追踪和生产运行手册。
 - dev/staging/production 小程序产物生成与生产配置门禁。
+- 预约、审核、清扫和用户列表分页，页面错误恢复、关键无障碍语义与小程序纯逻辑测试。
+- 贡献、支持、行为准则、结构化 Issue/PR 模板、匿名演示和试点指标基线。
 
 ### 修复
 
@@ -27,3 +35,19 @@
 
 - 当前不是生产发布版本；开放注册、默认管理员凭据、PostgreSQL 并发和备份恢复实机演练等问题仍待处理。
 - 微信正式 AppID/AppSecret、HTTPS 合法域名、订阅消息模板及学校服务器尚需外部配置和验收。
+
+### 迁移与部署
+
+- 数据库必须先执行 `alembic upgrade head`，再启动 API 和独立 worker。
+- 列表接口已升级为 `items/total/limit/offset/has_more` 分页响应，旧客户端需与后端同步更新。
+- production 小程序必须通过环境变量注入正式 HTTPS API 与 AppID 后重新构建。
+- 本候选版不得直接使用本地演示数据库、默认管理员凭据或真实个人数据。
+
+### 回滚
+
+- 应用问题优先把 API、worker 和小程序回滚到上一个已验收提交，不移动已经发布的标签。
+- 数据库变更按 [生产运行手册](docs/OPERATIONS_RUNBOOK.md) 的迁移和备份恢复流程处理，禁止直接删除生产表。
+- 敏感媒体目录与数据库必须保持同一恢复点；回滚前先停止写流量并保存审计证据。
+
+[未发布]: https://github.com/syann2788-arch/DUT-duxue-space-booking/compare/v0.1.0-rc.1...HEAD
+[0.1.0-rc.1]: https://github.com/syann2788-arch/DUT-duxue-space-booking/releases/tag/v0.1.0-rc.1

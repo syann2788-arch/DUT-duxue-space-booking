@@ -8,7 +8,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## 前端主线（务必先读）
 
-- `miniprogram/` 是第一版原生微信小程序延续下来的正式产品主线，第二版必须在它的紫色视觉、空间导览和交互骨架上升级。
+- `miniprogram/` 是第一版原生微信小程序延续下来的正式产品主线，第二版必须在它的空间导览和交互骨架上升级；当前视觉规范为暖橙 `#F25B15` + 紫色 `#6B46C1`。
 - 微信开发者工具导入仓库根目录；根目录 `project.config.json` 的 `miniprogramRoot` 必须保持为 `miniprogram/`。
 - `frontend/` 是此前另行实现的 uni-app/H5 方案，仅作业务逻辑和管理页面参考，除非用户明确要求，不得把它当成最终微信端，也不得把 `miniprogram/` 标为废弃。
 - `cloudfunctions/` 是第一版微信云开发后端参考。第二版原生前端通过 `miniprogram/utils/api.js` 接入 FastAPI，不再以云函数作为主数据源。
@@ -16,7 +16,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 ## 技术栈
 
 - **后端**: FastAPI (Python 3.12+) + SQLAlchemy 2.0 async + PostgreSQL + JWT认证
-- **微信前端主线**: 原生微信小程序 (`miniprogram/`)，紫色主题
+- **微信前端主线**: 原生微信小程序 (`miniprogram/`)，暖橙 `#F25B15` + 紫色 `#6B46C1` 主题
 - **参考前端**: uni-app (`frontend/`)，目前不是微信端交付主线
 - **部署**: 校内服务器 nginx + docker
 

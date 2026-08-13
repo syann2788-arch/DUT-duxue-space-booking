@@ -1,6 +1,23 @@
 # 笃学书院空间预约系统 v2
 
-面向大连理工大学笃学书院的原生微信小程序 + FastAPI 预约系统。v2 以第一版 `miniprogram/` 的紫色界面、空间导览和交互为产品基线，将数据层从微信云函数升级为可交接学校服务器的 FastAPI。默认用 SQLite 本地演示，学校接手时通过环境变量切换 PostgreSQL。
+面向大连理工大学笃学书院的原生微信小程序 + FastAPI 预约系统。v2 以第一版 `miniprogram/` 的空间导览和交互骨架为产品基线，采用暖橙 `#F25B15` + 紫色 `#6B46C1` 的正式视觉，将数据层从微信云函数升级为可交接学校服务器的 FastAPI。默认用 SQLite 本地演示，学校接手时通过环境变量切换 PostgreSQL。
+
+当前版本标识为 `0.1.0-rc.1` 候选准备稿，尚未创建 GitHub Release，也没有通过生产验收。
+
+## 解决什么问题
+
+群聊或表格登记难以同时处理空间权限、人数容量、共享/独占、跨场景物理冲突、签到和清扫闭环。本系统把这些规则放到同一个后端事务中：学生按使用场景和连续时段提交，服务器自动选择合适空间；管理员只处理审核和例外，不需要手工反复比对房间表。
+
+- 对学生：统一查看空间、可用时段、审核、签到和清扫状态。
+- 对辅导员：隔离 A106 等角色专属空间权限。
+- 对管理员：集中审核、清扫复核、限制、配置和脱敏数据导出。
+- 对运维：提供 PostgreSQL、迁移、独立 worker、健康检查、备份恢复和可重复构建路径。
+
+## 产品演示
+
+正式前端是 `miniprogram/`，不是 `frontend/`。使用虚构数据的 15 分钟完整流程见 [匿名演示与验收](docs/DEMO.md)，首轮试点只记录汇总指标，见 [试点指标模板](docs/PILOT_METRICS.md)。
+
+候选版真实截图尚待脱敏真机验收后补入 `docs/assets/screenshots/`；在此之前不会用设计稿、旧页面或 AI 图片冒充产品证据。
 
 ## 已实现
 
@@ -19,9 +36,9 @@
 - 实际使用者空间留言板，支持文字、照片和隐私字段最小化
 - SQLite 历史表兼容升级、PostgreSQL/Docker/nginx 部署模板
 
-详细设计见 [系统架构](docs/ARCHITECTURE.md)，老师需求逐条验收见 [需求对照表](docs/REQUIREMENTS_TRACEABILITY.md)，需要你配合的微信平台步骤见 [微信联调清单](docs/WECHAT_SETUP.md)。
+详细设计见 [系统架构](docs/ARCHITECTURE.md)，老师需求逐条验收见 [需求对照表](docs/REQUIREMENTS_TRACEABILITY.md)，需要你配合的微信平台步骤见 [微信联调清单](docs/WECHAT_SETUP.md)。参与修改前请阅读 [贡献指南](CONTRIBUTING.md) 和 [支持说明](SUPPORT.md)。
 
-当前项目仍处于校内试点准备阶段，不代表已经通过生产安全验收。发布门槛见 [校内试点发布基线](docs/PILOT_RELEASE_BASELINE.md)，变更记录见 [CHANGELOG](CHANGELOG.md)，安全问题请按 [安全政策](SECURITY.md) 私下报告。
+当前项目仍处于校内试点准备阶段，不代表已经通过生产安全验收。当前状态和阻断项以 [ROADMAP](ROADMAP.md) 为准，发布门槛见 [校内试点发布基线](docs/PILOT_RELEASE_BASELINE.md)，变更记录见 [CHANGELOG](CHANGELOG.md)，安全问题请按 [安全政策](SECURITY.md) 私下报告。
 
 ## 本地启动（Windows）
 
@@ -58,6 +75,7 @@ Set-Location backend
 
 ```powershell
 npm test
+npm run release:check
 ```
 
 后端测试使用隔离临时目录，不会修改现有 `backend/shuyuan.db`。GitHub Actions 会同时运行后端、PostgreSQL 并发和小程序逻辑/构建检查。

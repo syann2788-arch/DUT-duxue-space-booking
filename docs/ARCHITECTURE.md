@@ -2,7 +2,7 @@
 
 ## 当前架构结论
 
-`miniprogram/` 是正式的 v2 微信前端主线，不是废弃目录。v2 延续第一版原生小程序的紫色主题、自定义底部导航、空间导览和双页预约交互，把原先的微信云函数调用替换为 FastAPI REST API。
+`miniprogram/` 是正式的 v2 微信前端主线，不是废弃目录。v2 延续第一版原生小程序的自定义底部导航、空间导览和双页预约交互，视觉已统一为暖橙 `#F25B15` + 紫色 `#6B46C1`，并把原先的微信云函数调用替换为 FastAPI REST API。
 
 仓库中其他前端/后端目录的定位如下：
 
@@ -20,7 +20,7 @@
 
 ```text
 原生微信小程序 miniprogram/
-  ├── 紫色页面、空间导览、自定义 TabBar
+  ├── 暖橙+紫色页面、空间导览、自定义 TabBar
   ├── app.js：登录态和统一 request/upload 入口
   └── utils/api.js：API 地址、JWT、错误解析
                     │
@@ -47,7 +47,7 @@ SQLite（本地演示）      照片持久化目录/对象存储
 | `pages/login/login` | 学号密码登录，保存 JWT；已有有效 token 时恢复登录 |
 | `pages/login/register` | 学号、姓名、手机号、4 位班级和密码注册 |
 | `pages/login/forgot` | 当前仅提示联系书院管理员；短信验证码找回尚未接入 |
-| `pages/index/index` | 紫色空间导览、楼层图、公开状态、场景预约入口 |
+| `pages/index/index` | 暖橙+紫色空间导览、楼层图、公开状态、场景预约入口 |
 | `pages/room/room` | 房间资料、今日占用时间轴、公开空间状态和使用者留言；预约按钮进入对应场景，不指定最终房间 |
 | `pages/reserve/reserve` | 选择四类场景、人数、日期和连续时段；读取运行配置和场景可用性 |
 | `pages/reserve/form` | 填写用途、上传玉兰卡、订阅消息授权、提交自动分房申请 |

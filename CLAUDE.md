@@ -30,7 +30,7 @@
 | `cloudfunctions/` | 第一版微信云函数参考代码 | 否 |
 | `../dut-duxue-space-booking-showcase.design/` | 橙紫视觉规范唯一源（HTML 静态原型） | 视觉规范，非运行代码 |
 
-- **前端**: 原生微信小程序 (`miniprogram/`)，紫色主题，自定义 tabBar
+- **前端**: 原生微信小程序 (`miniprogram/`)，暖橙 `#F25B15` + 紫色 `#6B46C1` 主题，自定义 tabBar
 - **后端**: FastAPI（Python 3.12+）+ SQLAlchemy async + JWT 认证
 - **数据库**: SQLite 本地演示 / PostgreSQL 生产
 

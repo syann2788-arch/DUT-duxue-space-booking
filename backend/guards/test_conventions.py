@@ -103,6 +103,27 @@ def test_large_list_routes_are_bounded():
         assert "le=100" in text, "长列表分页必须保留每页 100 条上限"
 
 
+def test_release_and_community_baseline_exists():
+    """Release governance is code-reviewed and must not silently disappear."""
+    required = {
+        "CHANGELOG.md", "ROADMAP.md", "CONTRIBUTING.md", "SUPPORT.md",
+        "CODE_OF_CONDUCT.md", "SECURITY.md", "docs/RELEASE_CHECKLIST.md",
+        "docs/DEMO.md", "docs/PILOT_METRICS.md", "docs/GITHUB_ADMIN_SETUP.md",
+        ".github/pull_request_template.md",
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
+        ".github/ISSUE_TEMPLATE/feature_request.yml",
+        ".github/ISSUE_TEMPLATE/pilot_acceptance.yml",
+        ".github/CODEOWNERS",
+    }
+    missing = sorted(path for path in required if not (PROJECT_ROOT / path).is_file())
+    assert not missing, "发布/协作基线文件缺失:\n" + "\n".join(missing)
+
+    demo_seed = _read(PROJECT_ROOT / "backend/demo_seed.py")
+    assert 'os.getenv("ALLOW_DEMO_SEED") != "1"' in demo_seed
+    assert "settings.is_production" in demo_seed
+    assert "只允许写入本地 development SQLite" in demo_seed
+
+
 def test_domain_enums_defined_only_in_models():
     """State-machine enums have one source (models.py). A second definition
     silently splits the state space and breaks every .value comparison, every

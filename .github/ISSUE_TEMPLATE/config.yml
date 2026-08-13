@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 私下报告安全问题
+    url: https://github.com/syann2788-arch/DUT-duxue-space-booking/security/advisories/new
+    about: 漏洞、凭据或个人信息暴露不要写入公开 Issue
+  - name: 支持范围与提问说明
+    url: https://github.com/syann2788-arch/DUT-duxue-space-booking/blob/main/SUPPORT.md
+    about: 提问前先确认支持范围和需要提供的脱敏信息

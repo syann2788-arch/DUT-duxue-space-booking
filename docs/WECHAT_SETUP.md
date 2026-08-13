@@ -153,7 +153,7 @@ https://space-api.example.edu.cn
 - `UPLOAD_DIR`（留言图）与 `PRIVATE_UPLOAD_DIR`（敏感图）的隔离持久化、备份和到期清理策略；
 - nginx 对 `/api/`、`/uploads/` 的代理与上传大小限制；
 - FastAPI 服务的开机启动、健康检查、日志轮转和告警；
-- 只运行一个定时调度实例，避免多实例重复审批/发送；
+- 独立 worker 由 PostgreSQL advisory lock 选出当前执行者；可部署备用实例，但不得让 API 进程运行内置调度器；
 - 替换默认管理员凭据，并保管管理员账号；
 - 辅导员 CSV 的授权来源和安全导入流程；
 - 数据保留、用户注销、隐私投诉和安全事件联系人。
