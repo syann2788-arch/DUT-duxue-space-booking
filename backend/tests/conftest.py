@@ -1,9 +1,19 @@
 import asyncio
 import os
+import shutil
+import tempfile
 from pathlib import Path
+from uuid import uuid4
 
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_pytest.db"
+_test_run_id = f"{os.getpid()}-{uuid4().hex}"
+_test_root = Path(tempfile.gettempdir()) / f"duxue-pytest-{_test_run_id}"
+_test_root.mkdir(parents=True, exist_ok=False)
+_test_database = _test_root / "test.db"
+_test_uploads = _test_root / "uploads"
+
+os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_test_database}"
 os.environ["ENABLE_SCHEDULER"] = "false"
+os.environ["UPLOAD_DIR"] = str(_test_uploads)
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,14 +25,10 @@ from seed import seed
 
 @pytest.fixture(scope="session", autouse=True)
 def database():
-    path = Path("test_pytest.db")
-    if path.exists():
-        path.unlink()
     asyncio.run(seed())
     yield
     asyncio.run(engine.dispose())
-    if path.exists():
-        path.unlink()
+    shutil.rmtree(_test_root, ignore_errors=True)
 
 
 @pytest.fixture()

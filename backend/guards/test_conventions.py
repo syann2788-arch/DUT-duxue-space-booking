@@ -11,15 +11,36 @@ Run standalone (no DB, no app import):
 from __future__ import annotations
 
 import ast
+import os
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
 ROUTER_DIR = APP_DIR / "routers"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+IGNORED_TREE_NAMES = {
+    ".git", ".pytest_cache", ".venv", "__pycache__", "dist", "node_modules",
+    "unpackage", "uploads",
+}
+FRONTEND_SOURCE_SUFFIXES = {
+    ".css", ".html", ".js", ".json", ".jsx", ".md", ".ts", ".tsx",
+    ".vue", ".wxml", ".wxss",
+}
 
 
 def _python_files(root: Path):
-    yield from root.rglob("*.py")
+    yield from _source_files(root, {".py"})
+
+
+def _source_files(root: Path, suffixes: set[str]):
+    """Yield controlled source files without entering generated/dependency trees."""
+    for current_root, directory_names, file_names in os.walk(root):
+        directory_names[:] = [
+            name for name in directory_names if name not in IGNORED_TREE_NAMES
+        ]
+        for file_name in file_names:
+            path = Path(current_root) / file_name
+            if path.suffix.lower() in suffixes:
+                yield path
 
 
 def _parse(path: Path) -> ast.AST | None:
@@ -115,7 +136,7 @@ def test_routers_do_not_perform_time_arithmetic():
 def _read(path: Path) -> str:
     try:
         return path.read_text(encoding="utf-8")
-    except OSError:
+    except (OSError, UnicodeError):
         return ""
 
 
@@ -130,11 +151,7 @@ def test_appsecret_never_reaches_frontend():
         root = PROJECT_ROOT / name
         if not root.exists():
             continue
-        for path in root.rglob("*"):
-            if not path.is_file():
-                continue
-            if path.suffix.lower() in {".pyc", ".png", ".jpg", ".jpeg", ".gif", ".webp"}:
-                continue
+        for path in _source_files(root, FRONTEND_SOURCE_SUFFIXES):
             text = _read(path)
             for needle in ("AppSecret", "WECHAT_APP_SECRET", "app_secret", "APP_SECRET"):
                 if needle in text:
@@ -205,11 +222,7 @@ def test_miniprogram_no_legacy_purple():
     root = PROJECT_ROOT / "miniprogram"
     if not root.exists():
         return
-    for path in root.rglob("*"):
-        if not path.is_file():
-            continue
-        if path.suffix.lower() not in {".wxss", ".wxml", ".json", ".js"}:
-            continue
+    for path in _source_files(root, {".wxss", ".wxml", ".json", ".js"}):
         text = _read(path)
         lower = text.lower()
         for legacy in LEGACY_PURPLE_VALUES:

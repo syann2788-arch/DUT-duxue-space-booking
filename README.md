@@ -20,6 +20,8 @@
 
 详细设计见 [系统架构](docs/ARCHITECTURE.md)，老师需求逐条验收见 [需求对照表](docs/REQUIREMENTS_TRACEABILITY.md)，需要你配合的微信平台步骤见 [微信联调清单](docs/WECHAT_SETUP.md)。
 
+当前项目仍处于校内试点准备阶段，不代表已经通过生产安全验收。发布门槛见 [校内试点发布基线](docs/PILOT_RELEASE_BASELINE.md)，变更记录见 [CHANGELOG](CHANGELOG.md)，安全问题请按 [安全政策](SECURITY.md) 私下报告。
+
 ## 本地启动（Windows）
 
 ```powershell

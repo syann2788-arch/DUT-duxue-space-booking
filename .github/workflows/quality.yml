@@ -1,0 +1,85 @@
+name: Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-tests:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Compile backend source
+        run: python -m compileall -q app guards tests
+
+      - name: Run tests
+        env:
+          ENABLE_SCHEDULER: "false"
+        run: python -m pytest -q
+
+      - name: Verify parallel pytest isolation
+        env:
+          ENABLE_SCHEDULER: "false"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q > /tmp/pytest-a.log 2>&1 &
+          pid_a=$!
+          python -m pytest -q > /tmp/pytest-b.log 2>&1 &
+          pid_b=$!
+          status=0
+          wait "$pid_a" || status=$?
+          wait "$pid_b" || status=$?
+          cat /tmp/pytest-a.log
+          cat /tmp/pytest-b.log
+          exit "$status"
+
+  dependency-audit:
+    name: Dependency audit (baseline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install audit tool
+        run: python -m pip install --disable-pip-version-check pip-audit
+
+      - name: Audit locked Python dependencies
+        run: python -m pip_audit -r requirements.txt
