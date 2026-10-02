@@ -15,7 +15,7 @@
 - 日额度修正、人工一次性恢复/首次换密、会话撤销、区间禁约、全部订单/违规待办/操作审计、消息历史与鉴权照片链接。
 - 01–04生产初始化/镜像受控脚本、AppID和正式构建元数据/摘要；05–11使用/部署/微信/运维教程、加密数据库与双媒体恢复工具和隔离演练。学校验证按对应报告另列。
 
-这些改动只有通过 PR 合入 `main` 并在 GitHub Actions 上通过后，才能算进入候选版主线。
+第12项已通过PR #30合入main，merge commit为ee3b0a72fd1e2ca52d464209ee2060f2f83185b5，main四项CI通过。第13–14项本轮新增分阶段发布规则和打包/校验工具，是否进入main以该PR/提交为准；本地预检包不会自动发布。
 
 ## 发布阻断项
 
@@ -31,12 +31,12 @@
 
 ## 后续候选
 
-- `v0.1.0-rc.1`：完成所有外部配置和试点主流程签字验收。
+- `v0.1.0-rc.1`：源码候选待部署验收；固定main提交、CI、维护者确认、权利与包记录齐备后可pre-release。学校外部配置/主流程签字在正式上线前完成。
 - `v0.1.0`：关闭或书面接受全部 P0 风险，发布不可变标签与 Release。
 - `v0.2.0`：根据首轮匿名试点指标处理性能、使用率和运营改进；是否建设 H5 需单独决策。
 
-创建标签前必须执行 `npm run release:check -- --tag`，并完成 [发布基线](docs/PILOT_RELEASE_BASELINE.md)。
+候选创建标签前执行`npm run release:check -- --candidate --tag`；正式用`--production --tag --evidence /受控路径/acceptance.json`。均核对 [阶段发布清单](docs/RELEASE_CHECKLIST.md) 和真实CI/审批，标签不可移动复用。
 
 ## 05–11交付材料与验证边界
 
-README已作为接收入口，USER_GUIDE/DEPLOYMENT_GUIDE/WECHAT_SETUP/OPERATIONS_RUNBOOK按当前源码同步；ARCHITECTURE/REQUIREMENTS_TRACEABILITY及AI约定已同步20261002_03。实际测试与恢复结果见docs/HANDOVER_DOCUMENTATION_REPORT.md。非开发人员读教程操作、真实截图、校内业务歧义（会议容量/申请前预览/冰箱）、可信身份和微信平台仍由学校确认。没有合并main、创建标签/Release或部署学校；第12–14交付流程继续按清单推进，发布门槛未因文档修订放宽。
+README已作为接收入口，USER_GUIDE/DEPLOYMENT_GUIDE/WECHAT_SETUP/OPERATIONS_RUNBOOK按当前源码同步；ARCHITECTURE/REQUIREMENTS_TRACEABILITY及AI约定已同步20261002_03。实际测试与恢复结果见docs/HANDOVER_DOCUMENTATION_REPORT.md。非开发人员读教程操作、真实截图、校内业务歧义（会议容量/申请前预览/冰箱）、可信身份和微信平台仍由学校确认。第12项实际main合并和CI已有记录；尚未创建标签/Release或部署学校。第13–14按源码候选/正式上线两阶段推进，正式上线门槛保留。

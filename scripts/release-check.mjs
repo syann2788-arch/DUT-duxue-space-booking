@@ -4,80 +4,92 @@ import process from 'node:process'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const tagMode = process.argv.includes('--tag')
+const defaultRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+export const acceptanceChecks = ['ci', 'p0Disposition', 'productionConfiguration', 'identityAndPrivacy', 'databaseAndRecovery', 'realDevicesAndMessages', 'rightsAndLicenses']
+export const acceptanceRoles = ['maintainer', 'business', 'operations', 'wechat', 'privacy']
 
-function fail(message) {
-  process.stderr.write(`发布检查失败：${message}\n`)
-  process.exitCode = 1
-}
-
-function read(relative) {
-  return fs.readFileSync(path.join(root, relative), 'utf8')
-}
-
-const required = [
-  'CHANGELOG.md', 'ROADMAP.md', 'SECURITY.md', 'CONTRIBUTING.md', 'SUPPORT.md',
-  'CODE_OF_CONDUCT.md', 'docs/PILOT_RELEASE_BASELINE.md', 'docs/RELEASE_CHECKLIST.md',
-  'docs/DEMO.md', 'docs/PILOT_METRICS.md', 'docs/GITHUB_ADMIN_SETUP.md',
-  'docs/DEPENDENCY_LICENSE_INVENTORY.md', 'docs/LOCAL_COMPLETION_REPORT.md', '.github/pull_request_template.md',
-  '.github/ISSUE_TEMPLATE/bug_report.yml', '.github/ISSUE_TEMPLATE/feature_request.yml',
-  '.github/ISSUE_TEMPLATE/pilot_acceptance.yml'
-]
-required.push('.github/CODEOWNERS')
-
-for (const relative of required) {
-  if (!fs.existsSync(path.join(root, relative))) fail(`缺少 ${relative}`)
-}
-
-const packageJson = JSON.parse(read('package.json'))
-const version = packageJson.version
-if (!/^0\.\d+\.\d+(?:-rc\.\d+)?$/.test(version || '')) fail('package.json 缺少候选版语义版本')
-
-const changelog = read('CHANGELOG.md')
-if (!changelog.includes(`## [${version}]`)) fail(`CHANGELOG.md 缺少 ${version} 章节`)
-for (const heading of ['### 新增', '### 修复', '### 已知限制', '### 迁移与部署', '### 回滚']) {
-  if (!changelog.includes(heading)) fail(`CHANGELOG.md 缺少 ${heading}`)
-}
-
-const readme = read('README.md')
-if (!readme.includes(`\`${version}\``)) fail(`README.md 未声明当前候选版本 ${version}`)
-
-const workflow = read('.github/workflows/quality.yml')
-if (!workflow.includes('tags: ["v*"]')) fail('CI 未监听版本标签')
-if (!workflow.includes('Require approved production configuration')) fail('标签构建未强制校验正式配置')
-
-const baseline = read('docs/PILOT_RELEASE_BASELINE.md')
-if (!baseline.includes('v0.1.0 校内试点')) fail('发布基线缺少目标里程碑')
-if (!baseline.includes('负责人角色')) fail('发布基线缺少负责人角色')
-
-const releaseChecklist = read('docs/RELEASE_CHECKLIST.md')
-if (!releaseChecklist.includes('不得创建 Release')) fail('发布清单必须明确未通过时禁止发布')
-
-const gitAvailable = fs.existsSync(path.join(root, '.git'))
-if (tagMode && gitAvailable) {
-  const screenshots = [
-    'docs/assets/screenshots/student-space-guide.png',
-    'docs/assets/screenshots/student-my-reservations.png',
-    'docs/assets/screenshots/admin-review.png'
-  ]
-  for (const screenshot of screenshots) {
-    if (!fs.existsSync(path.join(root, screenshot))) fail(`标签前缺少脱敏正式客户端截图 ${screenshot}`)
+// This validates the supplied record's completeness, not the authenticity of a
+// signature or an external CI result. The release owner must verify originals.
+export function validateAcceptance(record, version, sourceCommit) {
+  const errors = []
+  if (!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/.test(sourceCommit || '')) errors.push('目标提交必须是完整SHA')
+  if (record?.schemaVersion !== 1) errors.push('验收记录schemaVersion必须为1')
+  if (record?.version !== version || record?.sourceCommit !== sourceCommit) errors.push('验收记录版本/提交与目标不一致')
+  for (const id of acceptanceChecks) {
+    const check = record?.checks?.[id]
+    if (check?.passed !== true || typeof check.evidence !== 'string' || !check.evidence.trim()) errors.push(`验收项缺少通过结论或证据: ${id}`)
   }
-  let dirty = ''
-  try {
-    dirty = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim()
-  } catch (error) {
-    fail(`无法检查 Git 状态：${error.message}`)
+  for (const role of acceptanceRoles) {
+    const signoff = record?.signoffs?.[role]
+    if (signoff?.decision !== 'approved' || typeof signoff.name !== 'string' || !signoff.name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(signoff.date || '') || typeof signoff.evidence !== 'string' || !signoff.evidence.trim()) errors.push(`缺少签字及证据: ${role}`)
   }
-  if (dirty) fail('创建标签前工作区必须干净')
-  const expectedTag = `v${version}`
-  try {
-    execFileSync('git', ['rev-parse', '-q', '--verify', `refs/tags/${expectedTag}`], { cwd: root, stdio: 'ignore' })
-    fail(`标签 ${expectedTag} 已存在；版本标签不可移动或覆盖`)
-  } catch (error) {
-    if (error.status === undefined) fail(`无法检查标签：${error.message}`)
-  }
+  return errors
 }
 
-if (!process.exitCode) process.stdout.write(`发布文档基线通过：v${version}${tagMode ? '（标签前检查）' : ''}\n`)
+export function checkRelease({ root = defaultRoot, mode = 'baseline', tagMode = false, evidenceFile = null } = {}) {
+  const errors = []
+  const read = relative => {
+    try { return fs.readFileSync(path.join(root, relative), 'utf8') }
+    catch { errors.push(`缺少 ${relative}`); return '' }
+  }
+  const required = ['CHANGELOG.md', 'ROADMAP.md', 'SECURITY.md', 'CONTRIBUTING.md', 'SUPPORT.md', 'CODE_OF_CONDUCT.md', 'docs/PILOT_RELEASE_BASELINE.md', 'docs/RELEASE_CHECKLIST.md', 'docs/DEMO.md', 'docs/PILOT_METRICS.md', 'docs/GITHUB_ADMIN_SETUP.md', 'docs/DEPENDENCY_LICENSE_INVENTORY.md', 'docs/LOCAL_COMPLETION_REPORT.md', 'docs/HANDOVER_GUIDE.md', 'docs/RELEASE_ACCEPTANCE.example.json', '.github/CODEOWNERS', '.github/pull_request_template.md', '.github/ISSUE_TEMPLATE/bug_report.yml', '.github/ISSUE_TEMPLATE/feature_request.yml', '.github/ISSUE_TEMPLATE/pilot_acceptance.yml']
+  for (const relative of required) read(relative)
+  let version
+  try { version = JSON.parse(read('package.json')).version } catch { errors.push('package.json无效') }
+  if (!/^\d+\.\d+\.\d+(?:-rc\.\d+)?$/.test(version || '')) errors.push('package.json缺少有效发布版本')
+  if (mode === 'candidate' && !/^\d+\.\d+\.\d+-rc\.\d+$/.test(version || '')) errors.push('源码候选必须使用-rc.N版本')
+  if (mode === 'production' && !/^\d+\.\d+\.\d+$/.test(version || '')) errors.push('正式发布必须使用稳定版本，不能使用rc')
+  if (tagMode && mode === 'baseline') errors.push('--tag必须明确搭配--candidate或--production')
+  const changelog = read('CHANGELOG.md')
+  if (!changelog.includes(`## [${version}]`)) errors.push(`CHANGELOG.md缺少${version}章节`)
+  for (const heading of ['### 新增', '### 修复', '### 已知限制', '### 迁移与部署', '### 回滚']) if (!changelog.includes(heading)) errors.push(`CHANGELOG.md缺少${heading}`)
+  if (!read('README.md').includes(`\`${version}\``)) errors.push('README.md候选版本不一致')
+  const workflow = read('.github/workflows/quality.yml')
+  if (!workflow.includes('tags: ["v*"]') || !workflow.includes('Require approved production configuration')) errors.push('CI缺少标签触发或正式配置门禁')
+  const baseline = read('docs/PILOT_RELEASE_BASELINE.md')
+  if (!baseline.includes('v0.1.0 校内试点') || !baseline.includes('负责人角色')) errors.push('发布基线缺少里程碑/责任角色')
+  const checklist = read('docs/RELEASE_CHECKLIST.md')
+  if (!checklist.includes('不得创建 Release') || !checklist.includes('待部署验收')) errors.push('发布清单缺少阶段区分或禁止发布门槛')
+
+  const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+  let commit = null
+  if (tagMode || mode === 'production') {
+    try {
+      commit = git(['rev-parse', '--verify', 'HEAD'])
+      if (git(['status', '--porcelain'])) errors.push('发布前工作区必须干净')
+      git(['merge-base', '--is-ancestor', commit, 'origin/main'])
+    } catch { errors.push('必须在Git仓库刷新origin/main并确认目标提交已合入main') }
+  }
+  if (tagMode) {
+    try {
+      const tags = git(['tag', '--list', `v${version}`])
+      if (tags) errors.push(`标签v${version}已存在，不得移动或复用`)
+    } catch { errors.push('无法核对已有标签') }
+  }
+  if (mode === 'production') {
+    for (const relative of ['docs/assets/screenshots/student-space-guide.png', 'docs/assets/screenshots/student-my-reservations.png', 'docs/assets/screenshots/admin-review.png']) if (!fs.existsSync(path.join(root, relative))) errors.push(`缺少真实脱敏截图: ${relative}`)
+    if (!evidenceFile) errors.push('正式发布必须提供--evidence学校验收记录，模板不能作为完成证据')
+    else {
+      try { errors.push(...validateAcceptance(JSON.parse(fs.readFileSync(evidenceFile, 'utf8')), version, commit)) }
+      catch { errors.push('无法读取有效验收JSON') }
+    }
+  }
+  return { errors, version, commit, mode, tagMode }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const args = process.argv.slice(2)
+  const allowed = new Set(['--candidate', '--production', '--tag', '--evidence'])
+  let argumentError = null
+  for (let i = 0; i < args.length; i++) {
+    if (!allowed.has(args[i])) argumentError = `未知参数: ${args[i]}`
+    if (args[i] === '--evidence') { if (!args[++i]) argumentError = '--evidence缺少文件路径' }
+  }
+  if (args.includes('--candidate') && args.includes('--production')) argumentError = '候选与正式模式不能同时使用'
+  const result = checkRelease({ mode: args.includes('--production') ? 'production' : args.includes('--candidate') ? 'candidate' : 'baseline', tagMode: args.includes('--tag'), evidenceFile: args.includes('--evidence') ? args[args.indexOf('--evidence') + 1] : null })
+  if (argumentError) result.errors.push(argumentError)
+  if (result.errors.length) {
+    process.stderr.write(result.errors.map(message => `发布检查失败：${message}`).join('\n') + '\n')
+    process.exitCode = 1
+  } else process.stdout.write(`发布文档/记录检查通过：v${result.version}（${result.mode}）；仍须人工核对CI、权利、审批和原始验收证据。\n`)
+}

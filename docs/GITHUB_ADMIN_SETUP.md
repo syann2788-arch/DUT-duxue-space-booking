@@ -36,15 +36,18 @@
 
 在 **Settings → Security → Private vulnerability reporting** 启用私下漏洞报告。确认 `SECURITY.md` 的入口可用后，再对外邀请安全报告；不要把个人邮箱或未获授权的学校联系方式写进公开仓库。
 
-## 第一个候选 Release
+## 源码候选pre-release（待部署验收）
 
-1. 确认 `main` 指向已签字验收的提交并且 Actions 全绿。
-2. 在 Actions repository variables 配置 `MINIPROGRAM_API_BASE_URL` 和 `MINIPROGRAM_APP_ID`；标签流水线缺少任一值都会失败。
-3. 在干净工作区执行 `npm run release:check -- --tag`。
-4. 创建带注释、不可移动的 `v0.1.0-rc.1` 标签并推送；标签会触发 production 构建。
-5. 下载并核对 production 小程序构建产物与 `build-manifest.json`。
-6. GitHub Release 正文使用 CHANGELOG 对应章节，并链接迁移、回滚、已知限制和验收记录。
-7. 标记为 pre-release；完成全部 P0 后才发布 `v0.1.0`。
+1. 维护者确认本次候选交付/公开范围，核对固定main提交、四项核心CI及Handover package，确认权利与敏感数据风险。
+2. 按 [交付指南](HANDOVER_GUIDE.md)准备两份ZIP、教程/模板、完整清单和SHA256SUMS；学校微信配置不齐时明确省略微信构建包。
+3. 干净工作区、刷新origin/main后执行`npm run release:check -- --candidate --tag`，另行核对真实CI/评审记录。
+4. 创建新带注释`v0.1.0-rc.N`标签并推送，标签CI生成源码材料；rc不强制production配置，不代表学校微信联调已通过。
+5. 标签CI成功后从该标签重新打包并校验；manifest的版本/提交/标签一致。Release正文写明“待部署验收”、已知限制、部署/回滚和学校待办。
+6. 创建GitHub Release时标记pre-release，不标正式latest；本轮只准备本地工具/材料，没有执行远程Release。
+
+## 学校正式上线Release
+
+保留发布清单B节全部生产验证与五角色签字。冻结稳定版本，在受控渠道填验收记录，执行`release:check --production --tag --evidence /受控路径/acceptance.json`并人工核验原件。稳定标签强制配置repository variables `MINIPROGRAM_API_BASE_URL`、`MINIPROGRAM_APP_ID`，production构建/校验仍必须通过。AppSecret只注入学校后端，不能放入这些变量或小程序包。脚本不自动创建Release或选择许可证。
 
 ## 未在本次代码修改中完成的设置
 

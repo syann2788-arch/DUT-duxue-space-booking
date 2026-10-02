@@ -275,6 +275,8 @@
 | `scripts/miniprogram-flow.test.cjs` | 申请/清扫/审核参数、连续时段、管理表单及禁约区间测试。 |
 | `scripts/release-check.mjs` | 发布前检查版本、文档、工作区等候选版要求；不能替代真机和生产验收。 |
 | `scripts/release-check.test.mjs` | 发布检查与交付基础文档的回归测试。 |
+| `scripts/package_handover.py` | 固定Git提交导出源码/交付ZIP与可选微信包，记录逐文件SHA-256，独立校验；不自动发布。 |
+| `scripts/test_handover_package.py` | 隔离Git/ZIP测试：重复摘要、敏感路径、脏工作区、标签错配、篡改/缺失/新增及可选微信构建。 |
 
 ## deploy/服务器材料
 
@@ -300,6 +302,8 @@
 | `docs/USER_GUIDE.md` | 学生、辅导员与管理员操作、恢复/换密、订单/待办、限制和导出教程。 |
 | `docs/DEPLOYMENT_GUIDE.md` | 固定版本、空服务器、Compose/直接Python、HTTPS、持久化、升级回滚教程。 |
 | `docs/HANDOVER_DOCUMENTATION_REPORT.md` | 05–11教程与实际隔离部署/恢复的证据和学校验收边界。 |
+| `docs/HANDOVER_GUIDE.md` | 两份ZIP内容、打包/接收/校验、学校部署与受控交接、接收登记和维护期限。 |
+| `docs/RELEASE_ACCEPTANCE.example.json` | 正式上线验收记录模板；空模板不能作为签字，真实副本存学校受控渠道。 |
 | `docs/DEMO.md` | 使用虚构数据进行演示和验收练习的流程。 |
 | `docs/DEPENDENCY_LICENSE_INVENTORY.md` | 依赖许可证记录及交付核查材料。 |
 | `docs/GITHUB_ADMIN_SETUP.md` | GitHub 权限、分支保护和自动检查等管理员设置说明。 |

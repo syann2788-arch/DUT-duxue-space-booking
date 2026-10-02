@@ -10,6 +10,8 @@
     "test:miniprogram": "node --test scripts/miniprogram-domain.test.cjs scripts/miniprogram-flow.test.cjs scripts/miniprogram-api.test.cjs",
     "test:release": "node --test scripts/release-check.test.mjs",
     "release:check": "node scripts/release-check.mjs",
+    "handover:pack": "python3 scripts/package_handover.py pack",
+    "handover:verify": "python3 scripts/package_handover.py verify",
     "test": "npm run test:build && npm run test:miniprogram && npm run test:release"
   }
 }
