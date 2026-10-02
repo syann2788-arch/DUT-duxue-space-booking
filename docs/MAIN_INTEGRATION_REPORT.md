@@ -4,7 +4,7 @@
 
 ## 实际状态从哪里查看
 
-- [仓库PR列表](https://github.com/syann2788-arch/DUT-duxue-space-booking/pulls)：找到partner → main的学校交付准备PR，查看说明中的目标提交、CI链接与结果、审批和合并记录。PR说明维护该次执行的远程证据，不以本文件的本地测试数字替代CI。
+- [交付准备PR #30](https://github.com/syann2788-arch/DUT-duxue-space-booking/pull/30)：partner → main，查看说明中的最新目标提交、CI链接与结果、审批和合并记录。PR说明维护该次执行的远程证据，不以本文件的本地测试数字替代CI。
 - [Quality Gate运行记录](https://github.com/syann2788-arch/DUT-duxue-space-booking/actions/workflows/quality.yml)：核对对应PR/提交的运行，不把另一个分支或旧提交的绿色状态当成通过。
 - [main提交记录](https://github.com/syann2788-arch/DUT-duxue-space-booking/commits/main/)：合并后确认目标提交已包含，并检查main推送触发的工作流。
 
@@ -15,6 +15,14 @@
 - 隔离PostgreSQL16、Python3.12镜像：空库迁移至20261002_03，`RUN_POSTGRES_TESTS=1 python -m pytest -q test_postgres_concurrency.py` **2通过（1.27秒）**；一项passlib/crypt弃用告警。验证同一空间并发预约只成功一次、两个worker竞争时仅一个取得leader锁。没有连接原有演示库或学校数据库。
 - 原PG作业各测试使用独立`asyncio.run`，共享连接池可能跨事件循环复用并导致第二项无限等待；现每个测试在其事件循环关闭前释放连接池，锁就绪等待上限30秒，异常时释放并收尾持锁任务。
 - CI后端作业新增`python ../scripts/check-handover-docs.py`，检查交付文档本地链接与锚点。
+
+## 首次远程CI与修复
+
+PR #30首次目标提交623589c4f19cf02577ba01d9dd364eebacb34286；实际测试临时合并提交09241792220f3acd38f47fd7d7ea994921da87cc。[运行37025576069](https://github.com/syann2788-arch/DUT-duxue-space-booking/actions/runs/37025576069)中后端、小程序、PostgreSQL成功，依赖审计失败，标签构建按预期跳过。依赖审计报告PyJWT2.13.0有13个已知漏洞。
+
+升级至 [PyJWT2.15.1](https://github.com/jpadilla/pyjwt/releases/tag/2.15.1)，补应用认证令牌回归：有效令牌往返，过期、错误签名、非允许算法、无签名及畸形令牌拒绝。首次运行仅用于定位问题，不作为升级后最新目标提交通过的证据；最新完整CI结果保存于PR说明。
+
+升级后本轮完整本地后端pytest：54通过/2项PG跳过（15.70秒）。跳过项仍由独立真实PostgreSQL作业执行。测试专用HMAC密钥采用足够长度；Starlette/httpx接口弃用告警不影响测试结果。
 
 ## PR和合并门槛
 
