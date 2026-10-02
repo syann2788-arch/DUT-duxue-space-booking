@@ -13,6 +13,7 @@ from app.models import (
     RestrictionLevel, User, Violation, ViolationType, local_now,
 )
 from app.schemas import RestrictionCreate
+from app.domain.audit import record_admin_action
 
 
 async def active_restriction(db: AsyncSession, user: User, now: datetime) -> BookingRestriction | None:
@@ -21,7 +22,8 @@ async def active_restriction(db: AsyncSession, user: User, now: datetime) -> Boo
     result = await db.execute(select(BookingRestriction).where(
         BookingRestriction.user_id == user.id,
         BookingRestriction.is_active.is_(True),
-    ).order_by(BookingRestriction.created_at.desc()))
+        BookingRestriction.starts_at <= now,
+    ).order_by(BookingRestriction.ends_at.desc().nulls_first(), BookingRestriction.created_at.desc()))
     for restriction in result.scalars():
         if restriction.ends_at and restriction.ends_at <= now:
             restriction.is_active = False
@@ -56,18 +58,23 @@ async def add_restriction(db: AsyncSession, user_id: int, data: RestrictionCreat
     if not await db.get(User, user_id):
         raise HTTPException(404, "用户不存在")
     now = local_now()
-    ends_at = None if data.level == RestrictionLevel.permanent else now + timedelta(days=data.days or 1)
-    restriction = BookingRestriction(user_id=user_id, level=data.level, reason=data.reason, ends_at=ends_at, created_by=admin_id)
+    starts_at = data.starts_at or now
+    ends_at = None if data.level == RestrictionLevel.permanent else (data.ends_at or starts_at + timedelta(days=data.days or 1))
+    if ends_at and (ends_at <= starts_at or ends_at <= now):
+        raise HTTPException(400, "结束时间必须晚于开始时间和当前时间")
+    restriction = BookingRestriction(user_id=user_id, level=data.level, reason=data.reason, starts_at=starts_at, ends_at=ends_at, created_by=admin_id)
     db.add(restriction)
     await db.flush()
     queue_notification(db, user_id, None, NotificationType.restriction, {
         "change": "restricted", "restriction_id": restriction.id, "level": data.level.value,
-        "reason": data.reason, "ends_at": ends_at.isoformat() if ends_at else "永久",
+        "reason": data.reason, "starts_at": starts_at.isoformat(), "ends_at": ends_at.isoformat() if ends_at else "永久",
+        "duration": str(ends_at - starts_at) if ends_at else "永久",
     })
+    record_admin_action(db, admin_id, "restriction.create", "restriction", restriction.id, {"user_id": user_id, "reason": data.reason, "starts_at": starts_at.isoformat(), "ends_at": ends_at.isoformat() if ends_at else None})
     if ends_at:
         queue_notification(db, user_id, None, NotificationType.restriction, {
             "change": "expired", "restriction_id": restriction.id, "level": data.level.value,
-            "reason": "预约限制已到期，预约权限已自动恢复", "ends_at": ends_at.isoformat(),
+            "reason": "本条预约限制已到期，其他有效限制仍按原规则执行", "ends_at": ends_at.isoformat(),
         }, scheduled_at=ends_at)
     if commit:
         await db.commit()
@@ -77,10 +84,12 @@ async def add_restriction(db: AsyncSession, user_id: int, data: RestrictionCreat
     return restriction
 
 
-async def revoke_restriction(db: AsyncSession, restriction_id: int) -> bool:
-    restriction = await db.get(BookingRestriction, restriction_id)
+async def revoke_restriction(db: AsyncSession, restriction_id: int, admin_id: int | None = None) -> bool:
+    restriction = await db.get(BookingRestriction, restriction_id, with_for_update=True)
     if not restriction:
         return False
+    if not restriction.is_active:
+        return True
     restriction.is_active = False
     restriction.revoked_at = local_now()
     pending = list((await db.scalars(select(Notification).where(
@@ -91,8 +100,9 @@ async def revoke_restriction(db: AsyncSession, restriction_id: int) -> bool:
     for notification in pending:
         if notification.payload.get("change") == "expired" and notification.payload.get("restriction_id") == restriction.id:
             await db.delete(notification)
+    record_admin_action(db, admin_id, "restriction.revoke", "restriction", restriction.id, {"user_id": restriction.user_id})
     queue_notification(db, restriction.user_id, None, NotificationType.restriction, {
-        "change": "revoked", "level": "revoked", "reason": "管理员已解除预约限制",
+        "change": "revoked", "level": "revoked", "reason": "管理员已解除本条限制，其他有效限制仍按原规则执行",
         "ends_at": local_now().isoformat(),
     })
     await db.commit()

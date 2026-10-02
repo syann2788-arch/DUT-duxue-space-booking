@@ -46,6 +46,8 @@ function subscribeMessages(templateIds) {
 }
 
 Page({
+  changePassword() { wx.navigateTo({ url: "/pages/login/password?mode=change" }) },
+  openNotifications() { wx.navigateTo({ url: "/pages/my/notifications" }) },
   data: {
     user: {},
     classLabel: '笃学----',

@@ -1,4 +1,5 @@
 """User and counselor account use cases."""
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,21 +24,25 @@ async def create_user(db: AsyncSession, student_id: str, name: str, phone: str, 
 
 async def set_counselor(db: AsyncSession, student_ids: list[str]) -> int:
     users = list((await db.scalars(select(User).where(User.student_id.in_(student_ids)))).all())
-    for user in users:
-        user.role = UserRole.counselor
+    if any(user.role != UserRole.counselor for user in users):
+        raise HTTPException(409, "不允许通过学号列表静默提升已有账号，请先人工核验归属")
     await db.commit()
     return len(users)
 
 
-async def create_counselor_user(db: AsyncSession, student_id: str, name: str, phone: str, class_name: str, password_hash: str) -> User:
+async def create_counselor_user(db: AsyncSession, student_id: str, name: str, phone: str, class_name: str, password_hash: str, commit: bool = True) -> User:
     user = await get_user_by_student_id(db, student_id)
     if user:
-        user.role = UserRole.counselor
-        user.name, user.phone, user.class_name = name, phone, class_name
+        if user.role != UserRole.counselor:
+            raise HTTPException(409, "账号标识已被使用，须人工核验归属，不能直接提升角色")
+        return user
     else:
-        user = User(student_id=student_id, name=name, phone=phone, class_name=class_name, password_hash=password_hash, role=UserRole.counselor)
+        user = User(student_id=student_id, name=name, phone=phone, class_name=class_name, password_hash=password_hash, role=UserRole.counselor, must_change_password=True)
         db.add(user)
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     await db.refresh(user)
     return user
 

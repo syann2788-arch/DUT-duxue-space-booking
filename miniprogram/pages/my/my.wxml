@@ -1,4 +1,5 @@
 <view class="page-my">
+  <view class="card"><button bindtap="changePassword">修改密码</button><button bindtap="openNotifications">消息记录与发送状态</button></view>
   <view class="profile">
     <view class="avatar">
       <text>{{user.name&&user.name[0]||'?'}}</text>

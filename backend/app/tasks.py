@@ -78,7 +78,7 @@ async def minute_tick() -> dict:
                     .with_for_update()
                 )).scalar_one_or_none()
                 approved = 0
-                if now.strftime("%H:%M") == config["auto_approval_time"] and (
+                if now.strftime("%H:%M") >= config["auto_approval_time"] and (
                     not last or last.value != now.date().isoformat()
                 ):
                     approved = await auto_approve_pending(db)

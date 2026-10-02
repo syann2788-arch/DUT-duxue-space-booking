@@ -1,4 +1,5 @@
 const app = getApp()
+const { extraData, extraMethods } = require('../../utils/admin-workflows')
 const { adminReviewPayload } = require('../../utils/booking-flow')
 const {
   cleanupReviewPayload,
@@ -66,7 +67,9 @@ function actionSheet(itemList) {
 }
 
 Page({
+  ...extraMethods,
   data: {
+    ...extraData,
     authorized: false,
     loading: false,
     loadError: '',
@@ -414,6 +417,7 @@ Page({
     }
     this.setData({
       selectedUser: user,
+      resetReason: '', resetAdminPassword: '',
       violations: [],
       restrictions: [],
       restrictionLevelIndex: 0,

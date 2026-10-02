@@ -17,7 +17,7 @@ OCCUPYING_STATUSES = (
     ReservationStatus.active,
     ReservationStatus.checked_in,
 )
-DAILY_LIMIT_STATUSES = OCCUPYING_STATUSES
+DAILY_LIMIT_STATUSES = (*OCCUPYING_STATUSES, ReservationStatus.completed)
 
 
 def slot_datetime(day: date, slot: int, config: dict) -> datetime:

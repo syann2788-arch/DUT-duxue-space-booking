@@ -12,7 +12,7 @@ from app.config import settings, validate_runtime_security
 from app.database import SCHEMA_REVISION, async_session, current_schema_revision, database_ready, init_db
 from app.models import Notification, NotificationStatus, SystemSetting, local_now
 from app.observability import configure_logging, log_event, request_context_middleware, request_id_context
-from app.routers import admin, auth, media, notifications, reservations, rooms
+from app.routers import admin, auth, media, notifications, reservations, rooms, management
 
 
 @asynccontextmanager
@@ -37,6 +37,7 @@ app.include_router(auth.router)
 app.include_router(rooms.router)
 app.include_router(reservations.router)
 app.include_router(admin.router)
+app.include_router(management.router)
 app.include_router(notifications.router)
 app.include_router(media.router)
 app.include_router(media.public_router)

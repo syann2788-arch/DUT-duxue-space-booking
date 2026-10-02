@@ -18,11 +18,14 @@ async def get_room_by_id(db: AsyncSession, room_id: int) -> Room | None:
     return result.scalar_one_or_none()
 
 
-async def update_public_status(db: AsyncSession, room_id: int, public_status: PublicStatus) -> Room | None:
+async def update_public_status(db: AsyncSession, room_id: int, public_status: PublicStatus, commit: bool = True) -> Room | None:
     room = await db.get(Room, room_id)
     if not room or not room.is_public:
         return None
     room.public_status = public_status
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     await db.refresh(room)
     return room

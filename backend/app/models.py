@@ -10,7 +10,7 @@ import enum
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import false, Boolean, Date, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -114,6 +114,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(200))
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), default=UserRole.student)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    session_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     banned_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     wechat_openid: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now)
@@ -311,3 +313,24 @@ class Violation(Base):
     reservation_id: Mapped[int | None] = mapped_column(ForeignKey("reservations.id"), nullable=True)
     type: Mapped[ViolationType] = mapped_column(SAEnum(ViolationType), default=ViolationType.no_show)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now)
+
+
+class AdminAuditLog(Base):
+    __tablename__ = "admin_audit_logs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(80), index=True)
+    target_type: Mapped[str] = mapped_column(String(40))
+    target_id: Mapped[str] = mapped_column(String(80), index=True)
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now, index=True)
+
+
+class PasswordResetCredential(Base):
+    __tablename__ = "password_reset_credentials"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))

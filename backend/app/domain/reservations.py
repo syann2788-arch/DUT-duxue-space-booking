@@ -26,10 +26,9 @@ async def refresh_reservation_states(db: AsyncSession, now: datetime | None = No
     now = now or local_now()
     config = await get_runtime_config(db)
     result = await db.execute(select(Reservation).where(
-        Reservation.status.in_(OCCUPYING_STATUSES),
-        Reservation.date >= now.date() - timedelta(days=1),
+        Reservation.status.in_((ReservationStatus.pending, ReservationStatus.approved, ReservationStatus.active, ReservationStatus.in_use, ReservationStatus.checked_in)),
         Reservation.date <= now.date(),
-    ).with_for_update(skip_locked=True))
+    ).order_by(Reservation.date, Reservation.id).limit(500).with_for_update(skip_locked=True))
     changed = False
     for reservation in result.scalars():
         if reservation.start_slot is None or reservation.end_slot is None:

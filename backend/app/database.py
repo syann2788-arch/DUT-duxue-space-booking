@@ -14,7 +14,7 @@ from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
 
-SCHEMA_REVISION = "20260813_02"
+SCHEMA_REVISION = "20261002_03"
 
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_pre_ping=True)
@@ -125,6 +125,10 @@ async def _upgrade_legacy_sqlite(conn) -> None:
     media_columns = {row[1] for row in result.fetchall()}
     if media_columns and "deleted_at" not in media_columns:
         await conn.execute(text("ALTER TABLE private_media ADD COLUMN deleted_at DATETIME"))
+
+    for name, ddl in {"session_version": "INTEGER NOT NULL DEFAULT 0", "must_change_password": "BOOLEAN NOT NULL DEFAULT 0"}.items():
+        if name not in user_columns:
+            await conn.execute(text(f"ALTER TABLE users ADD COLUMN {name} {ddl}"))
 
     # Existing SQLite databases predate the ORM uniqueness rule.
     await conn.execute(text(

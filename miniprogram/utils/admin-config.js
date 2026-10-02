@@ -34,7 +34,17 @@ function restrictionPayload(form = {}) {
   const reason = String(form.reason || '').trim()
   if (reason.length < 2) throw new Error('限制原因至少填写2个字')
   const payload = { level: form.level, reason }
-  if (form.level !== 'permanent') {
+  if (form.startTime && !form.startDate) throw new Error('请填写开始日期和时间')
+  if (form.endTime && !form.endDate && form.level !== 'permanent') throw new Error('请填写结束日期和时间')
+  if (form.startDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.startDate) || !/^\d{2}:\d{2}$/.test(form.startTime || '')) throw new Error('请填写开始日期和时间')
+    payload.starts_at = form.startDate + 'T' + form.startTime + ':00+08:00'
+  }
+  if (form.level !== 'permanent' && form.endDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.endDate) || !/^\d{2}:\d{2}$/.test(form.endTime || '')) throw new Error('请填写结束日期和时间')
+    payload.ends_at = form.endDate + 'T' + form.endTime + ':00+08:00'
+    if (payload.starts_at && payload.ends_at <= payload.starts_at) throw new Error('结束时间必须晚于开始时间')
+  } else if (form.level !== 'permanent') {
     const days = Number(form.days)
     if (!Number.isInteger(days) || days < 1 || days > 3650) throw new Error('限制天数应为1至3650')
     payload.days = days

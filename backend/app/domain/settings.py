@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import DEFAULT_RUNTIME_CONFIG
 from app.models import SystemSetting
+from app.domain.audit import record_admin_action
 
 
 async def get_runtime_config(db: AsyncSession) -> dict:
@@ -20,7 +21,8 @@ async def update_runtime_config(db: AsyncSession, values: dict, admin_id: int) -
     unknown = set(values) - set(DEFAULT_RUNTIME_CONFIG)
     if unknown:
         raise HTTPException(400, f"未知配置项: {', '.join(sorted(unknown))}")
-    merged = {**await get_runtime_config(db), **values}
+    before = await get_runtime_config(db)
+    merged = {**before, **values}
     validate_runtime_config(merged)
     for key, value in values.items():
         setting = await db.get(SystemSetting, key)
@@ -29,6 +31,7 @@ async def update_runtime_config(db: AsyncSession, values: dict, admin_id: int) -
             setting.updated_by = admin_id
         else:
             db.add(SystemSetting(key=key, value=value, updated_by=admin_id))
+    record_admin_action(db, admin_id, "settings.update", "settings", "runtime", {"before": {key: before[key] for key in values}, "after": values})
     await db.commit()
     return await get_runtime_config(db)
 

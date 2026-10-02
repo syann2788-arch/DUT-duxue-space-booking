@@ -44,6 +44,9 @@ RULES = [
 
 
 async def seed():
+    from app.config import settings
+    if settings.is_production:
+        raise RuntimeError("演示 seed 仅限 development/test；生产请使用受控管理员建号")
     await init_db()
     async with async_session() as db:
         room_map = {}

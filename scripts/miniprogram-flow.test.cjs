@@ -97,3 +97,13 @@ test('admin review, restriction, settings and room-rule modules validate indepen
     priority: 1, capacity: 8, usage_mode: 'shared', is_enabled: true
   })
 })
+
+test('supports explicit restriction intervals and rejects partial or inverted dates', () => {
+  const form = { level: 'timed', reason: '核验限制', startDate: '2026-10-04', startTime: '09:00', endDate: '2026-10-05', endTime: '10:00' }
+  assert.deepEqual(restrictionPayload(form), { level: 'timed', reason: '核验限制', starts_at: '2026-10-04T09:00:00+08:00', ends_at: '2026-10-05T10:00:00+08:00' })
+  assert.throws(() => restrictionPayload({ ...form, startDate: '' }), /开始日期/)
+  assert.throws(() => restrictionPayload({ ...form, endDate: '2026-10-03' }), /晚于/)
+  assert.equal(loaderForTab('orders'), 'loadAllOrders')
+  assert.equal(loaderForTab('worklist'), 'loadWorklist')
+  assert.equal(loaderForTab('audit'), 'loadAudit')
+})

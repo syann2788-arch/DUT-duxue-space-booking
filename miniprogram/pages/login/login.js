@@ -52,7 +52,11 @@ Page({
   enterHome() {
     if (this._navigated || this._unloaded || !this._visible) return
     this._navigated = true
-    wx.switchTab({ url: '/pages/index/index' })
+    if (app.globalData.user && app.globalData.user.must_change_password) {
+      wx.redirectTo({ url: '/pages/login/password?mode=change' })
+    } else {
+      wx.switchTab({ url: '/pages/index/index' })
+    }
   },
 
   goRegister() { wx.navigateTo({ url: '/pages/login/register' }) },

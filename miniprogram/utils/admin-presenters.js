@@ -49,6 +49,7 @@ function presentViolation(item = {}) {
 function presentRestriction(item = {}) {
   return {
     ...item,
+    stateLabel: !item.is_active ? '已解除/到期' : (String(item.starts_at).replace('T', ' ').slice(0, 16) > dateTime(new Date(Date.now() + 8 * 3600000).toISOString()) ? '未开始' : (item.ends_at && String(item.ends_at).replace('T', ' ').slice(0, 16) <= dateTime(new Date(Date.now() + 8 * 3600000).toISOString()) ? '已到期' : '有效')),
     levelLabel: RESTRICTION_LABELS[item.level] || item.level,
     startsLabel: dateTime(item.starts_at),
     endsLabel: item.ends_at ? dateTime(item.ends_at) : '永久'

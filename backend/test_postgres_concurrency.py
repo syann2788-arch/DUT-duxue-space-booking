@@ -23,7 +23,14 @@ async def booking_scenario():
     from app.domain.reservations import create_reservation
     from seed import seed
 
-    await seed()
+    # Isolated CI database only; demo seed refuses production-like environments.
+    from app.config import settings
+    previous = settings.APP_ENV
+    settings.APP_ENV = "test"
+    try:
+        await seed()
+    finally:
+        settings.APP_ENV = previous
     async with async_session() as db:
         await db.execute(delete(Reservation))
         await db.commit()

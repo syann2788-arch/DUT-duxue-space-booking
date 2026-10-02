@@ -7,7 +7,7 @@ import secrets
 import string
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from openpyxl import Workbook
 import qrcode
@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.auth import hash_password, require_admin
+from app.domain.audit import record_admin_action
 from app.database import get_db
 from app.models import BookingRestriction, CleanupStatus, CleanupVerification, Reservation, ReservationStatus, Room, RoomSceneRule, SceneType, User, Violation, local_now
 from app.queries import get_all_users, list_admin_reservations, list_cleanup_queue
@@ -137,8 +138,8 @@ async def restrict_user(
 
 
 @router.delete("/restrictions/{restriction_id}")
-async def unrestrict(restriction_id: int, db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
-    if not await revoke_restriction(db, restriction_id):
+async def unrestrict(restriction_id: int, db: AsyncSession = Depends(get_db), admin: dict = Depends(require_admin)):
+    if not await revoke_restriction(db, restriction_id, int(admin["sub"])):
         raise HTTPException(404, "限制记录不存在")
     return {"message": "已解除限制"}
 
@@ -155,11 +156,13 @@ async def public_status(
     room_id: int,
     data: PublicStatusUpdate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_admin),
+    admin: dict = Depends(require_admin),
 ):
-    room = await update_public_status(db, room_id, data.public_status)
+    room = await update_public_status(db, room_id, data.public_status, commit=False)
     if not room:
         raise HTTPException(404, "房间不存在或不是公开空间")
+    record_admin_action(db, int(admin["sub"]), "room.public_status", "room", room_id, {"status": data.public_status.value})
+    await db.commit()
     return {"message": "状态已更新"}
 
 
@@ -168,11 +171,13 @@ async def update_room_rule(
     rule_id: int,
     data: RoomRuleUpdate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_admin),
+    admin: dict = Depends(require_admin),
 ):
     rule = await db.get(RoomSceneRule, rule_id)
     if not rule:
         raise HTTPException(404, "分房规则不存在")
+    before = {"priority": rule.priority, "capacity": rule.capacity, "usage_mode": rule.usage_mode.value, "is_enabled": rule.is_enabled}
+    record_admin_action(db, int(admin["sub"]), "room_rule.update", "rule", rule_id, {"before": before, "after": data.model_dump(mode="json")})
     rule.priority, rule.capacity, rule.usage_mode, rule.is_enabled = data.priority, data.capacity, data.usage_mode, data.is_enabled
     await db.commit()
     return {"message": "分房规则已更新"}
@@ -194,6 +199,7 @@ async def update_settings(
 
 @router.get("/export.xlsx")
 async def export_xlsx(
+    request: Request,
     date_from: date | None = None,
     date_to: date | None = None,
     scene: SceneType | None = None,
@@ -212,7 +218,8 @@ async def export_xlsx(
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "预约记录"
-    sheet.append(["预约号", "日期", "开始时间", "结束时间", "场景", "房间", "姓名", "学号", "联系方式", "人数", "申请理由", "玉兰卡媒体编号", "状态", "审核时间", "审核/驳回原因", "清扫结果", "清扫媒体编号", "违规标记", "创建时间"])
+    sheet.append(["预约号", "日期", "开始时间", "结束时间", "场景", "房间", "姓名", "学号", "联系方式", "人数", "申请理由", "玉兰卡媒体编号", "状态", "审核时间", "审核/驳回原因", "清扫结果", "清扫媒体编号", "违规标记", "创建时间", "玉兰卡照片链接", "清扫照片链接"])
+    base_url = str(request.base_url).rstrip("/")
     for item in records:
         sheet.append([
             item.id, item.date.isoformat(), _minute_label(item.start_minute), _minute_label(item.end_minute),
@@ -222,20 +229,38 @@ async def export_xlsx(
             item.reviewed_at.strftime("%Y-%m-%d %H:%M:%S") if item.reviewed_at else "", item.review_note or "",
             item.cleanup.status.value if item.cleanup else "未提交", ", ".join(item.cleanup.media_ids or []) if item.cleanup else "",
             ", ".join(violation_map.get(item.id, [])), item.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            f"{base_url}/api/media/{item.campus_card_media_id}/view" if item.campus_card_media_id else "",
+            "\n".join(f"{base_url}/api/media/{mid}/view" for mid in (item.cleanup.media_ids or [])) if item.cleanup else "",
         ])
     _format_sheet(sheet)
 
     restriction_sheet = workbook.create_sheet("预约限制记录")
-    restriction_sheet.append(["记录号", "姓名", "学号", "联系方式", "限制级别", "开始时间", "结束时间", "限制原因", "当前有效", "创建时间", "解除时间"])
-    restriction_records = list((await db.scalars(select(BookingRestriction).options(joinedload(BookingRestriction.user)).order_by(BookingRestriction.created_at.desc()))).all())
+    restriction_sheet.append(["记录号", "姓名", "学号", "联系方式", "限制级别", "开始时间", "结束时间", "限制原因", "当前有效", "创建时间", "解除时间", "限制时长（分钟）"])
+    restriction_query = select(BookingRestriction).options(joinedload(BookingRestriction.user))
+    if date_from or date_to or scene or status_filter:
+        restriction_query = restriction_query.where(BookingRestriction.user_id.in_({r.user_id for r in records}))
+    if date_from:
+        restriction_query = restriction_query.where((BookingRestriction.ends_at.is_(None)) | (func.date(BookingRestriction.ends_at) >= date_from.isoformat()))
+    if date_to:
+        restriction_query = restriction_query.where(func.date(BookingRestriction.starts_at) <= date_to.isoformat())
+    restriction_records = list((await db.scalars(restriction_query.order_by(BookingRestriction.created_at.desc()))).all())
     for item in restriction_records:
         restriction_sheet.append([
             item.id, item.user.name, item.user.student_id, item.user.phone, item.level.value,
             item.starts_at.strftime("%Y-%m-%d %H:%M:%S"), item.ends_at.strftime("%Y-%m-%d %H:%M:%S") if item.ends_at else "永久",
             item.reason, "是" if item.is_active else "否", item.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             item.revoked_at.strftime("%Y-%m-%d %H:%M:%S") if item.revoked_at else "",
+            int((item.ends_at - item.starts_at).total_seconds() / 60) if item.ends_at else "永久",
         ])
     _format_sheet(restriction_sheet)
+    for tab in workbook:
+        for row in tab:
+            for cell in row:
+                if isinstance(cell.value, str) and cell.value.lstrip().startswith(("=", "+", "-", "@")):
+                    cell.value = "'" + cell.value
+                if isinstance(cell.value, str) and cell.value.startswith(base_url + "/api/media/") and "\n" not in cell.value:
+                    cell.hyperlink = cell.value
+                    cell.style = "Hyperlink"
     output = io.BytesIO()
     workbook.save(output)
     output.seek(0)
@@ -292,7 +317,7 @@ async def counselors(db: AsyncSession = Depends(get_db), _: dict = Depends(requi
 
 
 @router.post("/counselors/import")
-async def import_counselors(file: UploadFile = File(...), db: AsyncSession = Depends(get_db), _: dict = Depends(require_admin)):
+async def import_counselors(file: UploadFile = File(...), db: AsyncSession = Depends(get_db), admin: dict = Depends(require_admin)):
     if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(400, "请上传CSV文件")
     try:
@@ -315,7 +340,14 @@ async def import_counselors(file: UploadFile = File(...), db: AsyncSession = Dep
             continue
         phone = value("联系方式")
         login_id = phone if phone.isdigit() else f"staff_{value('姓名')}"
-        password = phone or "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
-        await create_counselor_user(db, login_id, value("姓名"), phone, value("负责班级"), hash_password(password))
+        password = "A1" + secrets.token_urlsafe(18)
+        existing = await db.scalar(select(User).where(User.student_id == login_id))
+        if existing and existing.role.value != "counselor":
+            raise HTTPException(409, "导入账号与已有账号冲突，请人工核验归属")
+        if existing:
+            continue
+        await create_counselor_user(db, login_id, value("姓名"), phone, value("负责班级"), hash_password(password), commit=False)
         accounts.append({"name": value("姓名"), "login_id": login_id, "password": password})
+    record_admin_action(db, int(admin["sub"]), "counselor.import", "users", "csv", {"created": len(accounts)})
+    await db.commit()
     return {"imported_count": len(accounts), "accounts": accounts}

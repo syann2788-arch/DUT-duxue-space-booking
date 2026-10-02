@@ -42,3 +42,22 @@ async def private_media(
     db.add(MediaAccessLog(media_id=media.id, actor_id=actor_id, action="admin_download"))
     await db.commit()
     return FileResponse(path, media_type=media.content_type, filename=f"{media.purpose.value}{path.suffix}")
+
+
+@public_router.get("/api/media/{media_id}/view")
+async def media_view(media_id: str):
+    """A public login shell only; the actual bytes always require administrator JWT."""
+    from uuid import UUID
+    from secrets import token_urlsafe
+    from fastapi.responses import HTMLResponse
+    try:
+        media_id = str(UUID(media_id))
+    except ValueError:
+        raise HTTPException(404, "媒体编号无效")
+    nonce = token_urlsafe(20)
+    template = (Path(__file__).parent.parent / "media_view.html").read_text(encoding="utf-8")
+    return HTMLResponse(template.replace("__MEDIA_ID__", media_id).replace("__NONCE__", nonce), headers={
+        "Cache-Control": "no-store", "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'nonce-{nonce}'; connect-src 'self'; img-src blob:; form-action 'none'; frame-ancestors 'none'; base-uri 'none'",
+    })

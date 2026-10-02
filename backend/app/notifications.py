@@ -61,7 +61,9 @@ def _template_data(notification: Notification) -> dict:
         return {"phrase1": {"value": "已通过" if payload.get("result") == "approved" else "未通过"}, "thing2": {"value": (payload.get("reason") or "请进入小程序查看")[:20]}}
     if notification.type == NotificationType.starting_soon:
         return {"thing1": {"value": "预约即将开始"}, "time2": {"value": payload.get("date", "")}}
-    return {"thing1": {"value": "预约资格变更"}, "thing2": {"value": (payload.get("reason") or "请进入小程序查看")[:20]}}
+    titles = {"restricted": "预约受限", "revoked": "本条限制解除", "expired": "本条限制到期", "cleanup_required": "清扫待提交", "cleanup_rejected": "清扫核验不合格"}
+    summary = "；".join(str(payload[k]) for k in ("duration", "ends_at", "reason") if payload.get(k))
+    return {"thing1": {"value": titles.get(payload.get("change"), "预约资格变更")}, "thing2": {"value": (summary or "请进入小程序查看")[:20]}}
 
 
 async def deliver_due_notifications(db: AsyncSession, limit: int = 100) -> int:
@@ -108,8 +110,9 @@ async def deliver_due_notifications(db: AsyncSession, limit: int = 100) -> int:
                     f"https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token={token}",
                     json={"touser": user.wechat_openid, "template_id": template_id, "page": "pages/my/my", "data": _template_data(notification)},
                 )
+                response.raise_for_status()
                 payload = response.json()
-                if payload.get("errcode", 0) != 0:
+                if not isinstance(payload, dict) or "errcode" not in payload or payload["errcode"] != 0:
                     raise RuntimeError(payload.get("errmsg", "发送失败"))
                 notification.status = NotificationStatus.sent
                 notification.sent_at = local_now()

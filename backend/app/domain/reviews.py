@@ -13,6 +13,7 @@ from app.models import (
     CleanupStatus, CleanupVerification, NotificationType, Reservation,
     ReservationStatus, ReviewDecision, ViolationType, local_now,
 )
+from app.domain.audit import record_admin_action
 from app.schemas import CleanupReviewRequest, ReservationReviewRequest, RestrictionCreate
 
 
@@ -39,6 +40,8 @@ async def review_reservations(db: AsyncSession, request: ReservationReviewReques
             queue_notification(db, reservation.user_id, reservation.id, NotificationType.starting_soon, {
                 "date": reservation.date.isoformat(),
             }, remind_at)
+    for reservation in reservations:
+        record_admin_action(db, None if auto else admin_id, "reservation.review", "reservation", reservation.id, {"decision": target.value, "reason": request.note, "auto": auto})
     await db.commit()
     return {"processed": len(reservations), "requested": len(request.reservation_ids), "status": target.value}
 
@@ -76,6 +79,7 @@ async def review_cleanup(db: AsyncSession, cleanup_id: int, request: CleanupRevi
             reason=request.note or "现场清扫核验未通过",
             days=request.restriction_days,
         ), admin_id, commit=False)
+    record_admin_action(db, admin_id, "cleanup.review", "cleanup", cleanup.id, {"decision": request.decision.value, "reason": request.note, "restrict_user": request.restrict_user})
     await db.commit()
     await db.refresh(cleanup)
     return cleanup

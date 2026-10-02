@@ -7,5 +7,7 @@ Page({
     })
   },
 
+  useCredential() { wx.navigateTo({ url: "/pages/login/password?mode=reset" }) },
+
   goBack() { wx.navigateBack() }
 })

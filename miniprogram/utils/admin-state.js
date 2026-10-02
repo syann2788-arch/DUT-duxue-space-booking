@@ -3,6 +3,9 @@ const PAGE_SIZE = 30
 const TABS = [
   { key: 'overview', label: '概览' },
   { key: 'review', label: '预约审核' },
+  { key: 'orders', label: '全部订单' },
+  { key: 'worklist', label: '违规与清扫待办' },
+  { key: 'audit', label: '操作日志' },
   { key: 'cleanup', label: '清扫复核' },
   { key: 'users', label: '用户' },
   { key: 'rules', label: '分房规则' },
@@ -35,7 +38,8 @@ const RESTRICTION_OPTIONS = [
 function loaderForTab(tab) {
   return ({
     overview: 'loadOverview', review: 'loadPendingReservations', cleanup: 'loadCleanupQueue',
-    users: 'loadUsers', rules: 'loadRoomRules', settings: 'loadSettings'
+    users: 'loadUsers', rules: 'loadRoomRules', settings: 'loadSettings',
+    orders: 'loadAllOrders', worklist: 'loadWorklist', audit: 'loadAudit'
   })[tab] || ''
 }
 
