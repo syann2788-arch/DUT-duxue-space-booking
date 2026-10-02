@@ -10,7 +10,7 @@ import enum
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import false, Boolean, Date, DateTime, Enum as SAEnum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -98,6 +98,11 @@ class ViolationType(str, enum.Enum):
     cleanup_failed = "cleanup_failed"
 
 
+class MediaPurpose(str, enum.Enum):
+    campus_card = "campus_card"
+    cleanup = "cleanup"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -109,6 +114,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(200))
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), default=UserRole.student)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    session_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     banned_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     wechat_openid: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now)
@@ -116,6 +123,32 @@ class User(Base):
     reservations: Mapped[list["Reservation"]] = relationship(back_populates="user", foreign_keys="Reservation.user_id")
     restrictions: Mapped[list["BookingRestriction"]] = relationship(back_populates="user", foreign_keys="BookingRestriction.user_id")
     space_messages: Mapped[list["SpaceMessage"]] = relationship(back_populates="user")
+
+
+class PrivateMedia(Base):
+    __tablename__ = "private_media"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    reservation_id: Mapped[int | None] = mapped_column(ForeignKey("reservations.id"), nullable=True, index=True)
+    purpose: Mapped[MediaPurpose] = mapped_column(SAEnum(MediaPurpose), index=True)
+    storage_key: Mapped[str] = mapped_column(String(200), unique=True)
+    content_type: Mapped[str] = mapped_column(String(100))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now)
+
+
+class MediaAccessLog(Base):
+    __tablename__ = "media_access_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    media_id: Mapped[str] = mapped_column(ForeignKey("private_media.id"), index=True)
+    actor_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    action: Mapped[str] = mapped_column(String(50), default="download")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now, index=True)
 
 
 class Room(Base):
@@ -160,6 +193,10 @@ class RoomSceneRule(Base):
 
 class Reservation(Base):
     __tablename__ = "reservations"
+    __table_args__ = (
+        Index("ix_reservations_status_date", "status", "date"),
+        Index("ix_reservations_user_date", "user_id", "date"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
@@ -179,6 +216,7 @@ class Reservation(Base):
     people_count: Mapped[int] = mapped_column(Integer, default=1)
     purpose: Mapped[str] = mapped_column(String(300), default="")
     campus_card_photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    campus_card_media_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     status: Mapped[ReservationStatus] = mapped_column(SAEnum(ReservationStatus), default=ReservationStatus.pending, index=True)
     review_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
     reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
@@ -199,6 +237,7 @@ class CleanupVerification(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     reservation_id: Mapped[int] = mapped_column(ForeignKey("reservations.id"), unique=True, index=True)
     photo_urls: Mapped[list[str]] = mapped_column(JSON)
+    media_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
     status: Mapped[CleanupStatus] = mapped_column(SAEnum(CleanupStatus), default=CleanupStatus.pending, index=True)
     submitted_at: Mapped[datetime] = mapped_column(DateTime, default=local_now)
     reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
@@ -274,3 +313,24 @@ class Violation(Base):
     reservation_id: Mapped[int | None] = mapped_column(ForeignKey("reservations.id"), nullable=True)
     type: Mapped[ViolationType] = mapped_column(SAEnum(ViolationType), default=ViolationType.no_show)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now)
+
+
+class AdminAuditLog(Base):
+    __tablename__ = "admin_audit_logs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(80), index=True)
+    target_type: Mapped[str] = mapped_column(String(40))
+    target_id: Mapped[str] = mapped_column(String(80), index=True)
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=local_now, index=True)
+
+
+class PasswordResetCredential(Base):
+    __tablename__ = "password_reset_credentials"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))

@@ -3,7 +3,8 @@
 Events are committed with the business transaction and sent asynchronously.  A
 provider outage therefore never rolls back an approved reservation.
 """
-from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta
 
 import httpx
 from sqlalchemy import select
@@ -19,6 +20,8 @@ TEMPLATE_IDS = {
     NotificationType.starting_soon: settings.WECHAT_TEMPLATE_REMINDER,
     NotificationType.restriction: settings.WECHAT_TEMPLATE_RESTRICTION,
 }
+_token_cache: dict[str, object] = {"value": "", "expires_at": None}
+_token_lock = asyncio.Lock()
 
 
 def public_template_ids() -> list[str]:
@@ -26,15 +29,27 @@ def public_template_ids() -> list[str]:
 
 
 async def _access_token(client: httpx.AsyncClient) -> str:
-    response = await client.get("https://api.weixin.qq.com/cgi-bin/token", params={
-        "grant_type": "client_credential",
-        "appid": settings.WECHAT_APP_ID,
-        "secret": settings.WECHAT_APP_SECRET,
-    })
-    payload = response.json()
-    if "access_token" not in payload:
-        raise RuntimeError(payload.get("errmsg", "获取access_token失败"))
-    return payload["access_token"]
+    now = local_now()
+    expires_at = _token_cache["expires_at"]
+    if _token_cache["value"] and isinstance(expires_at, datetime) and expires_at > now:
+        return str(_token_cache["value"])
+    async with _token_lock:
+        expires_at = _token_cache["expires_at"]
+        if _token_cache["value"] and isinstance(expires_at, datetime) and expires_at > now:
+            return str(_token_cache["value"])
+        response = await client.get("https://api.weixin.qq.com/cgi-bin/token", params={
+            "grant_type": "client_credential",
+            "appid": settings.WECHAT_APP_ID,
+            "secret": settings.WECHAT_APP_SECRET,
+        })
+        response.raise_for_status()
+        payload = response.json()
+        if "access_token" not in payload:
+            raise RuntimeError(payload.get("errmsg", "获取access_token失败"))
+        ttl = max(int(payload.get("expires_in", 7200)) - 300, 60)
+        _token_cache["value"] = payload["access_token"]
+        _token_cache["expires_at"] = now + timedelta(seconds=ttl)
+        return str(payload["access_token"])
 
 
 def _template_data(notification: Notification) -> dict:
@@ -46,12 +61,12 @@ def _template_data(notification: Notification) -> dict:
         return {"phrase1": {"value": "已通过" if payload.get("result") == "approved" else "未通过"}, "thing2": {"value": (payload.get("reason") or "请进入小程序查看")[:20]}}
     if notification.type == NotificationType.starting_soon:
         return {"thing1": {"value": "预约即将开始"}, "time2": {"value": payload.get("date", "")}}
-    return {"thing1": {"value": "预约资格变更"}, "thing2": {"value": (payload.get("reason") or "请进入小程序查看")[:20]}}
+    titles = {"restricted": "预约受限", "revoked": "本条限制解除", "expired": "本条限制到期", "cleanup_required": "清扫待提交", "cleanup_rejected": "清扫核验不合格"}
+    summary = "；".join(str(payload[k]) for k in ("duration", "ends_at", "reason") if payload.get(k))
+    return {"thing1": {"value": titles.get(payload.get("change"), "预约资格变更")}, "thing2": {"value": (summary or "请进入小程序查看")[:20]}}
 
 
 async def deliver_due_notifications(db: AsyncSession, limit: int = 100) -> int:
-    if not settings.WECHAT_APP_ID or not settings.WECHAT_APP_SECRET:
-        return 0
     result = await db.execute(select(Notification).where(
         Notification.status == NotificationStatus.pending,
         Notification.scheduled_at <= local_now(),
@@ -59,29 +74,61 @@ async def deliver_due_notifications(db: AsyncSession, limit: int = 100) -> int:
     notifications = list(result.scalars())
     if not notifications:
         return 0
+    deliverable: list[tuple[Notification, User, str]] = []
+    for notification in notifications:
+        user = await db.get(User, notification.user_id)
+        template_id = TEMPLATE_IDS.get(notification.type)
+        if not user or not user.wechat_openid:
+            notification.attempts += 1
+            notification.status = NotificationStatus.failed
+            notification.error = "账号未绑定微信，通知不再重试"
+        elif not template_id:
+            notification.attempts += 1
+            notification.status = NotificationStatus.failed
+            notification.error = "通知模板未配置，通知不再重试"
+        elif not settings.WECHAT_APP_ID or not settings.WECHAT_APP_SECRET:
+            notification.attempts += 1
+            notification.status = NotificationStatus.failed
+            notification.error = "微信服务凭据未配置，通知不再重试"
+        else:
+            deliverable.append((notification, user, template_id))
+    if not deliverable:
+        await db.commit()
+        return len(notifications)
     async with httpx.AsyncClient(timeout=10) as client:
-        token = await _access_token(client)
-        for notification in notifications:
-            user = await db.get(User, notification.user_id)
-            template_id = TEMPLATE_IDS.get(notification.type)
-            if not user or not user.wechat_openid or not template_id:
-                # Keep pending: the account may be bound or templates configured later.
-                continue
+        try:
+            token = await _access_token(client)
+        except Exception as exc:
+            for notification, _, _ in deliverable:
+                _record_delivery_failure(notification, exc)
+            await db.commit()
+            return len(notifications)
+        for notification, user, template_id in deliverable:
             notification.attempts += 1
             try:
                 response = await client.post(
                     f"https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token={token}",
                     json={"touser": user.wechat_openid, "template_id": template_id, "page": "pages/my/my", "data": _template_data(notification)},
                 )
+                response.raise_for_status()
                 payload = response.json()
-                if payload.get("errcode", 0) != 0:
+                if not isinstance(payload, dict) or "errcode" not in payload or payload["errcode"] != 0:
                     raise RuntimeError(payload.get("errmsg", "发送失败"))
                 notification.status = NotificationStatus.sent
                 notification.sent_at = local_now()
                 notification.error = None
             except Exception as exc:  # provider errors are captured in the outbox
-                notification.error = str(exc)[:500]
-                if notification.attempts >= 5:
-                    notification.status = NotificationStatus.failed
+                _record_delivery_failure(notification, exc, increment=False)
     await db.commit()
     return len(notifications)
+
+
+def _record_delivery_failure(notification: Notification, exc: Exception, increment: bool = True) -> None:
+    if increment:
+        notification.attempts += 1
+    notification.error = str(exc)[:500]
+    if notification.attempts >= 5:
+        notification.status = NotificationStatus.failed
+        return
+    # Keep transient failures pending, but avoid hammering the provider every tick.
+    notification.scheduled_at = local_now() + timedelta(minutes=min(2 ** notification.attempts, 60))

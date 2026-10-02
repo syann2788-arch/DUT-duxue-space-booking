@@ -1,0 +1,19 @@
+[Unit]
+Description=Duxue booking API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=duxue
+Group=duxue
+WorkingDirectory=/srv/duxue/app/backend
+ExecStart=/srv/duxue/app/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

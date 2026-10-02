@@ -42,7 +42,7 @@
     <button class="upload-btn" bindtap="chooseCampusCard" disabled="{{uploading||submitting}}">
       {{campusCardLocal?'重新选择玉兰卡照片':'拍照或选择玉兰卡照片'}}
     </button>
-    <text class="upload-success" wx:if="{{campusCardUrl}}">✓ 已上传，可提交预约申请</text>
+    <text class="upload-success" wx:if="{{campusCardMediaId}}">✓ 已安全上传，可提交预约申请</text>
   </view>
 
   <view class="notice">

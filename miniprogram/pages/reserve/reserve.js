@@ -1,4 +1,5 @@
 const app = getApp()
+const { consecutiveSelection } = require('../../utils/booking-flow')
 
 const SCENES = [
   {
@@ -290,15 +291,12 @@ Page({
   },
 
   commonAvailableRooms(selected) {
-    let common = null
-    selected.forEach(slotId => {
-      const slot = this.data.slots.find(item => item.slot === slotId)
-      const roomIds = slot ? slot.availableRoomIds : []
-      common = common === null
-        ? roomIds.slice()
-        : common.filter(roomId => roomIds.includes(roomId))
-    })
-    return common || []
+    if (!selected.length) return []
+    const validated = consecutiveSelection(this.data.slots, selected.slice(0, -1), selected[selected.length - 1])
+    if (validated.length !== selected.length || validated.some((slot, index) => slot !== selected[index])) return []
+    const selectedSet = new Set(selected)
+    const roomSets = this.data.slots.filter(item => selectedSet.has(item.slot)).map(item => item.availableRoomIds || [])
+    return roomSets.reduce((common, roomIds) => common.filter(roomId => roomIds.includes(roomId)), roomSets[0] || [])
   },
 
   applySelection(selected) {

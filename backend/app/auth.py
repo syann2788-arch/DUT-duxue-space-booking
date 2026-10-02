@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 
-from jose import JWTError, jwt
+import jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.config import settings
@@ -32,12 +32,29 @@ def create_access_token(data: dict) -> str:
 def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效的认证令牌")
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> dict:
-    return decode_token(credentials.credentials)
+async def get_current_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Validate both the JWT and the account's current server-side state."""
+    payload = decode_token(credentials.credentials)
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(401, "无效的认证令牌")
+    current = await db.get(User, user_id)
+    if not current or not current.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号不存在或已停用")
+    if payload.get("version", 0) != current.session_version:
+        raise HTTPException(401, "密码已更新，请重新登录")
+    if current.must_change_password and request.url.path not in {"/api/auth/me", "/api/auth/password/change"}:
+        raise HTTPException(403, "请先修改初始密码")
+    return payload
 
 
 async def require_admin(user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> dict:

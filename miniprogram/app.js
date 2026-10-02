@@ -82,5 +82,9 @@ App({
 
   upload(path, filePath, options) {
     return api.uploadFile(path, filePath, options)
+  },
+
+  download(path, options) {
+    return api.downloadFile(path, options)
   }
 })

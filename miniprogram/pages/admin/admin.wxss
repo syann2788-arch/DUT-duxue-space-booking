@@ -175,6 +175,56 @@
   gap: 22rpx;
 }
 
+.export-card-head,
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.export-card-head > view {
+  min-width: 0;
+  flex: 1;
+}
+
+.export-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+  margin-top: 22rpx;
+}
+
+.filter-control {
+  height: 68rpx;
+  padding: 0 18rpx;
+  overflow: hidden;
+  color: #667180;
+  font-size: 22rpx;
+  line-height: 68rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #F6F7F9;
+  border: 1rpx solid #ECEEF2;
+  border-radius: 12rpx;
+  box-sizing: border-box;
+}
+
+.full-export-button {
+  height: 72rpx;
+  margin: 18rpx 0 0;
+  color: #fff;
+  font-size: 24rpx;
+  line-height: 72rpx;
+  background: #F25B15;
+  border: 0;
+  border-radius: 12rpx;
+}
+
+.full-export-button::after {
+  border: 0;
+}
+
 .action-card > view,
 .placeholder-card > view,
 .selected-user-head > view,
@@ -256,9 +306,22 @@ button.full-purple-button::after {
 }
 
 .simple-main {
+  min-width: 0;
+  flex: 1;
   padding-right: 20rpx;
   color: #171C24;
   font-size: 24rpx;
+}
+
+.row-actions {
+  flex-shrink: 0;
+  gap: 14rpx;
+}
+
+.secondary-action {
+  padding: 12rpx 0;
+  color: #667180;
+  font-size: 22rpx;
 }
 
 .text-action,
@@ -415,15 +478,8 @@ button.full-purple-button::after {
   border-top: 1rpx solid #F6F7F9;
 }
 
-.campus-card-photo {
-  flex-shrink: 0;
-  width: 128rpx;
-  height: 88rpx;
-  background: #FEF1EA;
-  border-radius: 10rpx;
-}
-
 .photo-note {
+  flex: 1;
   color: #A9B1BD;
   font-size: 20rpx;
   line-height: 1.5;
@@ -488,8 +544,14 @@ button.full-purple-button::after {
 }
 
 .cleanup-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  height: 182rpx;
+  height: 88rpx;
+  color: #F25B15;
+  font-size: 22rpx;
+  font-weight: 600;
   background: #FEF1EA;
   border-radius: 12rpx;
 }
@@ -817,3 +879,9 @@ button.full-purple-button::after {
 .page-spacer {
   height: 150rpx;
 }
+
+.load-error-card { margin: 20rpx; padding: 24rpx; color: #b83b50; text-align: center; background: #fff1f2; border-radius: 14rpx; }
+.load-error-card text { display: block; }
+.load-error-card button, .load-more-button { width: 240rpx; margin: 18rpx auto; color: #fff; background: #F25B15; font-size: 23rpx; line-height: 68rpx; }
+.load-error-card button::after, .load-more-button::after { border: 0; }
+.load-more-button { display: block; background: #667180; }

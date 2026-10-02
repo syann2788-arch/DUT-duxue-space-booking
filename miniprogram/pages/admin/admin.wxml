@@ -11,12 +11,62 @@
 
     <scroll-view scroll-x class="tabs" enhanced show-scrollbar="{{false}}">
       <view class="tabs-inner">
-        <text wx:for="{{tabs}}" wx:key="key" class="tab {{activeTab===item.key?'active':''}}" data-key="{{item.key}}" bindtap="switchTab">{{item.label}}</text>
+        <text wx:for="{{tabs}}" wx:key="key" class="tab {{activeTab===item.key?'active':''}}" data-key="{{item.key}}" bindtap="switchTab" aria-role="tab" aria-selected="{{activeTab===item.key}}" aria-label="切换到{{item.label}}">{{item.label}}</text>
       </view>
     </scroll-view>
 
-    <view wx:if="{{loading}}" class="loading-bar">正在加载...</view>
+    <view wx:if="{{loading}}" class="loading-bar" aria-role="status">正在加载...</view>
+    <view wx:if="{{loadError&&!loading}}" class="load-error-card" aria-role="alert">
+      <text>{{loadError}}</text>
+      <button bindtap="retryActiveTab" aria-label="重新加载当前管理页面">重新加载</button>
+    </view>
 
+    <block wx:if="{{activeTab==='orders'}}">
+      <view class="admin-card">
+        <text class="sub-title">全部订单（{{ordersTotal}}）</text>
+        <view class="export-filter-grid">
+          <picker range="{{orderStatusOptions}}" range-key="label" value="{{orderFilters.statusIndex}}" data-field="statusIndex" bindchange="onOrderFilter"><view class="filter-control">{{orderStatusOptions[orderFilters.statusIndex].label}}</view></picker>
+          <picker range="{{orderSceneOptions}}" range-key="label" value="{{orderFilters.sceneIndex}}" data-field="sceneIndex" bindchange="onOrderFilter"><view class="filter-control">{{orderSceneOptions[orderFilters.sceneIndex].label}}</view></picker>
+          <picker mode="date" value="{{orderFilters.dateFrom}}" data-field="dateFrom" bindchange="onOrderFilter"><view class="filter-control">{{orderFilters.dateFrom||'开始日期'}}</view></picker>
+          <picker mode="date" value="{{orderFilters.dateTo}}" data-field="dateTo" bindchange="onOrderFilter"><view class="filter-control">{{orderFilters.dateTo||'结束日期'}}</view></picker>
+        </view>
+        <view wx:for="{{allOrders}}" wx:key="id" class="record-section">
+          <text class="record-main">#{{item.id}} · {{item.user.name}} · {{item.statusLabel}}</text>
+          <text class="record-sub">{{item.date}} {{item.timeLabel}} · {{item.room.room_code}} · {{item.sceneLabel}} · {{item.people_count}}人</text>
+          <text class="record-sub">{{item.purpose}} · {{item.review_note}}</text>
+          <text class="record-sub">清扫：{{item.cleanup.status||'未提交'}} · {{item.cleanup.review_note}}</text>
+          <button data-source="orders" data-index="{{index}}" data-kind="card" bindtap="previewOrderMedia">查看玉兰卡</button>
+          <button data-source="orders" data-index="{{index}}" data-kind="cleanup" bindtap="previewOrderMedia">查看清扫照片</button>
+        </view>
+        <text wx:if="{{!allOrders.length&&!loading}}" class="empty-small">无匹配订单</text>
+        <button wx:if="{{ordersHasMore}}" bindtap="loadMoreOrders" disabled="{{loading}}">加载更多</button>
+      </view>
+    </block>
+    <block wx:if="{{activeTab==='worklist'}}">
+      <view class="admin-card">
+        <picker range="{{workKinds}}" range-key="label" value="{{workKindIndex}}" bindchange="onWorkKind"><view class="filter-control">{{workKinds[workKindIndex].label}}（{{workTotal}}）</view></picker>
+        <view wx:for="{{workItems}}" wx:key="id" class="record-section">
+          <text class="record-main">#{{item.id}} · {{item.user.name}} · {{item.user.student_id}}</text>
+          <text class="record-sub">{{item.user.phone}} · {{item.date}} {{item.timeLabel}} · {{item.room.room_code}}</text>
+          <text class="record-sub">{{item.status}} · {{item.cleanup.review_note}}</text>
+          <button data-source="work" data-index="{{index}}" data-kind="cleanup" bindtap="previewOrderMedia">查看清扫照片</button>
+        </view>
+        <text wx:if="{{!workItems.length&&!loading}}" class="empty-small">暂无待办</text>
+        <button wx:if="{{workHasMore}}" bindtap="loadMoreWork" disabled="{{loading}}">加载更多</button>
+      </view>
+    </block>
+    <block wx:if="{{activeTab==='audit'}}">
+      <view class="admin-card">
+        <text class="sub-title">操作日志（{{auditTotal}}）</text>
+        <view wx:for="{{auditItems}}" wx:key="id" class="record-section">
+          <text class="record-main">{{item.action}} · {{item.target_type}} #{{item.target_id}}</text>
+          <text class="record-sub">{{item.timeLabel}} · 操作人 {{item.actor_id||'系统/受控脚本'}}</text>
+          <text class="record-sub">{{item.detailText}}</text>
+        </view>
+        <text wx:if="{{!auditItems.length&&!loading}}" class="empty-small">暂无日志</text>
+        <button wx:if="{{auditHasMore}}" bindtap="loadMoreAudit" disabled="{{loading}}">加载更多</button>
+      </view>
+    </block>
     <!-- 概览 -->
     <block wx:if="{{activeTab==='overview'}}">
       <view class="stat-grid">
@@ -26,20 +76,40 @@
         <view class="stat-card green"><text class="stat-number">{{stats.today}}</text><text class="stat-label">今日预约</text></view>
       </view>
 
-      <view class="admin-card action-card">
-        <view>
-          <text class="card-title">预约记录 Excel</text>
-          <text class="card-desc">导出预约、清扫、违规与限制记录</text>
+      <view class="admin-card export-card">
+        <view class="export-card-head">
+          <view>
+            <text class="card-title">预约记录 Excel</text>
+            <text class="card-desc block">按日期、场景和状态导出；限制记录作为独立工作表保留。</text>
+          </view>
+          <text class="text-action" bindtap="clearExportFilters" aria-role="button" aria-label="清空 Excel 导出筛选条件">清空</text>
         </view>
-        <button class="compact-btn primary" bindtap="exportExcel">导出</button>
+        <view class="export-filter-grid">
+          <picker mode="date" value="{{exportFilters.dateFrom}}" bindchange="onExportDateFromChange">
+            <view class="filter-control" aria-role="button" aria-label="选择导出开始日期">{{exportFilters.dateFrom||'开始日期'}}</view>
+          </picker>
+          <picker mode="date" value="{{exportFilters.dateTo}}" bindchange="onExportDateToChange">
+            <view class="filter-control" aria-role="button" aria-label="选择导出结束日期">{{exportFilters.dateTo||'结束日期'}}</view>
+          </picker>
+          <picker value="{{exportSceneIndex}}" range="{{exportSceneOptions}}" range-key="label" bindchange="onExportSceneChange">
+            <view class="filter-control" aria-role="button" aria-label="选择导出场景">{{exportSceneLabel}}</view>
+          </picker>
+          <picker value="{{exportStatusIndex}}" range="{{exportStatusOptions}}" range-key="label" bindchange="onExportStatusChange">
+            <view class="filter-control" aria-role="button" aria-label="选择导出状态">{{exportStatusLabel}}</view>
+          </picker>
+        </view>
+        <button class="full-export-button" bindtap="exportExcel" aria-label="按当前筛选条件导出预约记录 Excel">导出 Excel</button>
       </view>
 
       <view class="admin-card">
         <text class="card-title">房间签到码</text>
-        <text class="card-desc block">复制房间 JSON 后生成二维码，张贴于对应空间。</text>
+        <text class="card-desc block">在页面内生成二维码并保存，张贴前请再核对房间。</text>
         <view wx:for="{{qrRooms}}" wx:key="id" class="simple-row">
           <text class="simple-main">{{item.code}} {{item.name}}</text>
-          <text class="text-action" data-id="{{item.id}}" bindtap="copyRoomCode">复制签到码</text>
+          <view class="row-actions">
+            <text class="secondary-action" data-id="{{item.id}}" bindtap="copyRoomCode" aria-role="button" aria-label="复制 {{item.code}} 签到码内容">复制内容</text>
+            <text class="text-action" data-id="{{item.id}}" bindtap="previewRoomCode" aria-role="button" aria-label="生成并预览 {{item.code}} 签到二维码">预览二维码</text>
+          </view>
         </view>
         <text wx:if="{{!qrRooms.length}}" class="empty-small">暂无可预约房间</text>
       </view>
@@ -56,7 +126,7 @@
     <!-- 预约审核 -->
     <block wx:if="{{activeTab==='review'}}">
       <view class="section-toolbar">
-        <text>待审核 {{pendingReservations.length}} 条</text>
+        <text>待审核 {{pendingTotal}} 条，已加载 {{pendingReservations.length}} 条</text>
         <view class="toolbar-actions">
           <text class="text-action" bindtap="toggleAllPending">{{selectedPendingIds.length===pendingReservations.length&&pendingReservations.length?'取消全选':'全选'}}</text>
           <text class="text-action" bindtap="loadPendingReservations">刷新</text>
@@ -69,15 +139,15 @@
             <text class="reservation-room">{{item.room.room_code}} {{item.room.name}}</text>
             <text class="reservation-scene">{{item.sceneLabel}} · {{item.modeLabel}}</text>
           </view>
-          <text class="select-pill {{item.selected?'selected':''}}" data-id="{{item.id}}" bindtap="togglePending">{{item.selected?'已选':'选择'}}</text>
+          <text class="select-pill {{item.selected?'selected':''}}" data-id="{{item.id}}" bindtap="togglePending" aria-role="checkbox" aria-checked="{{item.selected}}" aria-label="选择预约，{{item.room.room_code}}，{{item.user.name}}">{{item.selected?'已选':'选择'}}</text>
         </view>
         <text class="detail-line">{{item.user.name}} · {{item.user.student_id}} · 笃学{{item.user.class_name}}</text>
         <text class="detail-line">{{item.user.phone}} · {{item.people_count}}人</text>
         <text class="detail-line strong">{{item.date}}　{{item.timeLabel}}</text>
         <text class="purpose-box">{{item.purpose}}</text>
-        <view wx:if="{{item.cardUrl}}" class="photo-line">
-          <image class="campus-card-photo" src="{{item.cardUrl}}" mode="aspectFill" data-index="{{pendingIndex}}" bindtap="previewCampusCard" />
-          <text class="photo-note">玉兰卡照片仅用于本次身份核验，点击查看大图</text>
+        <view wx:if="{{item.cardMediaId}}" class="photo-line" data-index="{{pendingIndex}}" bindtap="previewCampusCard">
+          <text class="text-action">安全查看玉兰卡照片</text>
+          <text class="photo-note">仅管理员可鉴权下载，查看操作会被记录</text>
         </view>
         <view class="inline-actions">
           <button class="compact-btn reject" data-id="{{item.id}}" data-decision="rejected" catchtap="reviewOne">驳回</button>
@@ -85,6 +155,7 @@
         </view>
       </view>
       <view wx:if="{{!pendingReservations.length&&!loading}}" class="empty-state">暂无待审核预约</view>
+      <button wx:if="{{pendingHasMore&&!loading}}" class="load-more-button" bindtap="loadMorePending" aria-label="加载更多待审核预约">加载更多</button>
 
       <view wx:if="{{selectedPendingIds.length}}" class="batch-bar">
         <text class="batch-count">已选 {{selectedPendingIds.length}} 条</text>
@@ -96,7 +167,7 @@
     <!-- 清扫复核 -->
     <block wx:if="{{activeTab==='cleanup'}}">
       <view class="section-toolbar">
-        <text>待复核 {{cleanupItems.length}} 条</text>
+        <text>待复核 {{cleanupTotal}} 条，已加载 {{cleanupItems.length}} 条</text>
         <text class="text-action" bindtap="loadCleanupQueue">刷新</text>
       </view>
       <view wx:for="{{cleanupItems}}" wx:key="id" wx:for-index="cleanupIndex" class="admin-card cleanup-card">
@@ -104,22 +175,23 @@
         <text class="detail-line">{{item.user.name}} · {{item.user.student_id}} · {{item.sceneLabel}}</text>
         <text class="detail-line strong">{{item.date}}　{{item.timeLabel}}</text>
         <view class="photo-grid">
-          <image wx:for="{{item.photoUrls}}" wx:key="*this" wx:for-item="photo" wx:for-index="photoIndex" class="cleanup-photo" src="{{photo}}" mode="aspectFill" data-item-index="{{cleanupIndex}}" data-photo-index="{{photoIndex}}" bindtap="previewCleanupPhoto" />
+          <view wx:for="{{item.mediaIds}}" wx:key="*this" wx:for-index="photoIndex" class="cleanup-photo" data-item-index="{{cleanupIndex}}" data-photo-index="{{photoIndex}}" bindtap="previewCleanupPhoto">查看照片 {{photoIndex+1}}</view>
         </view>
-        <text wx:if="{{!item.photoUrls.length}}" class="empty-small">该记录没有可查看的照片</text>
+        <text wx:if="{{!item.mediaIds.length}}" class="empty-small">该记录没有可查看的照片</text>
         <view class="inline-actions">
           <button class="compact-btn reject" data-id="{{item.cleanup.id}}" data-decision="rejected" bindtap="reviewCleanup">不通过/限制</button>
           <button class="compact-btn approve" data-id="{{item.cleanup.id}}" data-decision="approved" bindtap="reviewCleanup">通过</button>
         </view>
       </view>
       <view wx:if="{{!cleanupItems.length&&!loading}}" class="empty-state">暂无待复核清扫照片</view>
+      <button wx:if="{{cleanupHasMore&&!loading}}" class="load-more-button" bindtap="loadMoreCleanup" aria-label="加载更多清扫复核记录">加载更多</button>
     </block>
 
     <!-- 用户管理 -->
     <block wx:if="{{activeTab==='users'}}">
       <view class="search-card">
-        <input class="search-input" value="{{userSearch}}" placeholder="姓名、学号、手机号或班级" confirm-type="search" bindinput="onUserSearchInput" bindconfirm="searchUsers" />
-        <button class="search-button" bindtap="searchUsers">搜索</button>
+        <input class="search-input" value="{{userSearch}}" placeholder="姓名、学号、手机号或班级" aria-label="搜索用户，支持姓名学号手机号或班级" confirm-type="search" bindinput="onUserSearchInput" bindconfirm="searchUsers" />
+        <button class="search-button" bindtap="searchUsers" aria-label="搜索用户">搜索</button>
       </view>
 
       <view wx:if="{{selectedUser}}" class="admin-card selected-user-card">
@@ -133,6 +205,9 @@
         </view>
 
         <view class="record-section">
+          <input value="{{resetReason}}" data-field="resetReason" bindinput="onResetInput" placeholder="人工身份核验方式及重置原因" aria-label="身份核验及重置原因"/>
+          <input password value="{{resetAdminPassword}}" data-field="resetAdminPassword" bindinput="onResetInput" placeholder="当前管理员密码" aria-label="管理员密码"/>
+          <button bindtap="issuePasswordReset">核验身份后签发密码重置凭证</button>
           <text class="sub-title">违约记录（{{violations.length}}）</text>
           <view wx:for="{{violations}}" wx:key="id" class="record-row">
             <view><text class="record-main">{{item.typeLabel}}</text><text class="record-sub">预约号 {{item.reservation_id||'—'}}</text></view>
@@ -145,7 +220,7 @@
           <text class="sub-title">预约限制（{{restrictions.length}}）</text>
           <view wx:for="{{restrictions}}" wx:key="id" class="restriction-row">
             <view class="restriction-copy">
-              <text class="record-main">{{item.levelLabel}} · {{item.is_active?'有效':'已解除'}}</text>
+              <text class="record-main">{{item.levelLabel}} · {{item.stateLabel}}</text>
               <text class="record-sub">{{item.reason}}</text>
               <text class="record-sub">{{item.startsLabel}} 至 {{item.endsLabel}}</text>
             </view>
@@ -163,13 +238,20 @@
             <text>限制天数</text>
             <input class="short-input" type="number" value="{{restrictionForm.days}}" bindinput="onRestrictionDaysInput" />
           </view>
+          <view class="export-filter-grid">
+            <picker mode="date" data-field="startDate" bindchange="onRestrictionTime"><view class="filter-control">{{restrictionForm.startDate||'开始日期（空为立即）'}}</view></picker>
+            <picker mode="time" data-field="startTime" bindchange="onRestrictionTime"><view class="filter-control">{{restrictionForm.startTime||'开始时间'}}</view></picker>
+            <picker wx:if="{{restrictionForm.level!=='permanent'}}" mode="date" data-field="endDate" bindchange="onRestrictionTime"><view class="filter-control">{{restrictionForm.endDate||'结束日期（空则按天）'}}</view></picker>
+            <picker wx:if="{{restrictionForm.level!=='permanent'}}" mode="time" data-field="endTime" bindchange="onRestrictionTime"><view class="filter-control">{{restrictionForm.endTime||'结束时间'}}</view></picker>
+          </view>
+          <button bindtap="clearRestrictionTime">清除区间，按天设置</button>
           <textarea class="reason-input" value="{{restrictionForm.reason}}" placeholder="填写限制原因（至少2个字）" maxlength="500" bindinput="onRestrictionReasonInput" />
           <button class="full-purple-button" bindtap="addRestriction">新增限制</button>
         </view>
       </view>
 
-      <view class="section-toolbar"><text>用户列表（{{users.length}}）</text></view>
-      <view wx:for="{{users}}" wx:key="id" wx:for-index="userIndex" class="user-list-row" data-index="{{userIndex}}" bindtap="selectUser">
+      <view class="section-toolbar"><text>用户共 {{usersTotal}} 人，已加载 {{users.length}} 人</text></view>
+      <view wx:for="{{users}}" wx:key="id" wx:for-index="userIndex" class="user-list-row" data-index="{{userIndex}}" bindtap="selectUser" aria-role="button" aria-label="查看用户{{item.name}}，学号{{item.student_id}}">
         <view class="user-avatar">{{item.initial}}</view>
         <view class="user-list-copy">
           <view><text class="user-name small">{{item.name}}</text><text class="role-tag">{{item.roleLabel}}</text></view>
@@ -179,6 +261,7 @@
         <text class="row-arrow">›</text>
       </view>
       <view wx:if="{{!users.length&&!loading}}" class="empty-state">没有匹配的用户</view>
+      <button wx:if="{{usersHasMore&&!loading}}" class="load-more-button" bindtap="loadMoreUsers" aria-label="加载更多用户">加载更多</button>
     </block>
 
     <!-- 分房规则 -->

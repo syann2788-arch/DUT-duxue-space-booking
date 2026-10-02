@@ -8,7 +8,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## 前端主线（务必先读）
 
-- `miniprogram/` 是第一版原生微信小程序延续下来的正式产品主线，第二版必须在它的紫色视觉、空间导览和交互骨架上升级。
+- `miniprogram/` 是第一版原生微信小程序延续下来的正式产品主线，第二版必须在它的空间导览和交互骨架上升级；当前视觉规范为暖橙 `#F25B15` + 紫色 `#6B46C1`。
 - 微信开发者工具导入仓库根目录；根目录 `project.config.json` 的 `miniprogramRoot` 必须保持为 `miniprogram/`。
 - `frontend/` 是此前另行实现的 uni-app/H5 方案，仅作业务逻辑和管理页面参考，除非用户明确要求，不得把它当成最终微信端，也不得把 `miniprogram/` 标为废弃。
 - `cloudfunctions/` 是第一版微信云开发后端参考。第二版原生前端通过 `miniprogram/utils/api.js` 接入 FastAPI，不再以云函数作为主数据源。
@@ -16,7 +16,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 ## 技术栈
 
 - **后端**: FastAPI (Python 3.12+) + SQLAlchemy 2.0 async + PostgreSQL + JWT认证
-- **微信前端主线**: 原生微信小程序 (`miniprogram/`)，紫色主题
+- **微信前端主线**: 原生微信小程序 (`miniprogram/`)，暖橙 `#F25B15` + 紫色 `#6B46C1` 主题
 - **参考前端**: uni-app (`frontend/`)，目前不是微信端交付主线
 - **部署**: 校内服务器 nginx + docker
 
@@ -26,13 +26,15 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 # 后端
 cd backend
 pip install -r requirements.txt
-python seed.py              # 初始化房间 + 管理员(admin001/admin123)
+python seed.py              # 仅本地SQLite虚构演示；生产禁止执行
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# 另开终端运行独立任务（自动审批/状态推进/通知/媒体清理）
+python -m app.worker
 
 # 微信小程序
 # 微信开发者工具直接导入仓库根目录；本地开发 API 默认：
 # http://127.0.0.1:8000/api
-# 真机预览前需在 miniprogram/config.js 配置手机可访问的 HTTPS 地址
+# 真机/正式产物通过构建环境变量注入HTTPS地址，不手改config.js；见docs/BUILD_ARTIFACT_GUIDE.md
 ```
 
 FastAPI 自带 Swagger 文档: `http://localhost:8000/docs`
@@ -47,7 +49,8 @@ backend/app/
 ├── models.py        # 用户、房间、预约、清扫、限制、配置、通知、违约等数据表
 ├── schemas.py       # Pydantic v2 请求/响应模型
 ├── auth.py          # JWT + bcrypt，get_current_user / require_admin
-├── services.py      # 全部业务逻辑(查询/校验/预约/违约)
+├── services.py      # 旧调用兼容入口（不再承载业务实现）
+├── domain/          # 按预约、审核、限制、媒体、房间、配置、用户拆分的业务模块
 └── routers/
     ├── auth.py      # POST /register, /login, GET /me
     ├── rooms.py     # 房间列表/详情/时段、使用者留言与留言照片
@@ -56,9 +59,9 @@ backend/app/
 ```
 
 **关键设计决策**:
-- 所有时间校验(取消截止、签到宽限)在 `services.py` 内完成，与DB操作在同一事务中，不在router层
+- 所有时间校验(取消截止、签到宽限)在 `domain/reservations.py` 内完成，与DB操作在同一事务中，不在router层
 - 违约检测由 `refresh_reservation_states()` 与后台分钟任务共同触发，并以预约号+违约类型保证幂等
-- JWT payload: `{"sub": user_id_str, "student_id": str, "role": str}`; router层通过 `int(user["sub"])` 获取user_id
+- JWT payload含sub/student_id/role/version（与users.session_version核对）及exp；router通过int(user["sub"])取user_id，角色与启用状态以数据库复核，首次换密业务受限
 - 原生小程序 `miniprogram/app.js` 管理登录态，token 存 `wx.storage`，`miniprogram/utils/api.js` 自动附加 Authorization
 
 ## 业务规则 (config.py)
@@ -97,4 +100,14 @@ CSV格式(Sheet_20250907.csv): 职务,姓名,负责班级,联系方式,...
 
 - SQLite 本地开发无法提供 PostgreSQL 等价的行锁语义；生产必须使用 PostgreSQL
 - 微信订阅消息必须在学校提供正式 AppID、AppSecret 和模板 ID 后才能真实发送
-- 无分页，所有列表接口全量返回
+- 管理员和“我的预约”列表已经服务端分页；新增列表接口也必须提供 `limit/offset/total/has_more`
+
+## 交付与生产操作
+
+- 生产从固定提交部署，PostgreSQL16先迁移到20261002_03，再init_reference_data.py补房间/规则、create_admin.py受控建号；不用演示账号。
+- 原生小程序本地源码导入仓库根目录；体验/正式导入对应dist目录。开发构建回退根AppID wx78c441ce72d765fc；正式必须显式AppID、HTTPS API、版本和完整提交。
+- 直接Python从backend读取.env；Compose读取根.env/--env-file，AppSecret均只注入后端API和worker。
+- 日常改密撤销旧会话，人工恢复还撤销微信绑定；30分钟凭证与首次换密均已实现，学校本人核验和可信注册仍待确认。
+- 全部订单/待办/操作日志、区间限制和登录照片链接已实现；不能把本地测试视为学校验收。
+- 备份先停所有API/worker/写入与清理，包含数据库和公开/私密照片；恢复到空目标并核对迁移目标，不执行破坏性downgrade。
+- 教程入口：docs/USER_GUIDE.md、docs/DEPLOYMENT_GUIDE.md、docs/WECHAT_SETUP.md、docs/OPERATIONS_RUNBOOK.md；状态以ROADMAP和对应轮次报告为准。

@@ -1,0 +1,11 @@
+# Repository owner reviews release, security, workflow and production changes.
+* @syann2788-arch
+
+/.github/ @syann2788-arch
+/backend/app/auth.py @syann2788-arch
+/backend/app/config.py @syann2788-arch
+/backend/app/models.py @syann2788-arch
+/backend/app/services.py @syann2788-arch
+/backend/migrations/ @syann2788-arch
+/deploy/ @syann2788-arch
+/docs/RELEASE_CHECKLIST.md @syann2788-arch

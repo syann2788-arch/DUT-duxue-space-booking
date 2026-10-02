@@ -9,7 +9,9 @@
     "pages/reserve/reserve",
     "pages/reserve/form",
     "pages/my/my",
-    "pages/admin/admin"
+    "pages/admin/admin",
+    "pages/login/password",
+    "pages/my/notifications"
   ],
   "window": {
     "navigationBarBackgroundColor": "#FFFFFF",

@@ -1,0 +1,38 @@
+name: 功能建议
+description: 提出有验收标准的产品或工程改进
+title: "[Feature] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 说明谁在什么场景遇到什么问题，不要只描述一个按钮或技术方案。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      placeholder: 使用可验证的列表说明何时算完成
+    validations:
+      required: true
+  - type: dropdown
+    id: dependency
+    attributes:
+      label: 是否依赖学校或微信平台决策
+      options: [否, 是—学校身份/隐私/业务政策, 是—AppID/域名/模板/服务器, 不确定]
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: 隐私、兼容和回滚风险
+    validations:
+      required: true

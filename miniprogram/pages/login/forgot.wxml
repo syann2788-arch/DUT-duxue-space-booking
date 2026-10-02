@@ -8,6 +8,7 @@
     </view>
 
     <button class="btn-primary btn-full" bindtap="contactAdmin">查看处理方式</button>
+    <button class="btn-primary btn-full" bindtap="useCredential">已取得重置凭证，设置新密码</button>
     <button class="btn-outline btn-full" style="margin-top:16rpx" bindtap="goBack">返回登录</button>
   </view>
 </view>

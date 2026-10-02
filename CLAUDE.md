@@ -2,20 +2,20 @@
 
 ## 项目背景
 
-大连理工大学笃学书院（西山7舍）空间预约系统。当前主线为 uni-app 微信小程序/H5 + FastAPI；不设信用分，采用可审计违约记录与预约限制。
+大连理工大学笃学书院（西山7舍）空间预约系统。当前主线为原生微信小程序 miniprogram/ + FastAPI；不设信用分，采用可审计违约记录与预约限制。
 
 ## 不可破坏的业务红线
 
-1. 玉兰卡照片（`campus_card_photo_url`）、手机号、学号属个人隐私，仅管理员可见；列表/导出接口须按角色白名单脱敏，新字段默认不可见。
+1. 玉兰卡照片（私密 `media_id`）、手机号、学号属个人隐私，仅管理员可见；列表/导出接口须按角色白名单脱敏，新字段默认不可见。
 2. 违约记录是审计数据，只增不改不删；幂等键为 `(reservation_id, type)`（见 `models.py` 的 `uq_violation_reservation_type` 唯一约束）。
 3. 微信 `AppSecret` 永不下发前端/小程序；`code2session` 仅在服务端 `backend/app/routers/auth.py::_code2session` 调用。
 4. 预约并发靠数据库行锁（`SELECT ... WITH FOR UPDATE`）+ 锁内复检，不能靠"先查后写"。
 
 ## 硬性技术约定（后端）
 
-- 状态机：`ReservationStatus` 等领域枚举只在 `app/models.py` 定义；`OCCUPYING_STATUSES` / `DAILY_LIMIT_STATUSES`（"哪些状态占用时段/计入单日上限"）只在 `app/services.py` 定义。【守护: backend/guards/test_conventions.py】
-- 时区：业务逻辑的"现在"一律用 `app/models.py::local_now()`（Asia/Shanghai naive，与 `date + slot` 表示一致）；`services.py` 禁用裸 `datetime.now()`。【守护: backend/guards/test_conventions.py】
-- 数据流：时间校验（取消截止、签到宽限、违约判定）在 `services.py` 内与 DB 操作同事务完成，`routers/` 不导入 `timedelta`。【守护: backend/guards/test_conventions.py】
+- 状态机：`ReservationStatus` 等领域枚举只在 `app/models.py` 定义；`OCCUPYING_STATUSES` / `DAILY_LIMIT_STATUSES`（"哪些状态占用时段/计入单日上限"）只在 `app/domain/common.py` 定义。【守护: backend/guards/test_conventions.py】
+- 时区：业务逻辑的"现在"一律用 `app/models.py::local_now()`（Asia/Shanghai naive，与 `date + slot` 表示一致）；`domain/`业务使用local_now()。【守护: backend/guards/test_conventions.py】
+- 数据流：时间校验（取消截止、签到宽限、违约判定）在 `domain/` 内与 DB 操作同事务完成，`routers/` 不导入 `timedelta`。【守护: backend/guards/test_conventions.py】
 - 并发：分房前 `SELECT Room.id ... WITH FOR UPDATE ORDER BY Room.id` 锁物理房间，`_candidate_available` 在锁内复检；状态流转用 `status.in_(...)` 条件更新。
 - 幂等：违约用 `(reservation_id, type)` 唯一约束；限制到期靠 `ends_at` 判定，`_active_restriction` 顺带回收。
 
@@ -30,7 +30,7 @@
 | `cloudfunctions/` | 第一版微信云函数参考代码 | 否 |
 | `../dut-duxue-space-booking-showcase.design/` | 橙紫视觉规范唯一源（HTML 静态原型） | 视觉规范，非运行代码 |
 
-- **前端**: 原生微信小程序 (`miniprogram/`)，紫色主题，自定义 tabBar
+- **前端**: 原生微信小程序 (`miniprogram/`)，暖橙 `#F25B15` + 紫色 `#6B46C1` 主题，自定义 tabBar
 - **后端**: FastAPI（Python 3.12+）+ SQLAlchemy async + JWT 认证
 - **数据库**: SQLite 本地演示 / PostgreSQL 生产
 
@@ -44,15 +44,15 @@
 | 辅助品牌色（紫） | `#6B46C1` | 渐变紫端、信息分类点、链接文字 |
 | 状态语义色 | 绿/红/棕/蓝 | 成功/danger/cleanup/info，不参与品牌色替换 |
 
-注：`miniprogram/` 当前仍为旧紫 `#6b2d8e`，对齐到橙紫是独立迭代（见已知待办）。【守护: backend/guards/test_conventions.py】
+注：当前已统一暖橙+紫色；旧紫由守护测试拦截。【守护: backend/guards/test_conventions.py】
 
 ## 启动方式
 
-1. 后端：`cd backend` → `python seed.py` → `uvicorn app.main:app --reload`
+1. 后端：`cd backend` → `python seed.py` → `uvicorn app.main:app --reload`；需验证自动任务时另开终端运行 `python -m app.worker`
 2. 微信小程序：微信开发者工具导入仓库根目录（`project.config.json` 的 `miniprogramRoot: "miniprogram/"` 加载正式前端）
-3. 本地开发 API 默认：`http://127.0.0.1:8000/api`；真机预览前需在 `miniprogram/config.js` 配置手机可访问的 HTTPS 地址
+3. 本地开发 API 默认：`http://127.0.0.1:8000/api`；真机/正式版本通过构建环境变量注入HTTPS地址并导入对应dist目录；见docs/BUILD_ARTIFACT_GUIDE.md
 
-管理员: admin001 / admin123
+演示管理员: admin001 / admin123，仅本地虚构数据；生产使用create_admin.py，不执行seed。
 
 ## 核心业务规则
 
@@ -86,15 +86,15 @@
 
 ## 已知待办
 
-- SMS 模板 ID 仍是占位符 `YOUR_SMS_TEMPLATE_ID`
-- `reservations` 表需要 `created_at` 降序索引（非唯一）
-- 签到二维码需外部生成（管理后台可复制 JSON），永久有效
+- 正式主线未接入短信服务；第一版参考占位符不是可用功能。人工恢复30分钟一次性凭证已接入，学校核验流程仍待确认。
+- 预约查询复合索引已纳入20260813_02；后续以慢查询证据决定新增索引
+- 签到二维码由管理后台鉴权生成/预览（同时可复制 JSON），内容为房间编号，永久有效
 - 预约并发：SQLite 本地演示无 PostgreSQL 等价的 `WITH FOR UPDATE` 行锁语义，生产必须使用 PostgreSQL；行锁 + 锁内复检的并发模式见上方业务红线 #4
 - `miniprogram/` 已从旧紫 `#6b2d8e` 迁移到橙紫（橙 `#F25B15` + 紫 `#6B46C1`），色值变量集中在 `app.wxss`，旧紫复现由守护拦截【守护: backend/guards/test_conventions.py】
 
 ## 工作约定
 
-- 后端业务逻辑只写在 `backend/app/services.py`；`routers/` 只做参数解析、认证转发与 HTTP 错误翻译，不引入 `timedelta` 做时间运算【守护: backend/guards/test_conventions.py】
+- 后端业务逻辑写在 `backend/app/domain/`，services.py仅兼容导出；`routers/` 只做参数解析、认证转发与 HTTP 错误翻译，不引入 `timedelta` 做时间运算【守护: backend/guards/test_conventions.py】
 - 时间相关用 ISO 字符串比较，不要用 Date 对象直接比；后端用 `local_now()`
 - UI 风格：`miniprogram/` 的色值须以 `dut-duxue-space-booking-showcase.design/` 为视觉规范唯一源（橙 `#F25B15` 主 + 紫 `#6B46C1` 辅），不得自行定义品牌色；状态语义色（成功绿/danger 红/cleanup 棕/info 蓝）保留不动
 - `miniprogram/` 是唯一前端主线；改 `frontend/`(uni-app) 或 `cloudfunctions/`(v1) 前须先与用户确认，不得默认它们是交付物
@@ -108,3 +108,9 @@ cd backend && python -m pytest guards/ -q
 ```
 
 故意违反任一条都会红，并报出 `文件:行号`。新增昂贵约定（状态机、权限边界、幂等键）时，先补一条守护测试，再写代码。`eng-vibe.config.json` 已把该命令注册为守护闸门。
+
+## 当前交付状态（2026-10-02）
+
+当前候选0.1.0-rc.1尚未发布。迁移目标20261002_03，增加会话版本、首次换密、密码恢复凭证和管理员审计；downgrade拒绝破坏性操作。生产先迁移、基础初始化、受控建号，再API/独立worker。AppID已填，AppSecret/模板/权限/学校HTTPS及真实微信验收待完成。注册启用不等于校内身份认证。
+
+Compose从根.env或--env-file插值，不自动读backend/.env；直接Python从backend工作目录读取。备份停全部写入和清理，包含数据库与两个媒体目录，恢复到空目标并校对迁移URL。完整教程和验证见README、docs/USER_GUIDE.md、docs/DEPLOYMENT_GUIDE.md、docs/OPERATIONS_RUNBOOK.md及对应轮次报告。不要用历史报告数字冒充本轮测试结果。

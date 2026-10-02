@@ -7,7 +7,8 @@ from app.config import settings
 from app.database import get_db
 from app.models import User
 from app.schemas import UserProfileOut, UserRegister, UserLogin, Token, UserOut, WechatBindRequest, WechatLoginRequest
-from app.services import create_user, get_active_restriction, get_user_by_id, get_user_by_student_id
+from app.domain.restrictions import get_active_restriction
+from app.domain.users import create_user, get_user_by_id, get_user_by_student_id
 from app.auth import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["认证"])
@@ -18,6 +19,7 @@ def _token_response(user: User) -> dict:
         "sub": str(user.id),
         "student_id": user.student_id,
         "role": user.role.value,
+        "version": user.session_version,
     })
     return {"access_token": token, "user": user}
 
@@ -125,3 +127,19 @@ async def bind_wechat(
     target.wechat_openid = openid
     await db.commit()
     return {"message": "微信账号绑定成功"}
+
+
+from app.schemas import PasswordChange, PasswordReset
+from app.domain.accounts import change_password, reset_password
+
+
+@router.post("/password/reset")
+async def password_reset(data: PasswordReset, db: AsyncSession = Depends(get_db)):
+    await reset_password(db, data.credential, data.new_password)
+    return {"message": "密码已重置，请重新登录"}
+
+
+@router.post("/password/change")
+async def password_change(data: PasswordChange, db: AsyncSession = Depends(get_db), token: dict = Depends(get_current_user)):
+    await change_password(db, int(token["sub"]), data.current_password, data.new_password)
+    return {"message": "密码已修改，请重新登录"}

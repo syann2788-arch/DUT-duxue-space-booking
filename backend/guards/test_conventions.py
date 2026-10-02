@@ -11,15 +11,36 @@ Run standalone (no DB, no app import):
 from __future__ import annotations
 
 import ast
+import os
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
 ROUTER_DIR = APP_DIR / "routers"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+IGNORED_TREE_NAMES = {
+    ".git", ".pytest_cache", ".venv", "__pycache__", "dist", "node_modules",
+    "unpackage", "uploads",
+}
+FRONTEND_SOURCE_SUFFIXES = {
+    ".css", ".html", ".js", ".json", ".jsx", ".md", ".ts", ".tsx",
+    ".vue", ".wxml", ".wxss",
+}
 
 
 def _python_files(root: Path):
-    yield from root.rglob("*.py")
+    yield from _source_files(root, {".py"})
+
+
+def _source_files(root: Path, suffixes: set[str]):
+    """Yield controlled source files without entering generated/dependency trees."""
+    for current_root, directory_names, file_names in os.walk(root):
+        directory_names[:] = [
+            name for name in directory_names if name not in IGNORED_TREE_NAMES
+        ]
+        for file_name in file_names:
+            path = Path(current_root) / file_name
+            if path.suffix.lower() in suffixes:
+                yield path
 
 
 def _parse(path: Path) -> ast.AST | None:
@@ -29,7 +50,7 @@ def _parse(path: Path) -> ast.AST | None:
         return None
 
 
-def test_occupying_statuses_defined_only_in_services():
+def test_occupying_statuses_defined_only_in_domain_common():
     """OCCUPYING_STATUSES / DAILY_LIMIT_STATUSES are the single source for
     "which reservation statuses occupy a slot / count toward the daily limit".
     Redefining them elsewhere is the classic double-booking divergence: the new
@@ -44,16 +65,63 @@ def test_occupying_statuses_defined_only_in_services():
             if isinstance(node, ast.Assign):
                 for target in node.targets:
                     if isinstance(target, ast.Name) and target.id in {"OCCUPYING_STATUSES", "DAILY_LIMIT_STATUSES"}:
-                        if path.name != "services.py":
+                        if path != APP_DIR / "domain" / "common.py":
                             offenders.append(f"{path.name}:{node.lineno} 重新定义了 {target.id}")
-    assert not offenders, "OCCUPYING_STATUSES 必须只在 app/services.py 定义:\n" + "\n".join(offenders)
+    assert not offenders, "OCCUPYING_STATUSES 必须只在 app/domain/common.py 定义:\n" + "\n".join(offenders)
 
 
 DOMAIN_ENUMS = {
     "UserRole", "SceneType", "UsageMode", "ReservationStatus", "ReviewDecision",
     "CleanupStatus", "RestrictionLevel", "NotificationType", "NotificationStatus",
-    "PublicStatus", "ViolationType",
+    "PublicStatus", "ViolationType", "MediaPurpose",
 }
+
+
+def test_wechat_project_cannot_deploy_legacy_cloudfunctions():
+    """The formal WeChat project may only expose the miniprogram entry."""
+    import json
+
+    config = json.loads(_read(PROJECT_ROOT / "project.config.json"))
+    assert config.get("miniprogramRoot") == "miniprogram/"
+    forbidden = {"cloudfunctionRoot", "cloudfunctionTemplateRoot", "cloud"}
+    offenders = sorted(forbidden.intersection(config))
+    assert not offenders, "正式微信项目配置不得暴露旧云函数入口: " + ", ".join(offenders)
+
+
+def test_large_list_routes_are_bounded():
+    """Formal clients must not reintroduce unbounded history reads."""
+    reservation_router = _read(ROUTER_DIR / "reservations.py")
+    admin_router = _read(ROUTER_DIR / "admin.py")
+    assert '@router.get("/my", response_model=ReservationPageOut)' in reservation_router
+    for route, response_model in (
+        ('/reservations', 'ReservationAdminPageOut'),
+        ('/cleanup', 'ReservationAdminPageOut'),
+        ('/users', 'UserPageOut'),
+    ):
+        assert f'@router.get("{route}", response_model={response_model})' in admin_router
+    for text in (reservation_router, admin_router):
+        assert "le=100" in text, "长列表分页必须保留每页 100 条上限"
+
+
+def test_release_and_community_baseline_exists():
+    """Release governance is code-reviewed and must not silently disappear."""
+    required = {
+        "CHANGELOG.md", "ROADMAP.md", "CONTRIBUTING.md", "SUPPORT.md",
+        "CODE_OF_CONDUCT.md", "SECURITY.md", "docs/RELEASE_CHECKLIST.md",
+        "docs/DEMO.md", "docs/PILOT_METRICS.md", "docs/GITHUB_ADMIN_SETUP.md",
+        ".github/pull_request_template.md",
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
+        ".github/ISSUE_TEMPLATE/feature_request.yml",
+        ".github/ISSUE_TEMPLATE/pilot_acceptance.yml",
+        ".github/CODEOWNERS",
+    }
+    missing = sorted(path for path in required if not (PROJECT_ROOT / path).is_file())
+    assert not missing, "发布/协作基线文件缺失:\n" + "\n".join(missing)
+
+    demo_seed = _read(PROJECT_ROOT / "backend/demo_seed.py")
+    assert 'os.getenv("ALLOW_DEMO_SEED") != "1"' in demo_seed
+    assert "settings.is_production" in demo_seed
+    assert "只允许写入本地 development SQLite" in demo_seed
 
 
 def test_domain_enums_defined_only_in_models():
@@ -73,28 +141,51 @@ def test_domain_enums_defined_only_in_models():
     assert not offenders, "领域枚举必须只在 app/models.py 定义:\n" + "\n".join(offenders)
 
 
-def test_services_use_local_now_not_bare_datetime_now():
+def test_domain_services_use_local_now_not_bare_datetime_now():
     """All "now" reads in business logic go through local_now() (Asia/Shanghai,
     naive, matching the Date + slot representation). A bare datetime.now() mixes
     UTC/local time and silently breaks every cancel-deadline, checkin-grace and
     violation comparison.
     【守护: CLAUDE.md 硬性技术约定 - 时区】"""
-    services = APP_DIR / "services.py"
-    tree = _parse(services)
-    assert tree is not None, "services.py 解析失败"
     offenders = []
-    for node in ast.walk(tree):
-        if (isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and node.func.attr == "now"
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "datetime"):
-            offenders.append(f"services.py:{node.lineno} 用了 datetime.now()，应改用 local_now()")
-    assert not offenders, "services.py 必须用 local_now()，禁止 datetime.now():\n" + "\n".join(offenders)
+    for path in _python_files(APP_DIR / "domain"):
+        tree = _parse(path)
+        assert tree is not None, f"{path.name} 解析失败"
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "now"
+                    and isinstance(node.func.value, ast.Name)
+                    and node.func.value.id == "datetime"):
+                offenders.append(f"{path.name}:{node.lineno} 用了 datetime.now()，应改用 local_now()")
+    assert not offenders, "领域服务必须用 local_now()，禁止 datetime.now():\n" + "\n".join(offenders)
+
+
+def test_domain_modules_have_bounded_ownership():
+    """The #12 split must not collapse back into a facade or another giant file."""
+    domain = APP_DIR / "domain"
+    required = {"common.py", "settings.py", "users.py", "rooms.py", "reservations.py", "restrictions.py", "media.py", "reviews.py"}
+    assert required.issubset({path.name for path in domain.glob("*.py")})
+    oversized = []
+    for path in domain.glob("*.py"):
+        lines = len(_read(path).splitlines())
+        if lines > 420:
+            oversized.append(f"{path.name}: {lines} 行")
+    assert not oversized, "领域模块再次膨胀，需继续拆分:\n" + "\n".join(oversized)
+    facade = _read(APP_DIR / "services.py")
+    assert len(facade.splitlines()) < 30, "app/services.py 只能作为薄兼容门面"
+
+
+def test_admin_page_delegates_feature_rules_to_testable_modules():
+    """The #12 admin split keeps view orchestration separate from feature rules."""
+    admin_page = PROJECT_ROOT / "miniprogram" / "pages" / "admin" / "admin.js"
+    assert len(_read(admin_page).splitlines()) < 800
+    for module in ("admin-state.js", "admin-presenters.js", "admin-config.js"):
+        assert (PROJECT_ROOT / "miniprogram" / "utils" / module).is_file()
 
 
 def test_routers_do_not_perform_time_arithmetic():
-    """CLAUDE.md: 所有时间校验(取消截止、签到宽限)在 services.py 内完成，不在
+    """所有时间校验(取消截止、签到宽限)在 domain/reservations.py 内完成，不在
     router 层。Routers importing timedelta is the leading indicator of
     deadline/grace logic leaking into the thin layer and running outside the
     booking transaction. `date`/`datetime` for type hints & filenames are fine.
@@ -109,13 +200,13 @@ def test_routers_do_not_perform_time_arithmetic():
                 for alias in node.names:
                     if alias.name == "timedelta":
                         offenders.append(f"{path.name}:{node.lineno} 导入了 timedelta")
-    assert not offenders, "router 层禁止 timedelta 时间运算，deadline/grace 校验须在 services.py:\n" + "\n".join(offenders)
+    assert not offenders, "router 层禁止 timedelta 时间运算，deadline/grace 校验须在 domain/reservations.py:\n" + "\n".join(offenders)
 
 
 def _read(path: Path) -> str:
     try:
         return path.read_text(encoding="utf-8")
-    except OSError:
+    except (OSError, UnicodeError):
         return ""
 
 
@@ -130,11 +221,7 @@ def test_appsecret_never_reaches_frontend():
         root = PROJECT_ROOT / name
         if not root.exists():
             continue
-        for path in root.rglob("*"):
-            if not path.is_file():
-                continue
-            if path.suffix.lower() in {".pyc", ".png", ".jpg", ".jpeg", ".gif", ".webp"}:
-                continue
+        for path in _source_files(root, FRONTEND_SOURCE_SUFFIXES):
             text = _read(path)
             for needle in ("AppSecret", "WECHAT_APP_SECRET", "app_secret", "APP_SECRET"):
                 if needle in text:
@@ -205,11 +292,7 @@ def test_miniprogram_no_legacy_purple():
     root = PROJECT_ROOT / "miniprogram"
     if not root.exists():
         return
-    for path in root.rglob("*"):
-        if not path.is_file():
-            continue
-        if path.suffix.lower() not in {".wxss", ".wxml", ".json", ".js"}:
-            continue
+    for path in _source_files(root, {".wxss", ".wxml", ".json", ".js"}):
         text = _read(path)
         lower = text.lower()
         for legacy in LEGACY_PURPLE_VALUES:

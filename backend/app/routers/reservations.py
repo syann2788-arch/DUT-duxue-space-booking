@@ -6,17 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import ReservationStatus, SceneType, User
-from app.schemas import CheckinRequest, CleanupSubmit, ReservationCreate, ReservationOut
-from app.uploads import store_image
-from app.services import (
+from app.queries import get_user_reservations
+from app.schemas import CheckinRequest, CleanupSubmit, ReservationCreate, ReservationOut, ReservationPageOut
+from app.uploads import store_private_image
+from app.domain.media import submit_cleanup
+from app.domain.reservations import (
     cancel_reservation,
     checkin_reservation,
     create_reservation,
     get_scene_availability,
-    get_runtime_config,
-    get_user_reservations,
-    submit_cleanup,
 )
+from app.domain.settings import get_runtime_config
 
 router = APIRouter(prefix="/api/reservations", tags=["预约"])
 
@@ -46,13 +46,24 @@ async def reserve(data: ReservationCreate, db: AsyncSession = Depends(get_db), t
     return await create_reservation(db, int(token["sub"]), data)
 
 
-@router.get("/my", response_model=list[ReservationOut])
+@router.get("/my", response_model=ReservationPageOut)
 async def my_reservations(
-    status_filter: ReservationStatus | None = None,
+    status_filter: list[ReservationStatus] | None = Query(default=None),
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     token: dict = Depends(get_current_user),
 ):
-    return await get_user_reservations(db, int(token["sub"]), status_filter)
+    items, total = await get_user_reservations(
+        db, int(token["sub"]), status_filter, limit=limit, offset=offset
+    )
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset + len(items) < total,
+    }
 
 
 @router.post("/{reservation_id}/cancel")
@@ -78,13 +89,21 @@ async def checkin(data: CheckinRequest, db: AsyncSession = Depends(get_db), toke
 
 
 @router.post("/photos", status_code=201)
-async def upload_cleanup_photo(file: UploadFile = File(...), token: dict = Depends(get_current_user)):
-    return await store_image(file, int(token["sub"]), "cleanup")
+async def upload_cleanup_photo(
+    file: UploadFile = File(...),
+    token: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await store_private_image(file, int(token["sub"]), "cleanup", db)
 
 
 @router.post("/campus-card-photo", status_code=201)
-async def upload_campus_card_photo(file: UploadFile = File(...), token: dict = Depends(get_current_user)):
-    return await store_image(file, int(token["sub"]), "campus_card")
+async def upload_campus_card_photo(
+    file: UploadFile = File(...),
+    token: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await store_private_image(file, int(token["sub"]), "campus_card", db)
 
 
 @router.post("/{reservation_id}/cleanup", response_model=ReservationOut)
@@ -94,4 +113,4 @@ async def cleanup(
     db: AsyncSession = Depends(get_db),
     token: dict = Depends(get_current_user),
 ):
-    return await submit_cleanup(db, reservation_id, int(token["sub"]), data.photo_urls)
+    return await submit_cleanup(db, reservation_id, int(token["sub"]), data.media_ids)

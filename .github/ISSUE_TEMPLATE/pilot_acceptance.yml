@@ -1,0 +1,50 @@
+name: 试点验收记录
+description: 保存学生、辅导员、管理员或运维的脱敏验收证据
+title: "[Acceptance] "
+labels: ["acceptance", "needs-triage"]
+body:
+  - type: input
+    id: candidate
+    attributes:
+      label: 候选版本/提交
+      placeholder: v0.1.0-rc.1 / commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: 验收角色
+      options: [学生, 辅导员, 管理员, 学校运维, 小程序管理员, 隐私/业务负责人]
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 验收范围和步骤
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏证据
+      description: 可填 GitHub Actions、测试报告或脱敏截图链接，不上传真实个人数据。
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: 结论
+      options: [通过, 有条件通过, 不通过]
+    validations:
+      required: true
+  - type: textarea
+    id: blockers
+    attributes:
+      label: 阻塞项、负责人角色和期限
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 数据确认
+      options:
+        - label: 本记录只使用虚构或脱敏数据，不含密钥和真实照片
+          required: true

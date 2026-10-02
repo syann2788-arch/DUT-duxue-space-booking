@@ -1,0 +1,38 @@
+"""Default room catalogue and allocation rules; contains no accounts or credentials.
+
+These are the existing project defaults. School approval and changes are handled
+separately; production initialization only inserts missing records.
+"""
+from app.models import SceneType, UsageMode
+
+
+ROOMS = [
+    # code, name, description, category, capacity, reservable, public, permission, fridge, instruments, x, y
+    ("A101", "日新阁", "创新与共享自习空间", "综合空间", 10, True, False, "all", False, False, .88, .65),
+    ("A102", "格物居", "共享自习空间，也可用于会议", "图书自习", 6, True, True, "all", False, False, .95, .25),
+    ("A103", "致知堂", "适合讲座、演出和大型活动", "大型活动", 100, True, False, "all", False, False, .15, .80),
+    ("A104", "悠然亭", "公开生活空间，可就餐休息", "生活空间", 20, False, True, "none", True, False, .78, .25),
+    ("A105", "聚思轩", "小组讨论与共享自习空间", "会议室", 10, True, False, "all", False, False, .58, .25),
+    ("A106", "汇心驿", "师生谈心空间，仅辅导员预约", "谈心室", 6, True, False, "counselor", False, False, .45, .25),
+    ("B101", "文治堂", "院长办公室", "办公空间", 4, False, False, "none", False, False, .35, .25),
+    ("B102", "韵音阁", "器乐练习空间", "音乐练习", 4, True, False, "all", False, True, .22, .25),
+    ("C101", "辅导员宿舍", "非公共空间", "宿舍", 1, False, False, "none", False, False, .12, .80),
+    ("C102", "辅导员宿舍", "非公共空间", "宿舍", 1, False, False, "none", False, False, .28, .25),
+    ("C103", "辅导员宿舍", "非公共空间", "宿舍", 1, False, False, "none", False, False, .05, .80),
+    ("C104", "辅导员宿舍", "非公共空间", "宿舍", 1, False, False, "none", False, False, .42, .25),
+]
+
+RULES = [
+    ("A102", SceneType.study, 1, 6, UsageMode.shared),
+    ("A101", SceneType.study, 2, 10, UsageMode.shared),
+    ("A105", SceneType.study, 3, 10, UsageMode.shared),
+    # A106 is the counselor-only first candidate. Students are permission-
+    # filtered before allocation and retain A105 -> A101 -> A102 order.
+    ("A106", SceneType.meeting, 1, 6, UsageMode.exclusive),
+    ("A105", SceneType.meeting, 2, 10, UsageMode.exclusive),
+    ("A101", SceneType.meeting, 3, 10, UsageMode.exclusive),
+    ("A102", SceneType.meeting, 4, 6, UsageMode.exclusive),
+    ("A103", SceneType.event, 1, 100, UsageMode.exclusive),
+    ("B102", SceneType.music, 1, 4, UsageMode.exclusive),
+    ("A103", SceneType.music, 2, 4, UsageMode.exclusive),
+]

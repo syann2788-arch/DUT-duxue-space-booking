@@ -9,7 +9,9 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import Reservation, ReservationStatus, Room, SpaceMessage, User
 from app.schemas import RoomOut, SpaceMessageCreate, SpaceMessageOut
-from app.services import OCCUPYING_STATUSES, get_active_rooms, get_room_by_id, get_runtime_config, slot_label
+from app.domain.common import OCCUPYING_STATUSES, slot_label
+from app.domain.rooms import get_active_rooms, get_room_by_id
+from app.domain.settings import get_runtime_config
 from app.uploads import store_image
 
 router = APIRouter(prefix="/api/rooms", tags=["房间"])

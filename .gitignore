@@ -9,12 +9,17 @@ cloudfunctions/**/node_modules/
 backend/.env
 backend/*.db
 backend/uploads/
+backend/private_uploads/
+backend/credentials/
+backups/
+backup-keys/
 backend/test_*.db
 frontend/node_modules/
 frontend/.npm-cache/
 frontend/.uni-src/
 frontend/unpackage/
 frontend/dist/
+dist/
 uploads/
 project.private.config.json
 .pytest_cache/
