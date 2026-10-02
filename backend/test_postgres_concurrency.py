@@ -81,8 +81,19 @@ async def booking_scenario():
     return outcomes, count
 
 
+async def run_scenario(scenario):
+    from app.database import engine
+
+    try:
+        return await scenario()
+    finally:
+        # Each synchronous test owns a new loop; pooled asyncpg connections must
+        # be closed on that loop before asyncio.run tears it down.
+        await engine.dispose()
+
+
 def test_postgresql_room_lock_prevents_double_booking():
-    outcomes, count = asyncio.run(booking_scenario())
+    outcomes, count = asyncio.run(run_scenario(booking_scenario))
     assert count == 1
     assert sum(isinstance(item, int) and item == 409 for item in outcomes) == 1
 
@@ -100,13 +111,15 @@ async def leader_scenario():
             await release.wait()
 
     first = asyncio.create_task(hold_lock())
-    await entered.wait()
-    async with leader_lock() as second_acquired:
-        second = second_acquired
-    release.set()
-    await first
+    try:
+        await asyncio.wait_for(entered.wait(), timeout=30)
+        async with leader_lock() as second_acquired:
+            second = second_acquired
+    finally:
+        release.set()
+        await first
     return second
 
 
 def test_postgresql_advisory_lock_allows_only_one_worker_leader():
-    assert asyncio.run(leader_scenario()) is False
+    assert asyncio.run(run_scenario(leader_scenario)) is False

@@ -1,87 +1,51 @@
-# 微信平台、真机与学校服务器联调清单
+# 微信平台、构建与真机联调
 
-## 先确认正确的项目入口
+2026-10-02候选源码。AppID已有配置，成员权限、学校密钥、模板、真实域名及发布仍须小程序管理员确认。构建命令见 [跨平台构建与校验](BUILD_ARTIFACT_GUIDE.md)，服务器首次部署见 [部署教程](DEPLOYMENT_GUIDE.md)。
 
-正式微信前端是根目录下的 `miniprogram/` 原生小程序。微信开发者工具应直接导入仓库根目录：
+## 正确的导入目录
 
 ```text
-书院空间预约制度/
-├── project.config.json     ← 开发者工具读取
-├── miniprogram/            ← 正式 v2 小程序
-├── backend/                ← FastAPI
-├── frontend/               ← 仅参考，不导入
-└── cloudfunctions/         ← 第一版参考，不是 v2 主后端
+DUT-duxue-space-booking/
+├── project.config.json   本地源码项目配置
+├── miniprogram/          正式原生微信前端
+├── backend/              FastAPI主后端
+├── frontend/             历史参考
+└── cloudfunctions/       第一版参考
 ```
 
-根目录 `project.config.json` 已配置 `"miniprogramRoot": "miniprogram/"`。不要导入 `frontend/dist/`，也不需要为正式 v2 编译 uni-app。
+本地源码调试导入仓库根目录，`miniprogramRoot`为`miniprogram/`。`npm run build:dev`产物也可单独导入`dist/miniprogram-development/`。体验/正式版本分别导入`dist/miniprogram-staging/`、`dist/miniprogram-production/`，不能上传源码根目录替代已经注入正式参数的产物。主线不需要uni-app编译或微信云函数部署。
 
-## 本地模拟器联调
+## 本地模拟器
 
-先启动后端：
+按 [README快速启动](../README.md#本地演示启动) 在Windows/macOS/Linux启动本地API和需要时的worker；seed及`admin001/admin123`仅用于虚构数据演示。
 
-```powershell
-Set-Location backend
-..\.venv\Scripts\python.exe seed.py
-..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
+开发者工具导入源码根目录→本地设置临时关闭合法域名校验→编译→登录演示账号。默认请求`http://127.0.0.1:8000/api`，仅同电脑模拟器可用；手机127.0.0.1指手机自身。
 
-然后在微信开发者工具中：
-
-1. 导入仓库根目录。
-2. 在“本地设置”中临时关闭合法域名校验。
-3. 编译小程序。
-4. 使用 `admin001 / admin123` 或测试学生账号联调。
-
-`miniprogram/config.js` 的默认地址是：
+开发构建可在控制台临时覆盖API：
 
 ```js
-http://127.0.0.1:8000/api
+wx.setStorageSync('apiBaseUrl', 'https://学校实际API域名/api')
 ```
 
-这个地址只适用于运行在同一台电脑上的微信开发者工具模拟器。手机中的 `127.0.0.1` 指向手机自身，不会访问开发电脑，因此不能把它用于真机验收或生产发布。
+体验/正式构建禁止这个覆盖。发布地址由MINIPROGRAM_API_BASE_URL注入，无需手改config.js；根配置不会被构建修改。
 
-开发阶段也可在开发者工具控制台临时覆盖地址：
+## AppID、权限与AppSecret
 
-```js
-wx.setStorageSync('apiBaseUrl', 'https://学校正式域名/api')
-```
+根`project.config.json`当前AppID为`wx78c441ce72d765fc`。开发构建优先环境变量MINIPROGRAM_APP_ID，未提供回退根值；production必须显式提供有效值，不回退。学校须在 [微信公众平台](https://mp.weixin.qq.com/) 确认属于正确主体，并将实际开发者和体验人员加入项目，配置正确不等于权限已确认。
 
-这只是本机调试覆盖；发布版本仍应把 `miniprogram/config.js` 的默认地址改成学校 HTTPS API 地址。
+由小程序管理员在公众平台小程序的开发管理/开发设置相关页面查找AppID/AppSecret（具体栏目以当前后台为准）；密钥生成/重置需要相应管理员权限与平台验证，开发者绑定不保证可查看密钥。无法查看时由学校管理员处理，不在前端尝试推导。
 
-## 必须由用户或学校在微信公众平台完成的事项
+AppSecret用于后端调用微信接口，包括换取OpenID和消息所需access token；不是上传前端代码的密码。它会在重置/轮换时改变，不是永久不变。学校将真实密钥放入受控服务器环境，更新API和worker配置并使新环境生效，再复核绑定/消息。微信平台当前界面和校验要求需管理员实际确认；本文未对学校后台执行操作。
 
-以下事项不能由代码自动代办：
+## 后端变量放在哪里
 
-| 事项 | 操作人 | 结果/需交给开发的信息 |
+| 运行方式 | 配置来源 | 操作要求 |
 |---|---|---|
-| 注册并认证小程序主体 | 书院/学校管理员 | 正式 AppID |
-| 添加项目开发者、体验成员 | 小程序管理员 | 开发和验收账号获得权限 |
-| 生成并保管 AppSecret | 小程序管理员/学校运维 | 仅写服务器环境变量，不发到聊天或 Git |
-| 申请订阅消息模板 | 小程序管理员 | 四个模板 ID 及关键词字段顺序 |
-| 配置服务器合法域名 | 小程序管理员 | request、uploadFile、downloadFile 域名通过校验 |
-| 配置隐私保护指引 | 小程序管理员与业务负责人 | 说明姓名、学号、手机号、玉兰卡和清扫照片用途/保存期限 |
-| 上传体验版、提交审核和发布 | 小程序管理员 | 完成校内验收后上线 |
-
-公众平台界面和审核要求可能调整，实际操作以届时平台提示为准。
-
-## AppID、AppSecret 和模板 ID 放在哪里
-
-### 小程序 AppID
-
-填入根目录 `project.config.json`：
-
-```json
-{
-  "appid": "学校正式小程序AppID"
-}
-```
-
-### 服务器微信配置
-
-AppID、AppSecret 和模板 ID 只写学校服务器的 `backend/.env`：
+| 直接Python | 从backend工作目录读取backend/.env，或服务进程环境 | 参照backend/.env.example，文件仅服务账号/运维可读 |
+| Compose | 根.env或明确--env-file，用于Compose插值 | 参照根.env.example；backend/.env不会自动读取，API与worker均注入 |
 
 ```env
-WECHAT_APP_ID=
+WECHAT_APP_ID=wx78c441ce72d765fc
 WECHAT_APP_SECRET=
 WECHAT_TEMPLATE_SUBMITTED=
 WECHAT_TEMPLATE_REVIEW=
@@ -89,87 +53,51 @@ WECHAT_TEMPLATE_REMINDER=
 WECHAT_TEMPLATE_RESTRICTION=
 ```
 
-`WECHAT_APP_ID` 必须与 `project.config.json` 使用同一个小程序。真实 `.env` 不得提交到 Git。AppSecret 不应放入 `miniprogram/`、截图、群聊或交接文档正文。
+这是空密钥模板，不含真实AppSecret。后端AppID必须与目标产物一致。真实.env、AppSecret、access token不放在miniprogram、Git、截图、群聊或教程正文。Compose改配置后使用`docker compose up -d --force-recreate api worker`使新环境生效，仅restart不更新已有容器环境；数据库密码另按运行手册处理。
 
-当前模板数据映射位于 `backend/app/notifications.py`：
+## 模板、合法域名与隐私
 
-- 提交成功：`thing1`（房间）、`time2`（日期时段）
-- 审核结果：`phrase1`（结果）、`thing2`（备注）
-- 临近开始：`thing1`（提示）、`time2`（日期）
-- 预约资格变更：`thing1`（变更）、`thing2`（原因）
+小程序管理员申请四类订阅消息模板并核对实际字段，代码映射在`backend/app/notifications.py`：
 
-如果公众平台最终选中的模板字段编号不同，开发人员必须同步修改 `_template_data()`；仅把不匹配的模板 ID 填入 `.env` 不会自动适配字段。
+| 业务 | 当前字段 |
+|---|---|
+| 提交成功 | thing1房间、time2日期时段 |
+| 审核结果 | phrase1结果、thing2备注 |
+| 开始提醒 | thing1提示、time2日期 |
+| 资格变更 | thing1变更、thing2原因 |
 
-## 真机和生产域名
+若实际模板字段不同，维护者需同步`_template_data()`，只填模板ID不会自动适配。学校要实际验证字段长度、内容和消息成功/失败路径。
 
-学校需准备类似下面的正式地址：
+学校部署受信任HTTPS，例如`https://space-api.example.edu.cn`，nginx代理/api和受限公开/uploads，私密图片经/api/media鉴权。公众平台将实际域名加入request、uploadFile、downloadFile合法域名，确认证书/DNS/端口；不能仅靠开发工具关闭校验替代真机验证。正式示例域名须替换。
 
-```text
-https://space-api.example.edu.cn
-```
+小程序管理员与隐私负责人填写姓名、学号、手机号、玉兰卡/清扫照片的用途、访问与保留期限；代码默认私密图90天清理，学校需书面确认。不把自填学号当作学校身份认证。
 
-要求和配置点：
+## 构建、上传体验版与发布责任
 
-1. 使用受信任的 HTTPS 证书；不要以 `127.0.0.1`、`localhost`、裸 IP 或自签名证书作为正式地址。
-2. nginx 将 `/api/` 与公开留言图片的 `/uploads/` 转发到 FastAPI；私密媒体只允许通过 `/api/media/{media_id}` 鉴权下载。
-3. 设置 `MINIPROGRAM_API_BASE_URL=https://space-api.example.edu.cn/api` 和正式 `MINIPROGRAM_APP_ID` 后执行 `npm run build:prod`，不要手工修改源码。
-4. 在微信公众平台把 `https://space-api.example.edu.cn` 加入：
-   - request 合法域名；
-   - uploadFile 合法域名；
-   - downloadFile 合法域名。
-5. 真机联调前重新编译并上传体验版；不能只关闭开发者工具中的域名校验。
+1. 运维完成服务器ready与HTTPS，业务负责人核对基础数据/正式账号。
+2. 维护者取得已审核目标提交，按 [构建指南](BUILD_ARTIFACT_GUIDE.md) 在Windows或macOS/Linux注入MINIPROGRAM_API_BASE_URL、MINIPROGRAM_APP_ID、RELEASE_VERSION、GIT_COMMIT，构建并校验文件清单/摘要。
+3. 开发者导入目标dist目录，核对AppID、API、版本和提交；开发者工具用已绑定的微信账号登录、编译并按工具提示上传版本/说明。
+4. 小程序管理员在公众平台选择上传版本作为体验版本、登记体验成员，学校用真实iPhone/Android完成下列清单，留存脱敏证据。
+5. 业务/运维/隐私/维护者按既有 [发布清单](RELEASE_CHECKLIST.md) 完成签字，小程序管理员按公众平台流程提交审核、处理反馈和发布。
 
-## 订阅消息实际流程
+上传代码到微信只交付前端；数据库/API/照片仍在学校服务器。源码ZIP、GitHub链接和dist构建包都不会自动成为微信可用的正式应用。平台审核与服务器可用性分别验收。
 
-学生提交预约或在“我的”开启通知时，小程序会：
+## 真实绑定与消息流程
 
-1. 调用 `wx.login` 获取临时代码；
-2. 由后端使用 AppID/AppSecret 换取 OpenID 并绑定当前账号；
-3. 获取服务器已配置的模板 ID；
-4. 调用 `wx.requestSubscribeMessage` 由学生本人选择是否授权；
-5. 后端把业务事件写入 outbox，再由定时任务发送。
+密码登录/注册后调用wx.login，后端用AppID/AppSecret交换OpenID并绑定当前账号；无本地有效token时可按已有绑定尝试微信登录。模板配置读取后，由本人wx.requestSubscribeMessage授权。预约/审核/限制事件进入outbox，由独立worker发送。
 
-用户拒绝授权、微信配置为空或消息接口暂时失败，都不应回滚预约。未配置模板时只能验收预约业务，不能宣称真实订阅消息已完成。
+拒绝授权、配置缺失、微信接口失败不应回滚已成功预约。“我的→消息记录与发送状态”能查看记录，真实发送仍需平台联调。人工密码恢复成功会撤销旧会话与微信绑定；重新密码登录后重绑。辅导员首次强制改密流程见 [使用教程](USER_GUIDE.md)。没有短信验证码服务，人工本人核验须学校制定流程。
 
-## 短信找回密码现状
+## 学校真机验收清单
 
-短信验证码找回尚未接入 FastAPI，也没有可用的学校短信供应商配置。当前已实现人工核验恢复：管理员在用户详情输入自己的密码及核验原因，签发30分钟一次性凭证；学生从 `pages/login/forgot` 进入凭证重置页面。重发使旧凭证失效，重置成功撤销旧登录和微信绑定。具体核验流程仍需学校确认。
+- [ ] 主体/AppID/开发者/体验权限核对；产物与后端AppID、版本/提交一致。
+- [ ] iPhone/Android注册、密码登录、退出/过期、人工恢复、辅导员首次换密、微信重绑。
+- [ ] 空间导览、四场景分配、用途/人数/连续时段和限制提示；可信身份方案另行确认。
+- [ ] 审核/取消/签到码、照片上传/失败重试、清扫通过/退回及重传、每日额度。
+- [ ] 全部订单、违规待办、区间禁约/解除、操作日志、Excel与鉴权照片链接。
+- [ ] 四类消息成功、拒绝授权、接口失败与补偿；核对消息记录并确认业务不回滚。
+- [ ] Wi-Fi/移动网络/弱网、长列表/键盘/安全区域、照片预览/Excel打开、无障碍操作。
+- [ ] HTTPS续期、API/worker重启持久化、备份恢复及运维独立执行教程。
+- [ ] 隐私说明、保留/删除、身份核验、反馈联系人和维护期限签字。
 
-因此上线前需在以下方案中由学校确认一种：
-
-- 接入学校统一身份认证并由统一平台重置；
-- 接入学校已有短信服务，新增验证码发送、过期、频率限制和重置接口；
-- 保留人工核验重置，并制定管理员操作流程。
-
-学校仍需确认身份核验与凭证发放流程；第一版云函数中的短信占位符不是可用功能。
-
-## 学校服务器交接清单
-
-学校运维需要接收并确认：
-
-- Linux/容器运行环境、正式 DNS、HTTPS 证书和端口策略；
-- PostgreSQL 地址、最小权限账号、备份频率和恢复演练；
-- 强随机 `SECRET_KEY`、微信 AppSecret、模板 ID 的安全注入方式；
-- `UPLOAD_DIR`（留言图）与 `PRIVATE_UPLOAD_DIR`（敏感图）的隔离持久化、备份和到期清理策略；
-- nginx 对 `/api/`、`/uploads/` 的代理与上传大小限制；
-- FastAPI 服务的开机启动、健康检查、日志轮转和告警；
-- 独立 worker 由 PostgreSQL advisory lock 选出当前执行者；可部署备用实例，但不得让 API 进程运行内置调度器；
-- 替换默认管理员凭据，并保管管理员账号；
-- 辅导员 CSV 的授权来源和安全导入流程；
-- 数据保留、用户注销、隐私投诉和安全事件联系人。
-
-建议学校运维与书院业务老师共同保存一份不含明文密钥的配置清单，真实密钥通过学校密码库或受控渠道交接。
-
-## 上线前验收顺序
-
-1. 学生注册、登录、退出和 token 失效处理。
-2. 空间导览、房间详情和公开空间状态。
-3. 四场景可用性、连续时段、自动分房和玉兰卡上传。
-4. 管理员审核、学生取消、签到与扫码签到。
-5. 使用结束、清扫照片上传、复核通过/退回和再次预约阻断。
-6. 违约累计、自动限制、人工限制与解除。
-7. 按条件 Excel 下载、签到二维码生成/预览和系统参数/分房规则修改。
-8. 真机 OpenID 绑定、订阅授权和四类消息发送。
-9. 隐私提示、弱网、上传超限、服务器重启和备份恢复。
-
-辅导员 CSV 已可由原生管理页选择微信文件上传；验收时应同时确认新账号凭据只保存到学校受控文档。短信找回仍不在当前已完成范围内。
+本地自动测试或临时容器结果不勾选这份真实学校清单；状态见 [05–11验证记录](HANDOVER_DOCUMENTATION_REPORT.md)。

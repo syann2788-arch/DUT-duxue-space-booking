@@ -38,6 +38,9 @@ jobs:
       - name: Compile backend source
         run: python -m compileall -q app guards tests migrations
 
+      - name: Verify handover documentation links
+        run: python ../scripts/check-handover-docs.py
+
       - name: Verify Alembic upgrade from empty database
         env:
           DATABASE_URL: sqlite+aiosqlite:////tmp/alembic-ci.db
@@ -86,6 +89,9 @@ jobs:
           RELEASE_VERSION: ci
           GIT_COMMIT: ${{ github.sha }}
         run: npm run build:dev
+
+      - name: Verify development artifact integrity
+        run: node scripts/verify-miniprogram-build.mjs dist/miniprogram-development
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -156,6 +162,8 @@ jobs:
           RELEASE_VERSION: ${{ github.ref_name }}
           GIT_COMMIT: ${{ github.sha }}
         run: npm run build:prod
+      - name: Verify production artifact integrity
+        run: node scripts/verify-miniprogram-build.mjs dist/miniprogram-production
       - uses: actions/upload-artifact@v4
         with:
           name: miniprogram-production-${{ github.ref_name }}

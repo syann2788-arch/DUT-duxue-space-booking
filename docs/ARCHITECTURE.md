@@ -14,7 +14,7 @@
 | `cloudfunctions/` | 第一版微信云函数参考代码 | 否 |
 | `deploy/` | 学校服务器 nginx 与容器部署参考 | 生产部署时使用 |
 
-后续开发不得再把 `miniprogram/` 标为“v1 废弃版”，也不得要求微信开发者工具导入 `frontend/dist/`。微信开发者工具应直接导入仓库根目录，由根目录 `project.config.json` 的 `miniprogramRoot: "miniprogram/"` 加载正式前端。
+后续开发不得再把 `miniprogram/` 标为“v1 废弃版”，也不得要求微信开发者工具导入 `frontend/dist/`。微信开发者工具本地调试导入仓库根目录，由根配置加载miniprogram/；体验/正式发布导入经过构建与校验的对应dist目录。
 
 ## 运行链路
 
@@ -47,13 +47,15 @@ SQLite（本地演示）      照片持久化目录/对象存储
 |---|---|
 | `pages/login/login` | 学号密码登录，保存 JWT；已有有效 token 时恢复登录 |
 | `pages/login/register` | 学号、姓名、手机号、4 位班级和密码注册 |
-| `pages/login/forgot` | 当前仅提示联系书院管理员；短信验证码找回尚未接入 |
+| `pages/login/forgot` | 联系管理员人工核验，取得一次性凭证后进入重置页；未接入短信 |
+| `pages/login/password` | 日常改密/初始密码强制修改/人工恢复；成功后重新登录 |
 | `pages/index/index` | 暖橙+紫色空间导览、楼层图、公开状态、场景预约入口 |
 | `pages/room/room` | 房间资料、今日占用时间轴、公开空间状态和使用者留言；预约按钮进入对应场景，不指定最终房间 |
 | `pages/reserve/reserve` | 选择四类场景、人数、日期和连续时段；读取运行配置和场景可用性 |
 | `pages/reserve/form` | 填写用途、上传玉兰卡、订阅消息授权、提交自动分房申请 |
+| `pages/my/notifications` | 自己的消息记录、发送状态与分页；不等于真实微信送达验收 |
 | `pages/my/my` | 状态列表、取消、签到/扫码签到、清扫照片、再次预约、通知设置和限制状态 |
-| `pages/admin/admin` | 多标签后台的页面编排；标签状态、展示映射、审核/限制/配置规则已拆入 `utils/admin-*` 模块并独立测试 |
+| `pages/admin/admin` | 全部订单、违规/清扫待办、操作日志、账号恢复及多标签后台编排；标签状态、展示映射、审核/限制/配置规则已拆入 `utils/admin-*` 模块并独立测试 |
 
 前端先上传玉兰卡照片取得一次性的私密 `media_id`，创建预约时只提交场景、日期、slot 区间、人数、用途和该媒体编号，绝不提交最终房间。后端在同一事务中校验媒体所有者、用途、有效期与复用状态，并重新校验资格、时长、冲突和容量。
 
@@ -61,12 +63,12 @@ SQLite（本地演示）      照片持久化目录/对象存储
 
 | 路由组 | 主要用途 |
 |---|---|
-| `/api/auth` | 注册、登录、当前用户、绑定微信 OpenID |
+| `/api/auth` | 注册、登录、当前用户、微信绑定，password/change与password/reset |
 | `/api/rooms` | 空间列表、详情、单个房间占用时段、实际使用者留言与留言照片 |
 | `/api/reservations` | 运行配置、场景可用性、创建、我的预约、取消、签到、玉兰卡/清扫照片 |
 | `/api/media/{media_id}` | 仅管理员鉴权下载玉兰卡/清扫照片，并写入访问审计 |
 | `/api/admin` | 统计、审批、清扫复核、用户/违约/限制、系统参数、分房规则、辅导员导入、筛选 Excel 与签到二维码 |
-| `/api/notifications` | 返回已配置的订阅消息模板 ID |
+| `/api/notifications` | 已配置模板ID及当前用户的分页消息历史 |
 
 `miniprogram/utils/api.js` 负责为请求和上传统一附加 JWT，并把 FastAPI 的错误结构转成可展示文本。401 仅在响应对应的 token 仍是当前 token 时清除登录态，避免冷启动并发请求误删新会话。业务安全不能依赖前端按钮是否显示，后端必须始终执行最终校验。
 
@@ -74,7 +76,9 @@ SQLite（本地演示）      照片持久化目录/对象存储
 
 | 表 | 关键字段与用途 |
 |---|---|
-| `users` | 学号、角色、密码摘要、微信 OpenID、启用状态 |
+| `users` | 学号、角色、密码摘要、微信OpenID、启用、session_version和must_change_password |
+| `password_reset_credentials` | 30分钟一次性凭证摘要、目标用户、到期/消费状态和签发管理员 |
+| `admin_audit_logs` | 操作者、动作、目标、非敏感详情和时间，含受控脚本操作 |
 | `rooms` | 房间基础资料、物理容量、公开状态 |
 | `room_scene_rules` | 场景、候选房间、优先级、场景容量、共享/独占和启用状态 |
 | `reservations` | 场景、自动分配房间、日期、slot、人数、用途、玉兰卡、审核与使用状态 |
@@ -98,7 +102,7 @@ v2 不恢复第一版的“信用分”。用户侧展示预约限制状态，�
 - A103 上的大型活动与音乐练习按同一物理房间互斥，B102 保持独立。
 - 待审核申请也占用候选房间容量，防止审批前超卖。
 - 默认 30 分钟一个 slot；`end_slot` 为开区间。
-- 每日时长按所有有效占用状态累计，取消和驳回不计入。
+- 房间占用集合OCCUPYING_STATUSES与每日额度DAILY_LIMIT_STATUSES独立，均在domain/common.py；已完成状态额外计入当天额度，取消/驳回不计入。
 
 管理员可修改运行参数和分房规则，因此原生预约页先读取 `/reservations/config`，再按登录角色、场景、日期和人数读取 `/reservations/availability`。接口返回每个 slot 的候选房间，页面对连续区间取交集，保证整段至少有同一间房；提交时后端仍会再次检查，避免并发变化造成错误预约。
 
@@ -127,7 +131,7 @@ pending ──人工审核/自动审批──> approved ──签到──> in_u
 
 ## 当前未完成或依赖外部条件
 
-1. 短信验证码找回密码尚未接入，`pages/login/forgot` 只提供联系管理员说明。
+1. 人工核验恢复/改密/辅导员首次换密已实现并有本地测试；短信与学校本人核验/可信注册方案仍待确认。注册默认启用普通账号，不等于认证校内身份。
 2. 真实微信账号绑定和订阅消息需要正式 AppID、AppSecret、模板 ID 和微信合法域名；配置为空时预约仍可提交，但不会真实发送消息。
 3. 签到码由管理员鉴权生成 PNG，负载为稳定的 `{ "room_id": ... }`；响应禁止共享缓存，并保留复制 JSON 的兼容入口。
 4. `frontend/` 不是当前 H5 正式交付物；如学校确需 H5，应单独立项确认并与原生端业务同步。
@@ -138,8 +142,16 @@ pending ──人工审核/自动审批──> approved ──签到──> in_u
 交付学校时至少应明确以下责任：
 
 - 学校提供服务器、正式域名、HTTPS 证书、DNS/备案条件和防火墙策略。
-- 学校运维保管 `backend/.env`、数据库账号、AppSecret 和模板 ID，不写入 Git。
+- 学校运维保管直接Python的backend/.env或Compose的根.env/--env-file、数据库账号、AppSecret/模板，不写Git；API与worker均注入。
 - 生产数据库使用 PostgreSQL，并建立备份、恢复和容量策略。
 - `UPLOAD_DIR` 仅保存公开留言图片；`PRIVATE_UPLOAD_DIR` 单独持久化且不得由 nginx 静态暴露，保存期限由 `MEDIA_RETENTION_DAYS` 控制。
 - nginx 代理 `/api/` 与 `/uploads/`，API 与独立 worker 具备开机启动、JSON 日志、request/job ID 和 readiness 监控。
-- 上线前替换默认 `SECRET_KEY`、默认管理员凭据，并完成学生/管理员真机全流程验收。
+- 正式管理员通过create_admin.py建号，不在生产运行seed；学校建立实际账号/恢复责任，完成真机验收。
+
+## 当前实现与验证分层（2026-10-02）
+
+账号改密/一次性恢复、旧会话撤销、首次换密、全部订单/待办/审计、区间限制和鉴权照片导出链接已接入。技术入口在domain/accounts.py、domain/audit.py、routers/management.py等模块，注册仍开放自填身份。恢复凭证只存摘要，人工恢复清除旧微信绑定。
+
+生产先Alembic到20261002_03；基础初始化补缺12房间/10规则，CLI受控建号，API和worker独立运行。Compose媒体采用命名卷，ops工具停写后备份数据库和public/private图，空目标恢复并核对迁移URL。构建schemaVersion2记录完整小程序输入/产物SHA-256，不覆盖整个后端源码包。
+
+实现状态不等于学校验收。按轮次的本地/临时PostgreSQL、构建和恢复证据见REFERENCE_INITIALIZATION_REPORT.md、BUILD_ARTIFACT_REPORT.md、HANDOVER_DOCUMENTATION_REPORT.md；真实身份、微信、业务歧义、手机、学校运维和签字仍按REQUIREMENTS_TRACEABILITY.md及发布清单处理。部署入口为DEPLOYMENT_GUIDE.md，运行与恢复为OPERATIONS_RUNBOOK.md。
