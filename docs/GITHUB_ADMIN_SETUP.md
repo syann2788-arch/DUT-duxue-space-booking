@@ -42,8 +42,8 @@
 2. 按 [交付指南](HANDOVER_GUIDE.md)准备两份ZIP、教程/模板、完整清单和SHA256SUMS；学校微信配置不齐时明确省略微信构建包。
 3. 干净工作区、刷新origin/main后执行`npm run release:check -- --candidate --tag`，另行核对真实CI/评审记录。
 4. 创建新带注释`v0.1.0-rc.N`标签并推送，标签CI生成源码材料；rc不强制production配置，不代表学校微信联调已通过。
-5. 标签CI成功后从该标签重新打包并校验；manifest的版本/提交/标签一致。Release正文写明“待部署验收”、已知限制、部署/回滚和学校待办。
-6. 创建GitHub Release时标记pre-release，不标正式latest；本轮只准备本地工具/材料，没有执行远程Release。
+5. 标签CI五项检查成功后，Publish candidate Release作业从该标签重新打包并校验；manifest的版本/提交/标签一致。Release正文写明“待部署验收”、已知限制、部署/回滚和学校待办。
+6. 作业先建立草稿并上传source.zip、handover.zip、handover-manifest.json、SHA256SUMS；逐一核对上传状态、大小及服务端返回的摘要，全部成功后公开为pre-release，不标正式latest。已存在的版本不覆盖，失败只清理本次未公开草稿。仅该标签作业拥有contents: write，其余检查保持只读；不需要个人token或AppSecret。
 
 ## 学校正式上线Release
 

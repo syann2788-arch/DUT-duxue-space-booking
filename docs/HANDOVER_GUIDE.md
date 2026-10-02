@@ -1,6 +1,6 @@
 # 学校源码交付与接收指南
 
-适用于当前`0.1.0-rc.1`准备阶段。两份ZIP足以交接代码和教程材料；学校可用的小程序还须部署服务器、配置微信、真机验收和签字。发布条件见 [阶段清单](RELEASE_CHECKLIST.md)。第13–14项本轮不自动创建GitHub Release或微信发布。
+适用于当前`0.1.0-rc.1`源码候选交付。两份ZIP足以交接代码和教程材料；学校可用的小程序还须部署服务器、配置微信、真机验收和签字。发布条件见 [阶段清单](RELEASE_CHECKLIST.md)。本地打包命令不发布；经授权推送rc标签后，Quality Gate全部五项检查成功才自动创建候选GitHub Release和上传四份附件。微信发布仍由小程序管理员操作。
 
 ## 1. 交付物清单
 
@@ -87,6 +87,6 @@ AppSecret、强随机SECRET_KEY、数据库密码、管理员/辅导员初始密
 
 ## 6. GitHub发布顺序
 
-13–14工具/文档PR审核并合入main → 最新main四项CI成功 → 维护者确认本次候选预发布及公开权利 → 同步版本/CHANGELOG → `release:check --candidate --tag` → 新建不可变rc标签 → 标签CI成功 → 从该标签打包/核对 → 发布标为pre-release的“待部署验收”附件与已知限制 → 学校接收/部署 → 联合验收签字 → 稳定版本正式发布。
+工具/文档PR合入main → 最新main五项CI成功 → 确认本次候选预发布及公开范围 → 同步版本/CHANGELOG → `release:check --candidate --tag` → 新建不可变rc标签 → 标签CI五项检查成功 → Publish candidate Release作业从该标签重新打包/核对，先上传四份附件到草稿，全部确认后公开为“待部署验收”pre-release → 学校接收/部署 → 联合验收签字 → 稳定版本正式发布。
 
-本地生成ZIP不会自动建立远程标签或Release。正式版本执行production检查与受控验收记录，保留全部学校门槛，不能靠删除复选项将候选变成正式版。
+Release附件是source.zip、handover.zip、handover-manifest.json和SHA256SUMS。Packages用于Docker/npm等软件包，本次源码ZIP交付无需发布Packages。已存在的Release拒绝覆盖；上传失败只清理本次尚未公开的草稿，不删除已公开版本。本地生成ZIP不会建立远程标签或Release。正式版本不自动发布，仍执行production检查与受控验收记录，保留全部学校门槛。
