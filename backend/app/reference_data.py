@@ -36,4 +36,3 @@ RULES = [
     ("B102", SceneType.music, 1, 4, UsageMode.exclusive),
     ("A103", SceneType.music, 2, 4, UsageMode.exclusive),
 ]
-
