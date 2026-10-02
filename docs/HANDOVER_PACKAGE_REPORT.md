@@ -13,7 +13,7 @@
 ## 本轮实际本地测试
 
 - `npm test`：33通过（构建10、小程序16、发布策略7）。
-- `python3 scripts/test_handover_package.py`：9通过，使用临时Git仓库和ZIP。覆盖同输入重复字节、脏工作区、未合入main、draft状态、已提交敏感路径、符号链接、标签错配、缺失/修改/新增文件、ZIP重复/越界路径、替换内嵌源码及可选微信构建。可选构建使用synthetic.example.invalid，仅为测试夹具，不是学校配置。
+- `python3 scripts/test_handover_package.py`：10通过，使用临时Git仓库和ZIP。覆盖同输入重复字节、脏工作区、未合入main、draft状态、已提交敏感路径、符号链接、标签错配、缺失/修改/新增文件、ZIP重复/越界路径、替换内嵌源码及可选微信构建。可选构建使用synthetic.example.invalid，仅为测试夹具，不是学校配置。
 - 文档链接与Python/Node语法检查通过；具体最新链接数量以命令输出为准。
 - 后端业务源码未改动，本轮不把第12项的54/2与PG2数字写成新本地测试；新PR完整远程结果保存于对应PR说明。
 

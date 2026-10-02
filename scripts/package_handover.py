@@ -141,7 +141,11 @@ def pack(root=ROOT, ref='HEAD', output=None, draft=False, miniprogram=False, kin
                 if f'docs/assets/screenshots/{name}' not in files:
                     raise ValueError('Production requires actual redacted screenshots')
             checker = "import fs from 'node:fs'; import {validateAcceptance} from './scripts/release-check.mjs'; const errors=validateAcceptance(JSON.parse(fs.readFileSync(process.argv[1],'utf8')),process.argv[2],process.argv[3]); if(errors.length) {console.error(errors.join('\\n')); process.exit(1)}"
-            subprocess.run(['node', '--input-type=module', '-e', checker, str(Path(acceptance).resolve()), version, commit], cwd=stage, check=True, stdout=subprocess.DEVNULL)
+            checked = subprocess.run(['node', '--input-type=module', '-e', checker, str(Path(acceptance).resolve()), version, commit], cwd=stage, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # A mistaken .env/credential path may make JSON.parse include its
+            # contents in a diagnostic. Never echo that controlled input.
+            if checked.returncode:
+                raise ValueError('验收记录未通过；请用正式发布检查核对结构与完整性')
         if miniprogram:
             env = dict(os.environ, RELEASE_VERSION=version, GIT_COMMIT=commit)
             subprocess.run(['node', 'scripts/build-miniprogram.mjs', 'production'], cwd=stage, env=env, check=True, stdout=subprocess.DEVNULL)
@@ -160,7 +164,7 @@ def pack(root=ROOT, ref='HEAD', output=None, draft=False, miniprogram=False, kin
     materials.update({name: data for name, data in files.items() if name.startswith('docs/')})
     materials.update(archives)
     materials['handover-record.json'] = json_bytes(record)
-    materials['HANDOVER_RECEIPT.md'] = f'# 候选交付接收登记\n\n版本：{version}；提交：{commit}；状态：{record["status"]}\n\n| 项目 | 接收时填写 |\n|---|---|\n| 接收单位/负责人角色 | 待确认 |\n| 交付/接收日期、包校验结论 | 待确认 |\n| 服务器与微信管理员 | 待确认 |\n| 维护期限、支持范围、联系方式 | 待双方书面约定 |\n| 密钥受控交接记录编号 | 单独受控登记，不填写密钥 |\n| 学校部署/业务验收结论 | 待执行 |\n'.encode()
+    materials['HANDOVER_RECEIPT.md'] = f'# 交付接收登记\n\n版本：{version}；提交：{commit}；状态：{record["status"]}\n\n| 项目 | 接收时填写 |\n|---|---|\n| 接收单位/负责人角色 | 待确认 |\n| 交付/接收日期、包校验结论 | 待确认 |\n| 服务器与微信管理员 | 待确认 |\n| 维护期限、支持范围、联系方式 | 待双方书面约定 |\n| 密钥受控交接记录编号 | 单独受控登记，不填写密钥 |\n| 学校部署/业务验收结论 | 待执行 |\n'.encode()
     materials['START_HERE.md'] = f'# {version} 交付材料\n\n源码提交：{commit}\n状态：{record["status"]}\n\n1. 在外层运行交付校验工具，核对两份ZIP和manifest；通过独立渠道核对SHA256SUMS。\n2. 解压source.zip得到source/，从source/README.md和docs/HANDOVER_GUIDE.md开始。这里也附有教程副本与配置模板。\n3. 按角色阅读使用、部署、微信和备份恢复教程。填写HANDOVER_RECEIPT.md，约定维护期限。\n4. {'miniprogram.zip是构建目录包，仍须微信开发者工具上传和平台审核。' if miniprogram else '未附学校微信构建包；配置AppID、HTTPS API后从固定源码构建。'}\n\n本包没有自动创建Release或部署服务器。候选源码接收不等于学校正式验收。真实密钥、账号密码、数据和照片通过学校受控渠道单独交接。\n'.encode()
     archives['handover.zip'] = zip_bytes(materials)
     manifest = {'schemaVersion': 1, 'digestAlgorithm': 'sha256', 'record': record, 'sourceFiles': inventory(files), 'handoverFiles': inventory(materials), 'archives': inventory(archives)}

@@ -125,7 +125,7 @@ README角色导航、USER_GUIDE、DEPLOYMENT_GUIDE及微信/运维教程已同�
 
 ### 14［P1，本地交付清单、打包工具与预检已实施］制定可重复的交付包清单
 
-- 已实施：HANDOVER_GUIDE、源码/交付ZIP和可选微信ZIP、manifest/SHA256SUMS、接收与维护登记、受控交接；固定Git树与重复摘要、篡改/缺失/新增/错配拒绝等9项隔离测试通过。实际包状态/提交以manifest为准，未创建版本标签。见 [实施报告](HANDOVER_PACKAGE_REPORT.md)。
+- 已实施：HANDOVER_GUIDE、源码/交付ZIP和可选微信ZIP、manifest/SHA256SUMS、接收与维护登记、受控交接；固定Git树与重复摘要、篡改/缺失/新增/错配拒绝等10项隔离测试通过。实际包状态/提交以manifest为准，未创建版本标签。见 [实施报告](HANDOVER_PACKAGE_REPORT.md)。
 
 - 新增建议：`docs/HANDOVER_GUIDE.md`；可按需要增加打包脚本。
 - 内容：固定提交源码ZIP、需要时的小程序目标构建包、使用/部署/微信/运维教程、配置模板、测试证据、已知限制和校验值；登记接收人与维护期限。

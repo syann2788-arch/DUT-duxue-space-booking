@@ -151,6 +151,22 @@ class HandoverTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.create(kind='production', draft=True, miniprogram=True)
         with self.assertRaises(ValueError): self.create(kind='production', miniprogram=True)
 
+    def test_invalid_controlled_acceptance_file_is_rejected_without_echoing_contents(self):
+        (self.repo / 'package.json').write_text('{"version":"0.1.0"}')
+        shutil.copyfile(ROOT / 'scripts/release-check.mjs', self.repo / 'scripts/release-check.mjs')
+        for name in ['student-space-guide.png', 'student-my-reservations.png', 'admin-review.png']:
+            target = self.repo / 'docs/assets/screenshots' / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b'synthetic screenshot fixture')
+        self.commit()
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        controlled = self.base / 'private-input'
+        controlled.write_text('SYNTHETIC_SECRET_MUST_NOT_APPEAR_IN_DIAGNOSTICS')
+        with self.assertRaises(ValueError) as rejected:
+            self.create(kind='production', miniprogram=True, acceptance=controlled)
+        self.assertNotIn('SYNTHETIC_SECRET', str(rejected.exception))
+        self.assertFalse((self.base / 'package').exists())
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
