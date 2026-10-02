@@ -24,6 +24,8 @@ PR #30首次目标提交623589c4f19cf02577ba01d9dd364eebacb34286；实际测试�
 
 升级后本轮完整本地后端pytest：54通过/2项PG跳过（15.70秒）。跳过项仍由独立真实PostgreSQL作业执行。测试专用HMAC密钥采用足够长度；Starlette/httpx接口弃用告警不影响测试结果。
 
+第二次运行 [37026593684](https://github.com/syann2788-arch/DUT-duxue-space-booking/actions/runs/37026593684)对应head1674efb4a827c0eb60f1afcf6f78d19cb4511ed4：后端、PostgreSQL、依赖审计成功，小程序作业因许可证测试硬编码旧PyJWT2.13.0失败。已改为从requirements.txt读取锁定版本，再核对许可证清单对应行，继续检查版本一致性。第二次运行同样不作为最新目标提交完整通过的证据。
+
 ## PR和合并门槛
 
 1. 将完整交付准备修改提交、推送到partner，建立partner → main PR，按 [PR模板](../.github/pull_request_template.md)说明范围、验证、隐私、迁移、回滚和未完成的学校验收。
