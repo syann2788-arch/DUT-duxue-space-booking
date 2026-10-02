@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+*.db
+uploads/
+private_uploads/
+credentials/
+**/__pycache__/
+.pytest_cache/
+tests/
+guards/
+*.log

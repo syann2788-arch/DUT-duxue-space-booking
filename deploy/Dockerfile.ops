@@ -1,0 +1,6 @@
+FROM postgres:16-alpine
+RUN apk add --no-cache age python3
+WORKDIR /tools
+COPY deploy/backup.sh deploy/restore.sh deploy/backup_restore.py ./
+ENTRYPOINT []
+CMD ["sh", "backup.sh"]
