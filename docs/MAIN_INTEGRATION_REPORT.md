@@ -8,6 +8,10 @@
 - [Quality Gate运行记录](https://github.com/syann2788-arch/DUT-duxue-space-booking/actions/workflows/quality.yml)：核对对应PR/提交的运行，不把另一个分支或旧提交的绿色状态当成通过。
 - [main提交记录](https://github.com/syann2788-arch/DUT-duxue-space-booking/commits/main/)：合并后确认目标提交已包含，并检查main推送触发的工作流。
 
+## 已核验的实际main合并
+
+用户已确认合并；PR #30于2026-10-02 15:34:09 UTC由llxzaq合入main，merge commit为ee3b0a72fd1e2ca52d464209ee2060f2f83185b5。刷新origin/main后核对包含head9fe29b64034523be35a847e3076573cc384f9948且文件树一致。[main运行37027900993](https://github.com/syann2788-arch/DUT-duxue-space-booking/actions/runs/37027900993)后端、小程序、PG和依赖审计全部成功。平台没有独立CODEOWNER Approve review，不将实际合并改写为不存在的审批；原始事实已保存于PR说明。第13–14继续独立执行。
+
 ## 第12项本地预检
 
 - `npm test`：30通过；`npm run release:check`：通过。这是文档基线检查，不是学校批准发布。

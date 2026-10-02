@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { checkRelease, validateAcceptance, acceptanceChecks, acceptanceRoles } from './release-check.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -46,4 +47,41 @@ test('local completion and direct dependency license inventory are auditable', (
   assert.match(inventory, /项目自身采用何种许可证/)
   assert.match(report, /未发现已知漏洞/)
   assert.doesNotMatch(workflow, /dependency-audit:[\s\S]*?continue-on-error: true/)
+})
+
+// Human acceptance is intentionally separate from the local source candidate.
+// These exercise refusal paths rather than merely matching policy prose.
+
+test('source candidate needs no school credentials or formal screenshots', () => {
+  const result = checkRelease({ root, mode: 'candidate' })
+  assert.deepEqual(result.errors, [])
+  assert.match(result.version, /-rc\.\d+$/)
+})
+
+test('ambiguous tag and unaccepted production release are refused', () => {
+  assert.ok(checkRelease({ root, tagMode: true }).errors.some(error => error.includes('--tag必须明确')))
+  const errors = checkRelease({ root, mode: 'production' }).errors
+  assert.ok(errors.some(error => error.includes('稳定版本')))
+  assert.ok(errors.some(error => error.includes('--evidence')))
+})
+
+test('formal acceptance requires every check, five signatures, and matching commit', () => {
+  const sha = 'a'.repeat(40)
+  const record = { schemaVersion: 1, version: '0.1.0', sourceCommit: sha,
+    checks: Object.fromEntries(acceptanceChecks.map(id => [id, { passed: true, evidence: 'controlled-record:test' }])),
+    signoffs: Object.fromEntries(acceptanceRoles.map(role => [role, { name: 'Synthetic Reviewer', date: '2026-10-02', decision: 'approved', evidence: 'controlled-signature:test' }])) }
+  assert.deepEqual(validateAcceptance(record, '0.1.0', sha), [])
+  for (const id of acceptanceChecks) {
+    const incomplete = structuredClone(record)
+    incomplete.checks[id].passed = false
+    assert.ok(validateAcceptance(incomplete, '0.1.0', sha).some(error => error.includes(id)))
+  }
+  for (const role of acceptanceRoles) {
+    const incomplete = structuredClone(record)
+    incomplete.signoffs[role].decision = 'pending'
+    assert.ok(validateAcceptance(incomplete, '0.1.0', sha).some(error => error.includes(role)))
+  }
+  assert.ok(validateAcceptance(record, '0.1.0', 'b'.repeat(40)).length)
+  const template = JSON.parse(fs.readFileSync(path.join(root, 'docs/RELEASE_ACCEPTANCE.example.json'), 'utf8'))
+  assert.ok(validateAcceptance(template, '0.1.0', sha).length)
 })

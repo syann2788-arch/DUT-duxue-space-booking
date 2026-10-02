@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0",
+  "sourceCommit": "",
+  "checks": {
+    "ci": {
+      "passed": false,
+      "evidence": ""
+    },
+    "p0Disposition": {
+      "passed": false,
+      "evidence": ""
+    },
+    "productionConfiguration": {
+      "passed": false,
+      "evidence": ""
+    },
+    "identityAndPrivacy": {
+      "passed": false,
+      "evidence": ""
+    },
+    "databaseAndRecovery": {
+      "passed": false,
+      "evidence": ""
+    },
+    "realDevicesAndMessages": {
+      "passed": false,
+      "evidence": ""
+    },
+    "rightsAndLicenses": {
+      "passed": false,
+      "evidence": ""
+    }
+  },
+  "signoffs": {
+    "maintainer": {
+      "name": "",
+      "date": "",
+      "decision": "pending",
+      "evidence": ""
+    },
+    "business": {
+      "name": "",
+      "date": "",
+      "decision": "pending",
+      "evidence": ""
+    },
+    "operations": {
+      "name": "",
+      "date": "",
+      "decision": "pending",
+      "evidence": ""
+    },
+    "wechat": {
+      "name": "",
+      "date": "",
+      "decision": "pending",
+      "evidence": ""
+    },
+    "privacy": {
+      "name": "",
+      "date": "",
+      "decision": "pending",
+      "evidence": ""
+    }
+  }
+}

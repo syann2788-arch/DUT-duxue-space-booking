@@ -12,7 +12,7 @@
 | 书院业务管理员 | [使用教程的管理员流程](docs/USER_GUIDE.md#管理员操作) | 审核、清扫复核、禁约、本人核验和密码恢复、导出 |
 | 学校服务器运维 | [从空服务器部署](docs/DEPLOYMENT_GUIDE.md)、[运行与备份恢复](docs/OPERATIONS_RUNBOOK.md) | PostgreSQL、迁移、正式建号、HTTPS、API/worker、备份演练 |
 | 小程序管理员/开发者 | [微信平台与真机配置](docs/WECHAT_SETUP.md)、[构建与校验](docs/BUILD_ARTIFACT_GUIDE.md) | 开发者权限、AppSecret/模板、合法域名、体验版与发布 |
-| 维护者/交接负责人 | [交付修改清单](docs/HANDOVER_CHANGE_CHECKLIST.md)、[发布清单](docs/RELEASE_CHECKLIST.md) | PR/CI/审核、版本与包对应、验收记录、维护责任 |
+| 维护者/交接负责人 | [交付指南与打包](docs/HANDOVER_GUIDE.md)、[交付修改清单](docs/HANDOVER_CHANGE_CHECKLIST.md)、[阶段发布清单](docs/RELEASE_CHECKLIST.md) | 固定源码/交付ZIP、PR/CI/审核、版本与包对应、验收记录、维护责任 |
 
 学校需提供服务器及运维联系人、域名与证书、PostgreSQL/持久化存储、小程序管理员权限、AppSecret与模板，并指定业务和隐私负责人。根配置已有 AppID `wx78c441ce72d765fc`，仍需核验主体与成员权限；真实密钥通过学校受控渠道注入后端。
 
@@ -87,7 +87,13 @@ GitHub质量工作流由PR、main推送和`v*`版本标签触发；partner普通
 3. 等待仓库维护者审核；涉及工作流、部署、数据库或发布的变更须仓库所有者审核。新提交后重新核对检查与审批，不使用旧提交的成功结果。
 4. 评审意见解决且检查成功后合入 main，核对 main 包含目标提交并检查 main 推送触发的结果；之后才进入第13–14项发布规则与打包。
 
-`Miniprogram release artifact` 只在版本标签运行，PR 中显示 skipped 是预期行为，不代表正式构建已通过。PR 工作流通常在 GitHub 临时合并提交运行，应同时保存 PR head SHA 和工作流测试 SHA。远程 CI、审批和合并的实际证据保存到对应 PR，入口和本地预检记录见 [main 合并说明](docs/MAIN_INTEGRATION_REPORT.md)，审核要求见 [贡献指南](CONTRIBUTING.md)。
+`Miniprogram release artifact` 只在稳定版本标签运行，PR/rc标签显示skipped是预期行为，不代表正式构建已通过。新增`Handover package`检查固定Git导出/校验，在rc阶段上传源码候选材料；PR预检产物带draft标记。PR工作流通常测试临时合并提交，应同时保存head SHA和测试SHA。远程CI、审批和合并证据保存在对应PR，见 [main合并说明](docs/MAIN_INTEGRATION_REPORT.md)。
+
+## 源码候选交付与正式上线
+
+可以先向学校交接标为“待部署验收”的源码候选包；学校HTTPS、AppSecret和真机签字继续按部署/正式上线清单完成。候选GitHub Release须维护者确认、固定main提交与目标CI、权利核对，标为pre-release；正式版仍保留全部学校验收与签字，不能由打包结果推断已上线。
+
+从仓库根目录运行`npm run release:check -- --candidate`；提交完改动后用`python3 scripts/package_handover.py pack --ref HEAD --draft`生成本地预检的`source.zip`、`handover.zip`、manifest和SHA256SUMS。维护者审核合入main后，对固定提交重新打包，去掉draft。Windows使用`python`；微信构建包需真实AppID/HTTPS配置再加`--miniprogram`。完整命令、验收记录和单独受控交接见 [交付指南](docs/HANDOVER_GUIDE.md)。
 
 ## 学校首次部署顺序
 
