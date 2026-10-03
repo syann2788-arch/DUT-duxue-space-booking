@@ -89,9 +89,18 @@ class HandoverTests(unittest.TestCase):
 
     def test_tag_mismatch_is_refused(self):
         self.git('tag', 'v0.1.0-rc.1')
+        released = self.git('rev-parse', 'v0.1.0-rc.1')
         (self.repo / 'README.md').write_text('later change')
         self.commit()
-        with self.assertRaises(ValueError): self.create(draft=True)
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        with self.assertRaisesRegex(ValueError, 'Version tag points to a different commit'):
+            self.create()
+        target = self.create('later-draft', draft=True)
+        record = verify(target)
+        self.assertIsNone(record['tag'])
+        self.assertEqual(record['status'], 'draft-before-main-review')
+        self.assertEqual(record['sourceCommit'], self.git('rev-parse', 'HEAD'))
+        self.assertEqual(self.git('rev-parse', 'v0.1.0-rc.1'), released)
 
     def test_missing_modified_extra_files_are_detected(self):
         target = self.create()

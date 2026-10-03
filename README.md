@@ -1,6 +1,6 @@
 # 笃学书院空间预约系统 v2
 
-大连理工大学笃学书院空间预约原生微信小程序 + FastAPI。当前版本 `0.1.0-rc.1` 为**尚未发布、待学校部署验收的候选准备稿**；本地已完成部分验证，尚未创建 Release 或部署到学校。本轮是否已合入 main 以对应 PR 的合并记录为准，流程和证据入口见 [main 合并说明](docs/MAIN_INTEGRATION_REPORT.md)。源码交接、微信发布与学校签字是后续不同步骤，当前发布门槛仍按仓库发布清单执行。
+大连理工大学笃学书院空间预约原生微信小程序 + FastAPI。当前版本 `0.1.0-rc.1` 已作为**待学校部署验收的源码候选版**发布：[Release 与交付附件](https://github.com/syann2788-arch/DUT-duxue-space-booking/releases/tag/v0.1.0-rc.1)。固定提交为 `3e63bf919322a3dca416569cc26c48b190cfb664`，[标签检查和发布作业](https://github.com/syann2788-arch/DUT-duxue-space-booking/actions/runs/37035422708)成功；尚未部署到学校或通过正式验收。源码交接、微信发布与学校签字按 [阶段发布清单](docs/RELEASE_CHECKLIST.md)分别完成。
 
 正式运行主线为 `miniprogram/` 和 `backend/`。`frontend/` 是历史 uni-app/H5 参考，`cloudfunctions/` 是第一版云函数参考。微信工具本地调试导入仓库根目录；体验/正式版本导入对应 `dist/miniprogram-*` 构建目录。
 
@@ -10,9 +10,11 @@
 |---|---|---|
 | 学生、辅导员 | [使用教程](docs/USER_GUIDE.md) | 登录、申请、签到、清扫；辅导员首次换密 |
 | 书院业务管理员 | [使用教程的管理员流程](docs/USER_GUIDE.md#管理员操作) | 审核、清扫复核、禁约、本人核验和密码恢复、导出 |
-| 学校服务器运维 | [从空服务器部署](docs/DEPLOYMENT_GUIDE.md)、[运行与备份恢复](docs/OPERATIONS_RUNBOOK.md) | PostgreSQL、迁移、正式建号、HTTPS、API/worker、备份演练 |
+| 学校服务器运维 | [Docker 部署步骤](docs/DOCKER_DEPLOYMENT_GUIDE.md)、[完整部署教程](docs/DEPLOYMENT_GUIDE.md)、[运行与备份恢复](docs/OPERATIONS_RUNBOOK.md) | PostgreSQL、迁移、正式建号、HTTPS、API/worker、备份演练 |
 | 小程序管理员/开发者 | [微信平台与真机配置](docs/WECHAT_SETUP.md)、[构建与校验](docs/BUILD_ARTIFACT_GUIDE.md) | 开发者权限、AppSecret/模板、合法域名、体验版与发布 |
-| 维护者/交接负责人 | [交付指南与打包](docs/HANDOVER_GUIDE.md)、[交付修改清单](docs/HANDOVER_CHANGE_CHECKLIST.md)、[阶段发布清单](docs/RELEASE_CHECKLIST.md) | 固定源码/交付ZIP、PR/CI/审核、版本与包对应、验收记录、维护责任 |
+| 维护者/交接负责人 | [开发者收尾检查清单](docs/DEVELOPER_CLOSEOUT_CHECKLIST.md)、[交付指南与打包](docs/HANDOVER_GUIDE.md)、[阶段发布清单](docs/RELEASE_CHECKLIST.md) | 固定源码/交付ZIP、PR/CI/审核、版本与包对应、验收记录、维护责任 |
+
+本轮采用“已发布 rc.1 源码 + 固定提交的补充教程”交付，文件入口、摘要、责任分工、已知限制与接收/维护字段集中在 [源码交付记录与学校确认单](docs/SOURCE_HANDOVER_RECORD.md)。学校尚未确认的范围、需求取舍和维护期限保留待确认；执行记录见 [前六项收尾](docs/CLOSEOUT_01_06_REPORT.md)。
 
 学校需提供服务器及运维联系人、域名与证书、PostgreSQL/持久化存储、小程序管理员权限、AppSecret与模板，并指定业务和隐私负责人。根配置已有 AppID `wx78c441ce72d765fc`，仍需核验主体与成员权限；真实密钥通过学校受控渠道注入后端。
 

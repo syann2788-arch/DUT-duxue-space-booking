@@ -2,6 +2,8 @@
 
 适用于当前`0.1.0-rc.1`源码候选交付。两份ZIP足以交接代码和教程材料；学校可用的小程序还须部署服务器、配置微信、真机验收和签字。发布条件见 [阶段清单](RELEASE_CHECKLIST.md)。本地打包命令不发布；经授权推送rc标签后，Quality Gate全部五项检查成功才自动创建候选GitHub Release和上传四份附件。微信发布仍由小程序管理员操作。
 
+本轮选用已发布rc.1源码，另附固定提交的补充Docker教程与收尾材料；不重新打包或覆盖旧附件。统一下载、版本、校验值、需求决定和接收维护登记见 [源码交付记录与学校确认单](SOURCE_HANDOVER_RECORD.md)。
+
 ## 1. 交付物清单
 
 | 文件/材料 | 用途与接收方 |
@@ -11,7 +13,7 @@
 | `handover-manifest.json` | 版本、完整提交、标签（未创建时null）、阶段、逐文件长度/SHA-256和两份ZIP摘要；不声称自动部署或已签字。 |
 | `SHA256SUMS` | 两份ZIP、manifest及可选构建ZIP的校验值；通过独立可信渠道确认，不能只靠同一下载中的散列证明来源可信。 |
 | `miniprogram.zip`（可选） | production构建目录，仍须微信开发者工具导入、上传体验/正式版本；服务器程序不上传微信。 |
-| 使用/部署/微信/备份恢复教程 | 源码内docs/及交付合集均提供；从README按角色进入。 |
+| 使用/部署/微信/备份恢复教程 | 源码内docs/及交付合集均提供；从README按角色进入。新补充的 [Docker部署步骤](DOCKER_DEPLOYMENT_GUIDE.md)可独立配合已发布rc.1使用，随下次源码交付纳入材料，不覆盖旧包。 |
 | 测试、已知限制、配置模板 | 同提交内的报告、需求对照/路线图、根/后端.env.example与部署模板。历史测试保留轮次，最终CI以随交付登记的目标运行链接为准。 |
 
 禁止把真实`.env`、AppSecret、数据库、公开/私密业务照片、真实人员CSV、账号初始密码、访问令牌或备份装入ZIP。脚本拒绝相关路径、符号链接和子模块，只导出Git已提交内容；它不替代人工审查文件内容中的秘密或权利。虚构`*.example.csv`和配置模板允许交付。没有把缓存、node_modules、.venv或dist放进源码包。
@@ -42,7 +44,7 @@ python scripts/check-handover-docs.py
 python scripts/package_handover.py pack --ref HEAD --draft
 ```
 
-默认输出`dist/handover/<版本>-<提交前12位>/`，同路径存在时拒绝覆盖。`--draft`仅供尚未进入main的改动预检，记录draft-before-main-review；版本号不是“标签已存在”的证明。输出不包含未提交文件；Git被忽略的真实配置不会读取。
+默认输出`dist/handover/<版本>-<提交前12位>/`，同路径存在时拒绝覆盖。`--draft`用于未经本次正式交付确认的改动预检，记录draft-before-main-review；版本号不是“标签已存在”的证明。已有同版本标签指向旧提交时，后续PR预检包记录实际新提交及tag=null，不标成该旧标签的发行附件；非draft包仍拒绝标签错配。输出不包含未提交文件；Git被忽略的真实配置不会读取。
 
 维护者确认候选交付、固定提交已入main并且目标CI通过后，先刷新远程引用，用完整提交或不可变标签重新打包，**不加draft**：
 
@@ -70,8 +72,8 @@ PowerShell先设`$env:MINIPROGRAM_APP_ID`和`$env:MINIPROGRAM_API_BASE_URL`，�
 ## 4. 接收、解压和校验
 
 1. 接收两份ZIP、manifest和SHA256SUMS，独立核对维护者提供的版本/完整提交与SHA256SUMS。下载分支网页ZIP可能不含固定说明或正式构建，因此固定发行附件与校验记录更适合存档。
-2. 解压source.zip得到source/；其中已有校验脚本，无需安装Python第三方库。把外层文件保留在同一目录，不混放额外文件。
-3. 执行`python3 source/scripts/package_handover.py verify 外层目录`（Windows用python）。检查缺失、新增、修改、重复/不安全ZIP成员，以及教程/内嵌源码与外层源码是否一致。若有微信包还需Node。
+2. 将四份外层文件放在独立的artifacts目录，source.zip解压到它旁边得到source/，不要解压进artifacts；校验器会拒绝附件目录里的额外文件夹。其中已有校验脚本，无需安装Python第三方库。
+3. 从这两个目录的共同父目录执行`python3 source/scripts/package_handover.py verify artifacts`（Windows用python）。检查缺失、新增、修改、重复/不安全ZIP成员，以及教程/内嵌源码与外层源码是否一致。若有微信包还需Node。
 4. 校验通过后阅读source/README.md。解压handover.zip，按START_HERE阅读教程与填写HANDOVER_RECEIPT.md；所有真实联系人信息、维护期限和签字由双方填写，空表不代表已交付。
 5. 服务器运维按 [部署教程](DEPLOYMENT_GUIDE.md)创建运行环境、PostgreSQL、迁移、基础房间/规则、正式账号、API/worker和HTTPS；不能在学校生产库用seed演示账号。
 6. 小程序管理员按 [微信教程](WECHAT_SETUP.md)核对AppID主体/成员权限、合法域名、学校注入后端的AppSecret/模板；从固定源码构建或导入附带构建目录，完成体验和真机验收。

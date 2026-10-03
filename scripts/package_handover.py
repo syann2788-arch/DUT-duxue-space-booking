@@ -125,7 +125,11 @@ def pack(root=ROOT, ref='HEAD', output=None, draft=False, miniprogram=False, kin
     existing = git(root, 'tag', '--list', tag).decode().strip()
     if existing:
         if git(root, 'rev-parse', f'refs/tags/{tag}^{{commit}}').decode().strip() != commit:
-            raise ValueError('Version tag points to a different commit')
+            if not draft:
+                raise ValueError('Version tag points to a different commit')
+            # A later PR may retain the released version while preparing docs.
+            # Its draft is a new commit, not an artifact of the existing tag.
+            tag = None
     else:
         tag = None
     record = {'schemaVersion': 1, 'version': version, 'sourceCommit': commit, 'tag': tag, 'kind': kind, 'status': 'draft-before-main-review' if draft else 'pending-school-deployment-acceptance' if kind == 'candidate' else 'production-materials-with-declared-acceptance', 'automaticallyPublished': False, 'automaticallyDeployed': False, 'schoolAcceptance': 'pending' if kind == 'candidate' else 'record-completeness-checked', 'formalDirectories': ['miniprogram/', 'backend/'], 'historicalDirectories': ['frontend/', 'cloudfunctions/'], 'hasMiniprogramBuild': miniprogram}
